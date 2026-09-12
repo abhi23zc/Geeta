@@ -1,5 +1,14 @@
 import React, { ReactNode } from 'react';
-import { Pressable, ScrollView, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  ViewStyle,
+} from 'react-native';
 import { Link, usePathname } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -14,6 +23,8 @@ import {
   ChevronLeft,
 } from 'lucide-react-native';
 import { C, R } from '@/constants/ritual-theme';
+
+export const MORNING_RITUAL_LOGO = require('@/assets/images/morning-ritual-logo.png');
 
 export function DiyaGraphic({
   size = 48,
@@ -113,7 +124,7 @@ export function Header({
           </Link>
         ) : (
           <View style={[styles.diyaContainer, night && { backgroundColor: C.nightCard }]}>
-            <DiyaGraphic size={26} color={C.saffron} flameColor={C.gold} />
+            <Image source={MORNING_RITUAL_LOGO} style={styles.logoMark} />
           </View>
         )}
         <View>
@@ -151,8 +162,8 @@ export function TabBar({ night = false }: { night?: boolean }) {
         styles.tab,
         {
           paddingBottom: Math.max(inset.bottom, 12),
-          backgroundColor: night ? 'rgba(35, 36, 74, 0.95)' : 'rgba(255, 251, 246, 0.92)',
-          borderTopColor: night ? 'rgba(60, 61, 104, 0.6)' : 'rgba(255, 255, 255, 0.9)',
+          backgroundColor: night ? C.nightCard : C.canvas,
+          borderTopColor: night ? '#3C3D68' : C.divider,
         },
       ]}
     >
@@ -285,6 +296,13 @@ export const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
+    overflow: 'hidden',
+  },
+  logoMark: {
+    width: 38,
+    height: 38,
+    aspectRatio: 1,
+    resizeMode: 'contain',
   },
   brandTitle: {
     fontSize: 21,
@@ -386,6 +404,7 @@ export const styles = StyleSheet.create({
     shadowRadius: 20,
     shadowOffset: { width: 0, height: -4 },
     elevation: 12,
+    zIndex: 50,
   },
   tabItem: {
     width: 64,

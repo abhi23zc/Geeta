@@ -22,7 +22,7 @@ import {
   Volume2,
 } from 'lucide-react-native';
 
-import { DiyaGraphic, Header, Screen, TabBar, TextR } from '@/components/ritual-ui';
+import { DiyaGraphic, Header, Screen, TextR } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
 import { useRitual } from '@/state/ritual-store';
 
@@ -230,7 +230,6 @@ export default function Home() {
         <CheckCircle2 size={24} color={C.green} fill={C.greenLight} />
       </View>
 
-      <TabBar />
     </Screen>
   );
 }
