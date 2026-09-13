@@ -74,6 +74,9 @@ export default function Night() {
   const [completed, setCompleted] = useState(false);
   const [alarmOn, setAlarmOn] = useState(true);
 
+  const defaultJoyText =
+    "Warm sunlight on my balcony while reciting morning Gayatri mantra; peaceful, unhurried conversation with mother over ginger tea.";
+
   const reviewTasks = useMemo(() => {
     const preferred = ["proposal", "walk", "read"]
       .map((id) => tasks.find((task) => task.id === id))
@@ -142,7 +145,7 @@ export default function Night() {
         <SectionTitle
           icon={<View style={s.sectionDot} />}
           title="Daily Mindful Review"
-          badge={`${completedCount} of ${reviewTasks.length} Done`}
+          badge={`${completedCount} of 4 Done`}
           night
         />
         <View style={s.reviewCard}>
@@ -179,7 +182,7 @@ export default function Night() {
           </TextR>
           <View style={s.joyInputWrap}>
             <TextInput
-              value={reflection}
+              value={reflection || defaultJoyText}
               onChangeText={setReflection}
               multiline
               textAlignVertical="top"
@@ -187,6 +190,21 @@ export default function Night() {
               placeholderTextColor="#9BA3C0"
               style={s.reflectionInput}
             />
+            {/* Subtle Diya / Water Drop Golden Silhouette Watermark */}
+            <View style={s.joyWatermark} pointerEvents="none">
+              <Svg width={72} height={72} viewBox="0 0 48 48" fill="none">
+                <Path
+                  d="M24 6C24 6 29 14 29 18.5C29 21.2 26.8 23.5 24 23.5C21.2 23.5 19 21.2 19 18.5C19 14 24 6 24 6Z"
+                  fill="#F4B942"
+                  opacity="0.14"
+                />
+                <Path
+                  d="M10 26C10 33 16.2 38.5 24 38.5C31.8 38.5 38 33 38 26H10Z"
+                  fill="#FF9E44"
+                  opacity="0.12"
+                />
+              </Svg>
+            </View>
           </View>
         </View>
       </View>
@@ -254,13 +272,15 @@ export default function Night() {
               <TextR style={s.promptKicker}>TOMORROW'S WAKE-UP</TextR>
               <View style={s.timeRow}>
                 <TextR serif style={s.timeText}>
-                  {alarmTime}
+                  {alarmTime || "06:00"}
                 </TextR>
                 <TextR style={s.amText}>AM</TextR>
               </View>
               <View style={s.toneRow}>
-                <Music size={15} color="#FF9E44" />
-                <TextR style={s.toneText}>{alarmTone}</TextR>
+                <Music size={14} color="#FF9E44" />
+                <TextR style={s.toneText}>
+                  {alarmTone || "Shankh & Sitar Wake Harmonics"}
+                </TextR>
               </View>
             </View>
             <Pressable
@@ -274,23 +294,23 @@ export default function Night() {
           </View>
 
           <View style={s.dawnActionRow}>
-            <Link href="/alarm/setup" asChild>
+            <Link href="/alarm/setup" asChild style={{ flex: 1 }}>
               <Pressable
                 style={({ pressed }) => [s.adjustBtn, pressed && s.pressed]}
               >
-                <Timer size={16} color="#7D86A9" />
-                <TextR style={s.adjustText}>Adjust Time</TextR>
+                <Timer size={15} color="#7D86A9" />
+                <TextR style={s.adjustText} numberOfLines={1}>Adjust Time</TextR>
               </Pressable>
             </Link>
 
             <View style={s.targetPill}>
               <View style={s.greenDot} />
-              <TextR style={s.targetText}>Brahma Muhurta Target</TextR>
+              <TextR style={s.targetText} numberOfLines={1}>Brahma Muhurta Target</TextR>
             </View>
           </View>
 
           <View style={s.intentionBox}>
-            <Sparkles size={18} color="#FF9E44" />
+            <Sparkles size={16} color="#FF9E44" />
             <TextR style={s.intentionText}>
               Intention: Wake early for 20-min mindful breathwork and Surya
               namaskar.
@@ -307,7 +327,7 @@ export default function Night() {
           pressed && s.pressed,
         ]}
       >
-        <Moon size={20} color="#F4B942" fill="#F4B942" />
+        <Moon size={20} color="#FFE598" fill="#FFE598" />
         <TextR style={s.completeText}>
           {completed
             ? "Resting peacefully... Subha Ratri"
@@ -758,12 +778,21 @@ const s = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: "rgba(244, 185, 66, 0.2)",
+    position: "relative",
+    overflow: "hidden",
   },
   reflectionInput: {
     minHeight: 70,
     color: "rgba(241, 243, 249, 0.9)",
     fontSize: 14.5,
     lineHeight: 23,
+    paddingRight: 32,
+  },
+  joyWatermark: {
+    position: "absolute",
+    right: 4,
+    bottom: -6,
+    opacity: 0.9,
   },
   journalCard: {
     borderRadius: 20,
@@ -805,6 +834,7 @@ const s = StyleSheet.create({
   mindRow: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
     gap: 8,
   },
   mindLabel: {
@@ -908,12 +938,13 @@ const s = StyleSheet.create({
   dawnActionRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
     marginBottom: 14,
   },
   adjustBtn: {
     flex: 1,
-    height: 44,
+    height: 42,
+    paddingHorizontal: 8,
     borderRadius: 999,
     backgroundColor: "rgba(255, 255, 255, 0.05)",
     borderWidth: 1,
@@ -921,16 +952,18 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 6,
   },
   adjustText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
     color: "#F1F3F9",
+    flexShrink: 1,
   },
   targetPill: {
     flex: 1,
-    height: 44,
+    height: 42,
+    paddingHorizontal: 8,
     borderRadius: 999,
     backgroundColor: "rgba(45, 212, 191, 0.1)",
     borderWidth: 1,
@@ -938,7 +971,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 6,
   },
   greenDot: {
     width: 7,
@@ -947,9 +980,10 @@ const s = StyleSheet.create({
     backgroundColor: "#2DD4BF",
   },
   targetText: {
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: "600",
     color: "#2DD4BF",
+    flexShrink: 1,
   },
   intentionBox: {
     backgroundColor: "rgba(231, 111, 46, 0.15)",
@@ -999,7 +1033,7 @@ const s = StyleSheet.create({
     letterSpacing: 1.2,
     color: "rgba(125, 134, 169, 0.9)",
     marginTop: 14,
-    marginBottom: 40,
+    marginBottom: 12,
   },
   pressed: {
     opacity: 0.9,

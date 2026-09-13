@@ -1,6 +1,8 @@
 import React, { ReactNode } from 'react';
 import {
   Image,
+  Keyboard,
+  Platform,
   Pressable,
   ScrollView,
   StyleProp,
@@ -342,7 +344,7 @@ export function Screen({
       {scroll ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scroll, { paddingBottom: 220 }, contentContainerStyle]}
+          contentContainerStyle={[styles.scroll, { paddingBottom: 100 }, contentContainerStyle]}
         >
           {content}
         </ScrollView>
@@ -377,9 +379,7 @@ export function Header({
             </Pressable>
           </Link>
         ) : (
-          <View style={[styles.diyaContainer, night && { backgroundColor: 'rgba(186, 80, 26, 0.3)', borderColor: 'rgba(255, 158, 68, 0.35)' }]}>
-            <Image source={MORNING_RITUAL_LOGO} style={styles.logoMark} />
-          </View>
+          <Image source={MORNING_RITUAL_LOGO} style={styles.logoMarkOnly} />
         )}
         <View>
           <TextR style={[styles.brandTitle, { color }]}>{title ?? 'Morning Ritual'}</TextR>
@@ -472,6 +472,22 @@ export function TabBar({ night }: { night?: boolean }) {
   const router = useRouter();
   const inset = useSafeAreaInsets();
   const isNight = night ?? path === '/night';
+  const [keyboardVisible, setKeyboardVisible] = React.useState(false);
+
+  React.useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  if (keyboardVisible) return null;
 
   return (
     <View
@@ -562,7 +578,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: C.surface,
     paddingHorizontal: 20,
-    paddingBottom: 150,
+    paddingBottom: 20,
     position: 'relative',
   },
   header: {
@@ -598,6 +614,12 @@ export const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
+    overflow: 'hidden',
+  },
+  logoMarkOnly: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     overflow: 'hidden',
   },
   logoMark: {

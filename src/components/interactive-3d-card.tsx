@@ -72,10 +72,11 @@ export function Interactive3DCard({
   });
 
   const animatedSheenStyle = useAnimatedStyle(() => {
+    const maxOpacity = night ? 0.12 : 0.35;
     const opacity = interpolate(
       rotateY.value,
       [-maxTiltDeg, 0, maxTiltDeg],
-      [0.4, 0.15, 0.5],
+      [maxOpacity, 0, maxOpacity],
       Extrapolation.CLAMP
     );
     return {
