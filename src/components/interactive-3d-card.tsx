@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useRef } from 'react';
 import { StyleSheet, View, StyleProp, ViewStyle, LayoutChangeEvent } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -27,37 +27,35 @@ export function Interactive3DCard({
 }: Interactive3DCardProps) {
   const rotateX = useSharedValue(0);
   const rotateY = useSharedValue(0);
-  const scale = useSharedValue(1);
   const sheenX = useSharedValue(-200);
 
-  const cardWidth = useSharedValue(340);
-  const cardHeight = useSharedValue(400);
+  const cardWidthRef = useRef(340);
+  const cardHeightRef = useRef(400);
 
   const handleLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
-    cardWidth.value = width;
-    cardHeight.value = height;
+    cardWidthRef.current = width;
+    cardHeightRef.current = height;
   };
 
   const handleTouchMove = (evt: any) => {
     const { locationX, locationY } = evt.nativeEvent;
-    const centerX = cardWidth.value / 2;
-    const centerY = cardHeight.value / 2;
+    const centerX = cardWidthRef.current / 2;
+    const centerY = cardHeightRef.current / 2;
 
     const normX = (locationX - centerX) / centerX; // -1 to 1
     const normY = (locationY - centerY) / centerY; // -1 to 1
 
     rotateY.value = withTiming(normX * maxTiltDeg, { duration: 80, easing: Easing.out(Easing.quad) });
     rotateX.value = withTiming(-normY * maxTiltDeg, { duration: 80, easing: Easing.out(Easing.quad) });
-    sheenX.value = withTiming((normX + 0.5) * cardWidth.value, { duration: 80 });
+    sheenX.value = withTiming((normX + 0.5) * cardWidthRef.current, { duration: 80 });
   };
 
   const handleTouchGrant = () => {
-    scale.value = withSpring(1.02, { damping: 14, stiffness: 200 });
+    // Keep scale stable to avoid tap distortion
   };
 
   const handleTouchRelease = () => {
-    scale.value = withSpring(1, { damping: 12, stiffness: 180 });
     rotateX.value = withSpring(0, { damping: 14, stiffness: 140 });
     rotateY.value = withSpring(0, { damping: 14, stiffness: 140 });
     sheenX.value = withTiming(-200, { duration: 400 });
@@ -69,7 +67,6 @@ export function Interactive3DCard({
         { perspective: 1000 },
         { rotateX: `${rotateX.value}deg` },
         { rotateY: `${rotateY.value}deg` },
-        { scale: scale.value },
       ],
     };
   });
@@ -106,15 +103,29 @@ export function Interactive3DCard({
           style,
         ]}
       >
+        {/* Sacred 3D Parchment Mesh Texture */}
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Svg width="100%" height="100%">
+            <Defs>
+              <LinearGradient id="parchmentGrad" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0%" stopColor="#FFFDF9" stopOpacity="0.98" />
+                <Stop offset="50%" stopColor="#FFF8EE" stopOpacity="0.95" />
+                <Stop offset="100%" stopColor="#FFF2E5" stopOpacity="0.92" />
+              </LinearGradient>
+            </Defs>
+            <Rect width="100%" height="100%" fill="url(#parchmentGrad)" />
+          </Svg>
+        </View>
+
         {/* Dynamic Light Sheen Overlay */}
         <Animated.View style={[styles.sheenOverlay, animatedSheenStyle]} pointerEvents="none">
           <Svg width="220%" height="100%" viewBox="0 0 400 400" fill="none">
             <Defs>
               <LinearGradient id="sheenGrad" x1="0" y1="0" x2="1" y2="1">
                 <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0" />
-                <Stop offset="45%" stopColor="#FFFFFF" stopOpacity="0.45" />
-                <Stop offset="55%" stopColor="#FFF9E6" stopOpacity="0.75" />
-                <Stop offset="65%" stopColor="#FFFFFF" stopOpacity="0.3" />
+                <Stop offset="45%" stopColor="#FFFFFF" stopOpacity="0.5" />
+                <Stop offset="55%" stopColor="#FFF9E6" stopOpacity="0.8" />
+                <Stop offset="65%" stopColor="#FFFFFF" stopOpacity="0.35" />
                 <Stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
               </LinearGradient>
             </Defs>
@@ -130,18 +141,19 @@ export function Interactive3DCard({
 
 const styles = StyleSheet.create({
   cardContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: '#FFFDF9',
     borderRadius: 28,
-    padding: 24,
+    paddingVertical: 20,
+    paddingHorizontal: 20,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderColor: 'rgba(255, 248, 235, 0.95)',
     borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(244, 185, 66, 0.35)',
+    borderBottomColor: 'rgba(216, 144, 64, 0.45)',
     shadowColor: '#8C4010',
-    shadowOpacity: 0.14,
-    shadowRadius: 22,
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
     shadowOffset: { width: 0, height: 10 },
-    elevation: 6,
+    elevation: 7,
     overflow: 'hidden',
     position: 'relative',
   },

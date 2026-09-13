@@ -317,13 +317,17 @@ export function Screen({
   children,
   night = false,
   scroll = true,
+  contentStyle,
+  contentContainerStyle,
 }: {
   children: ReactNode;
   night?: boolean;
   scroll?: boolean;
+  contentStyle?: StyleProp<ViewStyle>;
+  contentContainerStyle?: StyleProp<ViewStyle>;
 }) {
   const content = (
-    <View style={[styles.content, night && { backgroundColor: C.night }]}>
+    <View style={[styles.content, night && { backgroundColor: C.night }, contentStyle]}>
       <DawnMeshBackdrop night={night} />
       {children}
     </View>
@@ -337,7 +341,7 @@ export function Screen({
       {scroll ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[styles.scroll, contentContainerStyle]}
         >
           {content}
         </ScrollView>
@@ -429,15 +433,10 @@ function AnimatedTabItem({
     <Pressable
       accessibilityRole="tab"
       onPress={onPress}
-      onPressIn={() => {
-        scale.value = withSpring(0.92, { damping: 15, stiffness: 200 });
-      }}
-      onPressOut={() => {
-        scale.value = withSpring(active ? 1.08 : 1, { damping: 14, stiffness: 180 });
-      }}
       style={({ pressed }) => [
         styles.tabItem,
         active && (night ? styles.tabItemActiveNight : styles.tabItemActive),
+        pressed && { opacity: 0.88 },
       ]}
     >
       <Animated.View style={[{ alignItems: 'center' }, animatedStyle]}>
