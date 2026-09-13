@@ -103,17 +103,23 @@ export function Interactive3DCard({
           style,
         ]}
       >
-        {/* Sacred 3D Parchment Mesh Texture */}
+        {/* Sacred 3D Parchment / Night Celestial Glass Mesh Texture */}
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
           <Svg width="100%" height="100%">
             <Defs>
-              <LinearGradient id="parchmentGrad" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%" stopColor="#FFFDF9" stopOpacity="0.98" />
-                <Stop offset="50%" stopColor="#FFF8EE" stopOpacity="0.95" />
-                <Stop offset="100%" stopColor="#FFF2E5" stopOpacity="0.92" />
+              <LinearGradient id={night ? "nightGlassGrad" : "parchmentGrad"} x1="0" y1="0" x2="0" y2="1">
+                {night ? [
+                  <Stop key="n1" offset="0%" stopColor="#161B33" stopOpacity="0.98" />,
+                  <Stop key="n2" offset="60%" stopColor="#12162C" stopOpacity="0.98" />,
+                  <Stop key="n3" offset="100%" stopColor="#0F1326" stopOpacity="0.98" />,
+                ] : [
+                  <Stop key="d1" offset="0%" stopColor="#FFFDF9" stopOpacity="0.98" />,
+                  <Stop key="d2" offset="50%" stopColor="#FFF8EE" stopOpacity="0.95" />,
+                  <Stop key="d3" offset="100%" stopColor="#FFF2E5" stopOpacity="0.92" />,
+                ]}
               </LinearGradient>
             </Defs>
-            <Rect width="100%" height="100%" fill="url(#parchmentGrad)" />
+            <Rect width="100%" height="100%" fill={night ? "url(#nightGlassGrad)" : "url(#parchmentGrad)"} />
           </Svg>
         </View>
 
@@ -142,9 +148,9 @@ export function Interactive3DCard({
 const styles = StyleSheet.create({
   cardContainer: {
     backgroundColor: '#FFFDF9',
-    borderRadius: 28,
-    paddingVertical: 20,
-    paddingHorizontal: 20,
+    borderRadius: 26,
+    paddingVertical: 22,
+    paddingHorizontal: 22,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 248, 235, 0.95)',
     borderTopColor: '#FFFFFF',
@@ -158,11 +164,16 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   cardContainerNight: {
-    backgroundColor: 'rgba(35, 36, 74, 0.92)',
-    borderColor: '#3C3D68',
-    borderTopColor: '#5C5E98',
-    shadowColor: '#000000',
-    shadowOpacity: 0.35,
+    backgroundColor: "#13172E",
+    borderWidth: 1.2,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+    borderTopColor: "rgba(255, 255, 255, 0.18)",
+    borderBottomColor: "rgba(255, 255, 255, 0.06)",
+    shadowColor: "#000000",
+    shadowOpacity: 0.45,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 8,
   },
   sheenOverlay: {
     position: 'absolute',

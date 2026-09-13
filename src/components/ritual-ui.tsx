@@ -326,8 +326,9 @@ export function Screen({
   contentStyle?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
 }) {
+  const nightBg = '#0B0D19';
   const content = (
-    <View style={[styles.content, night && { backgroundColor: C.night }, contentStyle]}>
+    <View style={[styles.content, night && { backgroundColor: nightBg }, contentStyle]}>
       <DawnMeshBackdrop night={night} />
       {children}
     </View>
@@ -335,13 +336,13 @@ export function Screen({
 
   return (
     <SafeAreaView
-      style={[styles.safe, night && { backgroundColor: C.night }]}
+      style={[styles.safe, night && { backgroundColor: nightBg }]}
       edges={['top']}
     >
       {scroll ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scroll, contentContainerStyle]}
+          contentContainerStyle={[styles.scroll, { paddingBottom: 220 }, contentContainerStyle]}
         >
           {content}
         </ScrollView>
@@ -354,15 +355,17 @@ export function Screen({
 
 export function Header({
   eyebrow,
+  title,
   night = false,
   back = false,
 }: {
   eyebrow: string;
+  title?: string;
   night?: boolean;
   back?: boolean;
 }) {
-  const color = night ? C.canvas : C.ink;
-  const eyebrowColor = night ? C.gold : C.saffron;
+  const color = night ? '#F1F3F9' : C.ink;
+  const eyebrowColor = night ? '#F4B942' : C.saffron;
 
   return (
     <View style={styles.header}>
@@ -374,21 +377,24 @@ export function Header({
             </Pressable>
           </Link>
         ) : (
-          <View style={[styles.diyaContainer, night && { backgroundColor: C.nightCard }]}>
+          <View style={[styles.diyaContainer, night && { backgroundColor: 'rgba(186, 80, 26, 0.3)', borderColor: 'rgba(255, 158, 68, 0.35)' }]}>
             <Image source={MORNING_RITUAL_LOGO} style={styles.logoMark} />
           </View>
         )}
         <View>
-          <TextR style={[styles.brandTitle, { color }]}>Morning Ritual</TextR>
-          <TextR style={[styles.eyebrow, { color: eyebrowColor }]}>{eyebrow}</TextR>
+          <TextR style={[styles.brandTitle, { color }]}>{title ?? 'Morning Ritual'}</TextR>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 }}>
+            {night && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#F4B942' }} />}
+            <TextR style={[styles.eyebrow, { color: eyebrowColor }]}>{eyebrow}</TextR>
+          </View>
         </View>
       </View>
       <View style={styles.headerActions}>
-        <Pressable style={[styles.actionBtn, night && { backgroundColor: C.nightCard }]}>
-          <Bell size={22} color={night ? '#D6D1D0' : C.inkSoft} />
+        <Pressable style={[styles.actionBtn, night && { backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.08)' }]}>
+          <Bell size={20} color={night ? '#7D86A9' : C.inkSoft} />
         </Pressable>
-        <View style={[styles.avatar, { backgroundColor: C.primary }]}>
-          <User size={18} color={C.white} />
+        <View style={[styles.avatar, { backgroundColor: '#E76F2E' }]}>
+          <User size={18} color="#0B0D19" strokeWidth={2.5} />
         </View>
       </View>
     </View>
@@ -417,8 +423,8 @@ function AnimatedTabItem({
   onPress: () => void;
 }) {
   const IconComp = tab.IconComponent;
-  const activeColor = C.saffron;
-  const inactiveColor = night ? '#A3A5CF' : C.muted;
+  const activeColor = night ? '#F4B942' : C.saffron;
+  const inactiveColor = night ? '#7D86A9' : C.muted;
   const scale = useSharedValue(active ? 1.05 : 1);
 
   React.useEffect(() => {
@@ -455,16 +461,17 @@ function AnimatedTabItem({
         >
           {tab.label}
         </TextR>
-        {active && <View style={styles.activeDot} />}
+        {active && <View style={[styles.activeDot, night && { backgroundColor: '#F4B942' }]} />}
       </Animated.View>
     </Pressable>
   );
 }
 
-export function TabBar({ night = false }: { night?: boolean }) {
+export function TabBar({ night }: { night?: boolean }) {
   const path = usePathname();
   const router = useRouter();
   const inset = useSafeAreaInsets();
+  const isNight = night ?? path === '/night';
 
   return (
     <View
@@ -472,8 +479,9 @@ export function TabBar({ night = false }: { night?: boolean }) {
         styles.floatingTabDock,
         {
           bottom: Math.max(inset.bottom + 8, 18),
-          backgroundColor: night ? 'rgba(23, 24, 51, 0.95)' : 'rgba(255, 246, 238, 0.95)',
-          borderColor: night ? '#3C3D68' : '#FFFFFF',
+          backgroundColor: isNight ? '#0B0D19' : 'rgba(255, 246, 238, 0.95)',
+          borderColor: isNight ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
+          borderBottomColor: isNight ? 'rgba(255, 255, 255, 0.04)' : 'rgba(180, 125, 95, 0.4)',
         },
       ]}
     >
@@ -484,7 +492,7 @@ export function TabBar({ night = false }: { night?: boolean }) {
             key={t.href}
             tab={t}
             active={active}
-            night={night}
+            night={isNight}
             onPress={() => router.push(t.href as any)}
           />
         );
