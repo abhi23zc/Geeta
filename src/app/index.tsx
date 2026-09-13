@@ -5,7 +5,12 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 import {
   Bell,
@@ -27,13 +32,29 @@ import { TactileTile } from '@/components/tactile-tile';
 import { C } from '@/constants/ritual-theme';
 import { useRitual } from '@/state/ritual-store';
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 const DAWN_IMAGE_URL =
   'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1000&auto=format&fit=crop';
 
 export default function Home() {
+  const router = useRouter();
   const { alarmTime } = useRitual();
   const [alarmEnabled, setAlarmEnabled] = useState(true);
   const [bookmarked, setBookmarked] = useState(false);
+
+  const bookmarkScale = useSharedValue(1);
+
+  const animatedBookmarkStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: bookmarkScale.value }],
+  }));
+
+  const handleBookmarkPress = () => {
+    bookmarkScale.value = withSpring(1.35, { damping: 10, stiffness: 300 }, () => {
+      bookmarkScale.value = withSpring(1, { damping: 12, stiffness: 200 });
+    });
+    setBookmarked(!bookmarked);
+  };
 
   return (
     <Screen>
@@ -118,7 +139,7 @@ export default function Home() {
       {/* Awakening Vibe Banner */}
       <View style={s.vibeCard}>
         <View style={s.diyaGlowCircle}>
-          <DiyaGraphic size={46} color={C.saffron} flameColor={C.gold} />
+          <DiyaGraphic size={46} color={C.saffron} flameColor={C.gold} showAura={false} animated={true} />
         </View>
         <View style={s.vibeContent}>
           <TextR style={s.vibeKicker}>AWAKENING VIBE</TextR>
@@ -184,21 +205,25 @@ export default function Home() {
         </TextR>
 
         <View style={s.shlokaActionRow}>
-          <Link href="/gita" asChild>
-            <Pressable style={s.reflectBtn}>
-              <TextR style={s.reflectText}>Reflect on Verse 47 →</TextR>
-            </Pressable>
-          </Link>
           <Pressable
-            onPress={() => setBookmarked(!bookmarked)}
-            style={s.bookmarkBtn}
+            onPress={() => router.push('/gita')}
+            style={({ pressed }) => [
+              s.reflectBtn,
+              pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] },
+            ]}
+          >
+            <TextR style={s.reflectText}>Reflect on Verse 47 →</TextR>
+          </Pressable>
+          <AnimatedPressable
+            onPress={handleBookmarkPress}
+            style={[s.bookmarkBtn, animatedBookmarkStyle]}
           >
             <Bookmark
               size={20}
               color={bookmarked ? C.saffron : C.inkSoft}
               fill={bookmarked ? C.saffron : 'transparent'}
             />
-          </Pressable>
+          </AnimatedPressable>
         </View>
       </View>
 
@@ -590,18 +615,21 @@ const s = StyleSheet.create({
     textAlign: 'center',
   },
   shlokaCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    backgroundColor: 'rgba(255, 252, 248, 0.96)',
     borderRadius: 24,
     padding: 22,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
+    borderTopColor: '#F4B942',
+    borderTopWidth: 3,
+    borderBottomColor: 'rgba(140, 64, 16, 0.14)',
+    borderBottomWidth: 3,
     marginBottom: 22,
     shadowColor: C.saffron,
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
+    shadowOpacity: 0.14,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 5,
   },
   shlokaHeader: {
     flexDirection: 'row',
@@ -637,6 +665,7 @@ const s = StyleSheet.create({
     color: C.primary,
     fontWeight: '600',
     marginBottom: 10,
+    letterSpacing: 0.3,
   },
   shlokaEnglish: {
     fontSize: 15,
@@ -652,17 +681,20 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
   },
   reflectBtn: {
-    backgroundColor: 'rgba(255, 219, 204, 0.9)',
-    paddingHorizontal: 18,
+    backgroundColor: '#FFDBCC',
+    paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderTopColor: '#FFFFFF',
+    borderBottomColor: 'rgba(140, 64, 16, 0.2)',
+    borderBottomWidth: 2.5,
     shadowColor: C.saffron,
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.18,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    elevation: 4,
   },
   reflectText: {
     fontSize: 14.5,
@@ -670,18 +702,22 @@ const s = StyleSheet.create({
     color: '#351000',
   },
   bookmarkBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(254, 236, 220, 0.8)',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: 'rgba(254, 236, 220, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderTopColor: '#FFFFFF',
+    borderBottomColor: 'rgba(140, 64, 16, 0.15)',
+    borderBottomWidth: 2,
+    shadowColor: C.saffron,
+    shadowOpacity: 0.14,
     shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   atmosphereFrame: {
     height: 170,
@@ -690,12 +726,15 @@ const s = StyleSheet.create({
     marginBottom: 18,
     position: 'relative',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderTopColor: '#FFFFFF',
+    borderBottomColor: 'rgba(0, 0, 0, 0.25)',
+    borderBottomWidth: 3,
     shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 5,
   },
   atmosphereImage: {
     width: '100%',
@@ -742,7 +781,7 @@ const s = StyleSheet.create({
     elevation: 3,
   },
   sadhanaStrip: {
-    backgroundColor: 'rgba(248, 229, 214, 0.85)',
+    backgroundColor: 'rgba(248, 229, 214, 0.92)',
     borderRadius: 20,
     padding: 18,
     flexDirection: 'row',
@@ -750,13 +789,15 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 22,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderColor: 'rgba(255, 255, 255, 0.95)',
     borderTopColor: '#FFFFFF',
+    borderBottomColor: 'rgba(42, 92, 51, 0.15)',
+    borderBottomWidth: 3,
     shadowColor: C.green,
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
+    shadowOpacity: 0.14,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   sadhanaLeft: {
     flexDirection: 'row',
