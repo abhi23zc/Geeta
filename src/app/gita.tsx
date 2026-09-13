@@ -23,6 +23,10 @@ import {
 
 import { Header, Screen, TextR } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
+import { Interactive3DCard } from '@/components/interactive-3d-card';
+import { SacredLotusBadge } from '@/components/sacred-lotus-badge';
+import { AudioSpectrumVisualizer } from '@/components/audio-spectrum-visualizer';
+import { MindsetCelebrationModal } from '@/components/mindset-celebration-modal';
 
 const SUTRA_IMAGE_URL =
   'https://images.unsplash.com/photo-1545205597-3d9d02c29597?q=80&w=800&auto=format&fit=crop';
@@ -31,6 +35,7 @@ export default function Gita() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [activeMode, setActiveMode] = useState<'read' | 'listen' | 'breathe'>('listen');
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [isCelebrationVisible, setIsCelebrationVisible] = useState(false);
 
   const handleShare = async () => {
     try {
@@ -57,52 +62,6 @@ export default function Gita() {
         <TextR style={s.topSubtitle}>
           Morning contemplation on selfless, centered dedication
         </TextR>
-      </View>
-
-      {/* Sacred Shloka Focus Card */}
-      <View style={s.shlokaCard}>
-        {/* Sacred Mandala Ornament Badge */}
-        <View style={s.ornamentCircle}>
-          <Flower2 size={22} color={C.primary} />
-        </View>
-
-        {/* Sanskrit Original */}
-        <TextR serif style={s.devanagariText}>
-          कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।{'\n'}
-          मा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥
-        </TextR>
-
-        {/* Transliteration */}
-        <TextR serif style={s.transliterationText}>
-          “karmaṇy-evādhikāras te mā phaleṣu kadācana |{'\n'}
-          mā karma-phala-hetur bhūr mā te saṅgo ’stvakarmaṇi ||”
-        </TextR>
-
-        {/* Subtle Golden Line Divider */}
-        <View style={s.goldenDivider} />
-
-        {/* Core Essence (Meaning) */}
-        <View style={s.meaningBox}>
-          <View style={s.meaningKickerRow}>
-            <View style={s.meaningDot} />
-            <TextR style={s.meaningKicker}>DAILY MEANING</TextR>
-          </View>
-          <TextR style={s.meaningBody}>
-            Focus on your actions today. You have a duty to perform your work,
-            but you are not entitled to the fruits of action. Never consider
-            yourself the cause of results, nor be attached to inaction.
-          </TextR>
-        </View>
-
-        {/* Key Daily Takeaway Badge */}
-        <View style={s.mindsetContainer}>
-          <View style={s.mindsetChip}>
-            <CheckCircle2 size={19} color={C.white} fill={C.green} />
-            <TextR style={s.mindsetText}>
-              Mindset: Detached Excellence & Inner Peace
-            </TextR>
-          </View>
-        </View>
       </View>
 
       {/* Interactive Action Trio (Read, Listen, Breathe) */}
@@ -231,7 +190,77 @@ export default function Gita() {
         </Pressable>
       </View>
 
-      {/* Interactive Audio Recitation Player Pod */}
+      {/* Sacred Shloka Focus Card with 3D Parallax Tilt */}
+      <Interactive3DCard style={{ marginBottom: 22, alignItems: 'center' }}>
+        {/* Sacred Mandala 3D Ornament Badge */}
+        <View style={{ marginBottom: 16 }}>
+          <SacredLotusBadge size={54} />
+        </View>
+
+        {/* Sanskrit Original with Dynamic Karaokē Word Highlighting */}
+        <TextR serif style={s.devanagariText}>
+          {isPlaying ? (
+            <>
+              <TextR serif style={{ color: C.saffron, fontWeight: '800', textShadowColor: 'rgba(229, 107, 39, 0.4)', textShadowRadius: 8 }}>
+                कर्मण्येवाधिकारस्ते{' '}
+              </TextR>
+              <TextR serif style={{ color: C.goldDark, fontWeight: '700' }}>
+                मा फलेषु{' '}
+              </TextR>
+              <TextR serif style={{ color: '#231A11' }}>
+                कदाचन।{'\n'}
+              </TextR>
+              <TextR serif style={{ color: '#231A11' }}>
+                मा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥
+              </TextR>
+            </>
+          ) : (
+            `कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥`
+          )}
+        </TextR>
+
+        {/* Transliteration */}
+        <TextR serif style={s.transliterationText}>
+          “karmaṇy-evādhikāras te mā phaleṣu kadācana |{'\n'}
+          mā karma-phala-hetur bhūr mā te saṅgo ’stvakarmaṇi ||”
+        </TextR>
+
+        {/* Subtle Golden Line Divider */}
+        <View style={s.goldenDivider} />
+
+        {/* Core Essence (Meaning) */}
+        <View style={s.meaningBox}>
+          <View style={s.meaningKickerRow}>
+            <View style={s.meaningDot} />
+            <TextR style={s.meaningKicker}>DAILY MEANING</TextR>
+          </View>
+          <TextR style={s.meaningBody}>
+            Focus on your actions today. You have a duty to perform your work,
+            but you are not entitled to the fruits of action. Never consider
+            yourself the cause of results, nor be attached to inaction.
+          </TextR>
+        </View>
+
+        {/* Key Daily Takeaway 3D Beveled Pill Button */}
+        <View style={s.mindsetContainer}>
+          <Pressable
+            onPress={() => setIsCelebrationVisible(true)}
+            style={({ pressed }) => [
+              { width: '100%' },
+              pressed && { transform: [{ scale: 0.96 }], opacity: 0.92 },
+            ]}
+          >
+            <View style={s.mindsetChip}>
+              <CheckCircle2 size={19} color={C.white} fill="#1B5E20" />
+              <TextR style={s.mindsetText}>
+                Mindset: Detached Excellence & Inner Peace
+              </TextR>
+            </View>
+          </Pressable>
+        </View>
+      </Interactive3DCard>
+
+      {/* Interactive Audio Recitation Player Pod with Spectrum Visualizer */}
       <View style={s.audioPlayerPod}>
         <View style={s.audioHeaderRow}>
           <View style={s.audioLeftGroup}>
@@ -250,7 +279,10 @@ export default function Gita() {
               <TextR style={s.audioSub}>Bansuri & Vedic Chant</TextR>
             </View>
           </View>
-          <TextR style={s.audioTimer}>{isPlaying ? '0:32 / 1:24' : '0:00 / 1:24'}</TextR>
+          <View style={{ alignItems: 'flex-end', gap: 4 }}>
+            <AudioSpectrumVisualizer isPlaying={isPlaying} barCount={12} height={20} />
+            <TextR style={s.audioTimer}>{isPlaying ? '0:32 / 1:24' : '0:00 / 1:24'}</TextR>
+          </View>
         </View>
 
         {/* Audio Scrubber Bar */}
@@ -303,6 +335,12 @@ export default function Gita() {
           </TextR>
         </View>
       </View>
+
+      {/* Sankalpa Mindset Celebration Modal */}
+      <MindsetCelebrationModal
+        visible={isCelebrationVisible}
+        onClose={() => setIsCelebrationVisible(false)}
+      />
 
     </Screen>
   );
@@ -438,18 +476,20 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: C.green,
+    backgroundColor: '#4E9F5B',
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 999,
     gap: 8,
     borderTopWidth: 1.5,
-    borderTopColor: 'rgba(255, 255, 255, 0.4)',
+    borderTopColor: 'rgba(255, 255, 255, 0.65)',
+    borderBottomWidth: 3,
+    borderBottomColor: '#25582D',
     shadowColor: C.green,
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
   mindsetText: {
     fontSize: 15,

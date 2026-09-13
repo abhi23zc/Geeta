@@ -30,6 +30,7 @@ import Animated, {
   useSharedValue,
   withRepeat,
   withSequence,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -400,6 +401,67 @@ const tabs = [
 
 import { useRouter } from 'expo-router';
 
+function AnimatedTabItem({
+  tab,
+  active,
+  night,
+  onPress,
+}: {
+  tab: { href: string; label: string; IconComponent: any };
+  active: boolean;
+  night: boolean;
+  onPress: () => void;
+}) {
+  const IconComp = tab.IconComponent;
+  const activeColor = C.saffron;
+  const inactiveColor = night ? '#A3A5CF' : C.muted;
+  const scale = useSharedValue(active ? 1.05 : 1);
+
+  React.useEffect(() => {
+    scale.value = withSpring(active ? 1.08 : 1, { damping: 14, stiffness: 180 });
+  }, [active]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <Pressable
+      accessibilityRole="tab"
+      onPress={onPress}
+      onPressIn={() => {
+        scale.value = withSpring(0.92, { damping: 15, stiffness: 200 });
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(active ? 1.08 : 1, { damping: 14, stiffness: 180 });
+      }}
+      style={({ pressed }) => [
+        styles.tabItem,
+        active && (night ? styles.tabItemActiveNight : styles.tabItemActive),
+      ]}
+    >
+      <Animated.View style={[{ alignItems: 'center' }, animatedStyle]}>
+        <IconComp
+          size={22}
+          color={active ? activeColor : inactiveColor}
+        />
+        <TextR
+          style={[
+            styles.tabLabel,
+            {
+              color: active ? activeColor : inactiveColor,
+              fontWeight: active ? '800' : '600',
+            },
+          ]}
+        >
+          {tab.label}
+        </TextR>
+        {active && <View style={styles.activeDot} />}
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 export function TabBar({ night = false }: { night?: boolean }) {
   const path = usePathname();
   const router = useRouter();
@@ -410,46 +472,22 @@ export function TabBar({ night = false }: { night?: boolean }) {
       style={[
         styles.floatingTabDock,
         {
-          bottom: Math.max(inset.bottom + 6, 16),
-          backgroundColor: night ? '#171833' : '#FFF6EE',
+          bottom: Math.max(inset.bottom + 8, 18),
+          backgroundColor: night ? 'rgba(23, 24, 51, 0.95)' : 'rgba(255, 246, 238, 0.95)',
           borderColor: night ? '#3C3D68' : '#FFFFFF',
         },
       ]}
     >
       {tabs.map((t) => {
         const active = path === t.href;
-        const IconComp = t.IconComponent;
-        const activeColor = C.saffron;
-        const inactiveColor = night ? '#A3A5CF' : C.muted;
-
         return (
-          <Pressable
+          <AnimatedTabItem
             key={t.href}
-            accessibilityRole="tab"
+            tab={t}
+            active={active}
+            night={night}
             onPress={() => router.push(t.href as any)}
-            style={({ pressed }) => [
-              styles.tabItem,
-              active && (night ? styles.tabItemActiveNight : styles.tabItemActive),
-              pressed && { opacity: 0.82, transform: [{ scale: 0.95 }] },
-            ]}
-          >
-            <IconComp
-              size={22}
-              color={active ? activeColor : inactiveColor}
-            />
-            <TextR
-              style={[
-                styles.tabLabel,
-                {
-                  color: active ? activeColor : inactiveColor,
-                  fontWeight: active ? '800' : '600',
-                },
-              ]}
-            >
-              {t.label}
-            </TextR>
-            {active && <View style={styles.activeDot} />}
-          </Pressable>
+          />
         );
       })}
     </View>
@@ -517,7 +555,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: C.surface,
     paddingHorizontal: 20,
-    paddingBottom: 130,
+    paddingBottom: 150,
     position: 'relative',
   },
   header: {
