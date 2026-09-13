@@ -10,21 +10,16 @@ import {
   Sun,
   Sunrise,
 } from "lucide-react-native";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  Animated,
-  Easing,
-  Image,
   Pressable,
   StyleSheet,
   View,
 } from "react-native";
 
+import { AruMascot } from "@/components/aru-mascot";
 import { Screen, TextR } from "@/components/ritual-ui";
 import { useRitual } from "@/state/ritual-store";
-
-const CHAKRA_YANTRA = require("@/assets/images/chakra-yantra-background.png");
-const DIYA_FOREGROUND = require("@/assets/images/diya-foreground.png");
 
 function formatAlarm(value: string) {
   const [h = "06", m = "30"] = value.split(":");
@@ -42,32 +37,12 @@ export default function Wake() {
   const [playing, setPlaying] = useState(true);
   const [started, setStarted] = useState(false);
   const [snoozed, setSnoozed] = useState(false);
-  const chakraRotation = useRef(new Animated.Value(0)).current;
 
   const formatted = useMemo(() => formatAlarm(alarmTime), [alarmTime]);
-  const chakraSpin = chakraRotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "360deg"],
-  });
   const ragaTitle =
     alarmTone === "Raag Bhairav & Sacred Flute"
       ? "Shiva / Gita Morning Raga"
       : alarmTone;
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.timing(chakraRotation, {
-        toValue: 1,
-        duration: 25000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
-    );
-
-    animation.start();
-
-    return () => animation.stop();
-  }, [chakraRotation]);
 
   return (
     <Screen night={false}>
@@ -90,9 +65,9 @@ export default function Wake() {
           </TextR>
         </View>
 
-        {/* Central Sacred Diya Stage with Aura */}
-        <View style={s.diyaStage}>
-          <SacredDiyaMandalaVisual spin={chakraSpin} />
+        {/* Aru Mascot — full hero */}
+        <View style={s.mascotHero}>
+          <AruMascot clip="alarm_sleepy_idle" size={260} loop muted glow={false} />
         </View>
 
         {/* Quote Block */}
@@ -204,18 +179,6 @@ export default function Wake() {
   );
 }
 
-function SacredDiyaMandalaVisual({ spin }: { spin: any }) {
-  return (
-    <View style={s.mandalaContainer}>
-      <Animated.Image
-        source={CHAKRA_YANTRA}
-        style={[s.chakraImage, { transform: [{ rotate: spin }] }]}
-      />
-      <Image source={DIYA_FOREGROUND} style={s.diyaForeground} />
-    </View>
-  );
-}
-
 function WaveBars() {
   return (
     <View style={s.waveBars}>
@@ -285,30 +248,11 @@ const s = StyleSheet.create({
     lineHeight: 18,
     textAlign: "center",
   },
-  diyaStage: {
-    height: 240,
+  mascotHero: {
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 2,
-    marginBottom: 2,
-  },
-  mandalaContainer: {
-    width: 250,
-    height: 250,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  chakraImage: {
-    position: "absolute",
-    width: 236,
-    height: 236,
-    resizeMode: "contain",
-  },
-  diyaForeground: {
-    width: 130,
-    height: 130,
-    resizeMode: "contain",
-    transform: [{ translateY: -2 }, { translateX: -1 }],
+    marginTop: 6,
+    marginBottom: 6,
   },
   quoteBlock: {
     alignItems: "center",
