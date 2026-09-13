@@ -7,19 +7,22 @@ import {
   Pause,
   Play,
   SlidersVertical,
+  Sparkles,
   Sun,
   Sunrise,
 } from "lucide-react-native";
 import { useMemo, useState } from "react";
-import {
-  Pressable,
-  StyleSheet,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+import Animated from "react-native-reanimated";
 
 import { AruMascot } from "@/components/aru-mascot";
+import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
+import { Interactive3DCard } from "@/components/interactive-3d-card";
 import { Screen, TextR } from "@/components/ritual-ui";
+import { C } from "@/constants/ritual-theme";
 import { useRitual } from "@/state/ritual-store";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function formatAlarm(value: string) {
   const [h = "06", m = "30"] = value.split(":");
@@ -47,7 +50,7 @@ export default function Wake() {
   return (
     <Screen night={false}>
       <View style={s.page}>
-        {/* Header Pill & Time */}
+        {/* Header Pill & Sacred Time */}
         <View style={s.topContainer}>
           <View style={s.sunriseChip}>
             <Sunrise size={18} color="#8A5D18" strokeWidth={2.2} />
@@ -65,13 +68,21 @@ export default function Wake() {
           </TextR>
         </View>
 
-        {/* Aru Mascot — full hero */}
+        {/* Aru Mascot — 3D Hero Shrine */}
         <View style={s.mascotHero}>
-          <AruMascot clip="alarm_sleepy_idle" size={260} loop muted glow={false} />
+          <AruMascot
+            clip="alarm_sleepy_idle"
+            size={260}
+            loop
+            muted
+            glow="day"
+            interactive
+          />
         </View>
 
-        {/* Quote Block */}
+        {/* Sacred Gita Wisdom */}
         <View style={s.quoteBlock}>
+          <Sparkles size={18} color={C.saffron} style={{ marginBottom: 6 }} />
           <TextR serif style={s.quote}>
             “Awaken with gratitude. A brand new dawn to act with dharma.”
           </TextR>
@@ -80,17 +91,25 @@ export default function Wake() {
           </TextR>
         </View>
 
-        {/* Audio Player Card */}
-        <View style={s.audioCard}>
+        {/* Audio Experience — Interactive 3D Parchment Glass Card */}
+        <Interactive3DCard maxTiltDeg={6} style={s.audioCard3D}>
           <View style={s.audioHeader}>
             <View style={s.audioLeft}>
               <View style={s.equalizerIcon}>
-                <SlidersVertical size={20} color="#E2631C" strokeWidth={2.3} />
+                <SlidersVertical
+                  size={20}
+                  color={C.saffron}
+                  strokeWidth={2.3}
+                />
               </View>
               <View style={s.audioCopy}>
                 <TextR style={s.audioTitle}>{ragaTitle}</TextR>
                 <View style={s.audioSubRow}>
-                  <WaveBars />
+                  <AudioSpectrumVisualizer
+                    isPlaying={playing}
+                    barCount={8}
+                    height={16}
+                  />
                   <TextR style={s.audioSub}>
                     Gentle Tanpura & Bansuri Flute
                   </TextR>
@@ -101,7 +120,10 @@ export default function Wake() {
             <Pressable
               accessibilityLabel={playing ? "Pause audio" : "Play audio"}
               onPress={() => setPlaying((value) => !value)}
-              style={({ pressed }) => [s.audioButton, pressed && s.pressed]}
+              style={({ pressed }) => [
+                s.audioButton,
+                pressed && s.audioButtonPressed,
+              ]}
             >
               {playing ? (
                 <Pause size={20} color="#2C1E16" fill="#2C1E16" />
@@ -119,19 +141,20 @@ export default function Wake() {
           <View style={s.progressMeta}>
             <BellRing size={16} color="#6B574B" strokeWidth={2} />
             <TextR style={s.progressLabel}>Harmonic crescendo (68%)</TextR>
-            <Music size={16} color="#E2631C" strokeWidth={2.2} />
+            <Music size={16} color={C.saffron} strokeWidth={2.2} />
           </View>
 
           <View style={s.progressTrack}>
             <View style={s.progressFill} />
+            <View style={s.progressKnob} />
           </View>
 
           <TextR style={s.audioNote}>
             Volume gradually rose over 3 minutes with tranquil ambient birdsong
           </TextR>
-        </View>
+        </Interactive3DCard>
 
-        {/* Action Buttons */}
+        {/* 3D Action Buttons */}
         <View style={s.actions}>
           <Pressable
             onPress={() => {
@@ -140,10 +163,10 @@ export default function Wake() {
             }}
             style={({ pressed }) => [
               s.primaryButton,
-              pressed && s.primaryPressed,
+              pressed && s.pressedScale,
             ]}
           >
-            <Sun size={24} color="#FFFFFF" strokeWidth={2.3} />
+            <Sun size={23} color={C.white} strokeWidth={2.2} />
             <TextR style={s.primaryText}>
               {started ? "Peaceful Morning Begins..." : "Start my day"}
             </TextR>
@@ -157,10 +180,10 @@ export default function Wake() {
             style={({ pressed }) => [
               s.snoozeButton,
               snoozed && s.snoozeActive,
-              pressed && s.primaryPressed,
+              pressed && s.pressedScale,
             ]}
           >
-            <AlarmClock size={21} color="#524035" strokeWidth={2.2} />
+            <AlarmClock size={20} color="#524035" strokeWidth={2.2} />
             <TextR style={s.snoozeText}>
               {snoozed ? "Gentle bell in 5 minutes" : "Snooze 5 min"}
             </TextR>
@@ -179,26 +202,16 @@ export default function Wake() {
   );
 }
 
-function WaveBars() {
-  return (
-    <View style={s.waveBars}>
-      <View style={[s.waveBar, { height: 7 }]} />
-      <View style={[s.waveBar, { height: 12 }]} />
-      <View style={[s.waveBar, { height: 9 }]} />
-    </View>
-  );
-}
-
 const s = StyleSheet.create({
   page: {
     flex: 1,
-    paddingTop: 10,
-    paddingBottom: 24,
-    backgroundColor: "#FFF8F5",
+    paddingTop: 18,
+    paddingBottom: 16,
   },
   topContainer: {
     alignItems: "center",
-    marginBottom: 4,
+    marginTop: 6,
+    marginBottom: 8,
   },
   sunriseChip: {
     height: 32,
@@ -207,13 +220,14 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#FDF2EA",
-    borderWidth: 1,
-    borderColor: "#F7E5DA",
+    backgroundColor: "rgba(253, 242, 234, 0.95)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
     shadowColor: "#8C4010",
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 3 },
   },
   sunriseText: {
     color: "#8A5D18",
@@ -235,7 +249,7 @@ const s = StyleSheet.create({
     letterSpacing: -1,
   },
   meridiem: {
-    color: "#E2631C",
+    color: C.saffron,
     fontSize: 22,
     lineHeight: 28,
     fontWeight: "700",
@@ -251,12 +265,12 @@ const s = StyleSheet.create({
   mascotHero: {
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 6,
-    marginBottom: 6,
+    marginTop: 4,
+    marginBottom: 4,
   },
   quoteBlock: {
     alignItems: "center",
-    marginTop: 0,
+    marginTop: 2,
     marginBottom: 20,
     paddingHorizontal: 16,
   },
@@ -276,15 +290,8 @@ const s = StyleSheet.create({
     letterSpacing: 2,
     textAlign: "center",
   },
-  audioCard: {
-    borderRadius: 28,
-    padding: 18,
-    marginBottom: 18,
-    backgroundColor: "#FFF3EB",
-    shadowColor: "#8C4010",
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 4 },
+  audioCard3D: {
+    marginBottom: 20,
   },
   audioHeader: {
     flexDirection: "row",
@@ -305,6 +312,13 @@ const s = StyleSheet.create({
     justifyContent: "center",
     marginRight: 12,
     backgroundColor: "#FCDCCB",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderTopColor: "#FFFFFF",
+    shadowColor: C.saffron,
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
   audioCopy: {
     flex: 1,
@@ -317,22 +331,10 @@ const s = StyleSheet.create({
     letterSpacing: -0.2,
   },
   audioSubRow: {
-    marginTop: 3,
+    marginTop: 4,
     flexDirection: "row",
     alignItems: "center",
-  },
-  waveBars: {
-    height: 12,
-    width: 16,
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 3,
-    marginRight: 8,
-  },
-  waveBar: {
-    width: 3,
-    borderRadius: 2,
-    backgroundColor: "#E2631C",
+    gap: 8,
   },
   audioSub: {
     flex: 1,
@@ -347,9 +349,16 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F5E4D7",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderTopColor: "#FFFFFF",
+    shadowColor: "#8C4010",
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
-  pressed: {
-    opacity: 0.85,
+  audioButtonPressed: {
+    opacity: 0.88,
     transform: [{ scale: 0.96 }],
   },
   progressMeta: {
@@ -369,17 +378,35 @@ const s = StyleSheet.create({
   progressTrack: {
     height: 8,
     borderRadius: 4,
-    overflow: "hidden",
-    backgroundColor: "#F0D5C3",
+    overflow: "visible",
+    backgroundColor: "rgba(240, 213, 195, 0.8)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.6)",
+    position: "relative",
+    justifyContent: "center",
   },
   progressFill: {
     width: "68%",
     height: "100%",
     borderRadius: 4,
-    backgroundColor: "#E56B27",
+    backgroundColor: C.saffron,
+  },
+  progressKnob: {
+    position: "absolute",
+    left: "67%",
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 3,
+    borderColor: C.saffron,
+    shadowColor: C.saffron,
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
   audioNote: {
-    marginTop: 12,
+    marginTop: 14,
     color: "#756054",
     fontSize: 12,
     lineHeight: 18,
@@ -387,59 +414,67 @@ const s = StyleSheet.create({
   },
   actions: {
     gap: 12,
+    marginBottom: 10,
   },
   primaryButton: {
-    height: 56,
-    borderRadius: 28,
-    paddingHorizontal: 22,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: C.saffron,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    backgroundColor: "#E2631C",
-    shadowColor: "#E2631C",
-    shadowOpacity: 0.3,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(160, 50, 10, 0.35)",
+    borderBottomWidth: 2.5,
+    shadowColor: C.saffron,
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
     elevation: 4,
   },
-  primaryPressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.985 }],
-  },
-  primaryText: {
-    color: "#FFFFFF",
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "800",
-    letterSpacing: 0.3,
-  },
   snoozeButton: {
-    height: 52,
-    borderRadius: 26,
-    paddingHorizontal: 22,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(254, 236, 220, 0.92)",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 9,
-    backgroundColor: "#FDEFE5",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(180, 125, 95, 0.25)",
+    borderBottomWidth: 2,
     shadowColor: "#8C4010",
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   snoozeActive: {
     backgroundColor: "#F8E5D6",
   },
+  pressedScale: {
+    opacity: 0.9,
+    transform: [{ scale: 0.98 }],
+  },
+  primaryText: {
+    color: C.white,
+    fontSize: 16.5,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
   snoozeText: {
     color: "#2C1E16",
-    fontSize: 16,
-    lineHeight: 21,
+    fontSize: 15.5,
     fontWeight: "800",
     letterSpacing: 0.2,
   },
   footer: {
-    marginTop: 20,
+    marginTop: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
