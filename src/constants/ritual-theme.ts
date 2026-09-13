@@ -31,6 +31,27 @@ export const C = {
   night: '#171833',
   nightCard: '#23244A',
   white: '#FFFFFF',
+  shadow3D: '#5C2B0B',
+  bevelHighlight: 'rgba(255, 255, 255, 0.95)',
+  bevelShadow: 'rgba(92, 43, 11, 0.12)',
 } as const;
 
 export const R = { card: 24, inner: 16, pill: 999 } as const;
+
+export const SHADOWS = {
+  tactile3D: {
+    shadowColor: '#8C4010',
+    shadowOpacity: 0.16,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 6,
+  },
+  glowSaffron: {
+    shadowColor: '#E56B27',
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+} as const;
+

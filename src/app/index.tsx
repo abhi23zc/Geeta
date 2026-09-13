@@ -23,6 +23,7 @@ import {
 } from 'lucide-react-native';
 
 import { DiyaGraphic, Header, Screen, TextR } from '@/components/ritual-ui';
+import { TactileTile } from '@/components/tactile-tile';
 import { C } from '@/constants/ritual-theme';
 import { useRitual } from '@/state/ritual-store';
 
@@ -136,25 +137,25 @@ export default function Home() {
         </View>
 
         <View style={s.gridRow}>
-          <Tile
+          <TactileTile
             href="/alarm/setup"
             icon={<Bell size={26} color="#271900" />}
             bgColor="#FEC24A"
             title="Set Alarm"
           />
-          <Tile
+          <TactileTile
             href="/breathe"
             icon={<Leaf size={26} color="#00210A" />}
             bgColor="#BDEFC1"
             title="Sadhana"
           />
-          <Tile
+          <TactileTile
             href="/gita"
             icon={<BookOpen size={26} color="#351000" />}
             bgColor="#FFDBCC"
             title="Daily Gita"
           />
-          <Tile
+          <TactileTile
             href="/night"
             icon={<Moon size={26} color="#574239" />}
             bgColor="#F2DFD1"
@@ -334,19 +335,21 @@ const s = StyleSheet.create({
   },
   heroAlarmCard: {
     position: 'relative',
-    backgroundColor: 'rgba(255, 248, 242, 0.88)',
+    backgroundColor: 'rgba(255, 248, 242, 0.94)',
     borderRadius: 24,
     padding: 22,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.95)',
     borderTopColor: '#FFFFFF',
+    borderBottomColor: 'rgba(140, 64, 16, 0.18)',
+    borderBottomWidth: 3.5,
     marginBottom: 18,
     overflow: 'hidden',
-    shadowColor: '#8C4010',
-    shadowOpacity: 0.09,
-    shadowRadius: 20,
+    shadowColor: C.saffron,
+    shadowOpacity: 0.16,
+    shadowRadius: 22,
     shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
+    elevation: 6,
   },
   alarmHeaderRow: {
     flexDirection: 'row',
@@ -382,8 +385,14 @@ const s = StyleSheet.create({
     borderRadius: 17,
     padding: 3,
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    borderTopColor: 'rgba(0, 0, 0, 0.12)',
+    borderBottomColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
   switchTrackOn: {
     backgroundColor: C.gold,
@@ -398,11 +407,16 @@ const s = StyleSheet.create({
     backgroundColor: C.white,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderTopColor: '#FFFFFF',
+    borderBottomColor: 'rgba(0, 0, 0, 0.15)',
+    borderBottomWidth: 2,
     shadowColor: '#000',
-    shadowOpacity: 0.18,
+    shadowOpacity: 0.22,
     shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
   },
   switchKnobOn: {
     transform: [{ translateX: 26 }],
