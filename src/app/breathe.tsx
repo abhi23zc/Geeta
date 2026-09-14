@@ -1,6 +1,18 @@
-import React, { useEffect, useState } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
+import {
+  CheckCircle2,
+  Leaf,
+  Music,
+  Pause,
+  PauseCircle,
+  Play,
+  RotateCcw,
+  Timer,
+  Volume2,
+  VolumeX,
+  Wind,
+} from "lucide-react-native";
+import React, { useEffect, useState } from "react";
+import { Image, Pressable, StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
   cancelAnimation,
@@ -10,55 +22,46 @@ import Animated, {
   withRepeat,
   withSequence,
   withTiming,
-} from 'react-native-reanimated';
-import {
-  CheckCircle2,
-  Leaf,
-  Pause,
-  PauseCircle,
-  Play,
-  RotateCcw,
-  Timer,
-  Volume2,
-  VolumeX,
-  Wind,
-  Music,
-} from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 
-import { Header, Screen, TextR } from '@/components/ritual-ui';
-import { AudioSpectrumVisualizer } from '@/components/audio-spectrum-visualizer';
-import { C } from '@/constants/ritual-theme';
+import { AruMascot } from "@/components/aru-mascot";
+import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
+import { Header, Screen, TextR } from "@/components/ritual-ui";
+import { C } from "@/constants/ritual-theme";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 const GHAT_IMAGE_URL =
-  'https://images.unsplash.com/photo-1561361513-2d000a50f0dc?q=80&w=800&auto=format&fit=crop';
+  "https://images.unsplash.com/photo-1561361513-2d000a50f0dc?q=80&w=800&auto=format&fit=crop";
 
 const phases = [
   {
-    key: 'inhale',
-    label: 'Inhale',
+    key: "inhale",
+    label: "Inhale",
     seconds: 10,
-    prompt: 'Inhale deeply & gently through nostrils, filling abdomen and chest.',
+    prompt:
+      "Inhale deeply & gently through nostrils, filling abdomen and chest.",
     Icon: Wind,
     accentColor: C.saffron,
   },
   {
-    key: 'hold',
-    label: 'Hold',
+    key: "hold",
+    label: "Hold",
     seconds: 10,
-    prompt: 'Gently retain the breath at the crest, resting in absolute tranquility.',
+    prompt:
+      "Gently retain the breath at the crest, resting in absolute tranquility.",
     Icon: PauseCircle,
-    accentColor: '#E56B27',
+    accentColor: "#E56B27",
   },
   {
-    key: 'exhale',
-    label: 'Exhale',
+    key: "exhale",
+    label: "Exhale",
     seconds: 10,
-    prompt: 'Slowly release breath through nose, relaxing mind and shoulders.',
+    prompt: "Slowly release breath through nose, relaxing mind and shoulders.",
     Icon: Leaf,
-    accentColor: '#D96B43',
+    accentColor: "#D96B43",
   },
 ] as const;
 
@@ -97,7 +100,7 @@ export default function Breathe() {
       easing: Easing.linear,
     });
 
-    if (phase.key === 'inhale') {
+    if (phase.key === "inhale") {
       orbScale.value = withTiming(1.15, {
         duration: phase.seconds * 1000,
         easing: Easing.inOut(Easing.ease),
@@ -105,17 +108,23 @@ export default function Breathe() {
       glowOpacity.value = withTiming(0.85, {
         duration: phase.seconds * 1000,
       });
-    } else if (phase.key === 'hold') {
+    } else if (phase.key === "hold") {
       orbScale.value = withRepeat(
         withSequence(
-          withTiming(1.18, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1.12, { duration: 1200, easing: Easing.inOut(Easing.ease) })
+          withTiming(1.18, {
+            duration: 1200,
+            easing: Easing.inOut(Easing.ease),
+          }),
+          withTiming(1.12, {
+            duration: 1200,
+            easing: Easing.inOut(Easing.ease),
+          }),
         ),
         -1,
-        true
+        true,
       );
       glowOpacity.value = withTiming(0.95, { duration: 600 });
-    } else if (phase.key === 'exhale') {
+    } else if (phase.key === "exhale") {
       orbScale.value = withTiming(0.92, {
         duration: phase.seconds * 1000,
         easing: Easing.inOut(Easing.ease),
@@ -146,7 +155,8 @@ export default function Breathe() {
 
   // 60 FPS Reanimated Circle Props (UI Thread smooth stroke)
   const animatedCircleProps = useAnimatedProps(() => {
-    const strokeDashoffset = CIRCLE_PERIMETER - CIRCLE_PERIMETER * progressVal.value;
+    const strokeDashoffset =
+      CIRCLE_PERIMETER - CIRCLE_PERIMETER * progressVal.value;
     return {
       strokeDashoffset,
     };
@@ -160,10 +170,7 @@ export default function Breathe() {
     const cy = 95 + R_INNER * Math.sin(angleRad);
 
     return {
-      transform: [
-        { translateX: cx - 6 },
-        { translateY: cy - 6 },
-      ],
+      transform: [{ translateX: cx - 6 }, { translateY: cy - 6 }],
     };
   });
 
@@ -177,7 +184,9 @@ export default function Breathe() {
   }));
 
   return (
-    <Screen contentStyle={{ paddingBottom: Math.max(insets.bottom + 140, 220) }}>
+    <Screen
+      contentStyle={{ paddingBottom: Math.max(insets.bottom + 140, 220) }}
+    >
       <Header eyebrow="Breathe" />
 
       {/* Hero Header Section */}
@@ -233,20 +242,36 @@ export default function Breathe() {
           </Svg>
 
           {/* Smooth Roaming Gold Tip Orb */}
-          <Animated.View style={[s.roamingOrbTip, animatedRoamingOrbStyle]} pointerEvents="none" />
+          <Animated.View
+            style={[s.roamingOrbTip, animatedRoamingOrbStyle]}
+            pointerEvents="none"
+          />
 
-          {/* Core 3D Glass Medallion */}
-          <View style={s.orbCore}>
-            <View style={s.phaseRow}>
-              <View style={[s.phaseDot, { backgroundColor: phase.accentColor }]} />
-              <TextR style={[s.phaseText, { color: phase.accentColor }]}>{phase.label}</TextR>
-            </View>
-            <TextR serif style={s.countdown}>
-              {String(secondsLeft).padStart(2, '0')}
-            </TextR>
-            <TextR style={s.countdownLabel}>seconds remaining</TextR>
+          {/* Aru meditating inside the ring — ring becomes his sacred halo */}
+          <View style={s.aruInOrb}>
+            <AruMascot
+              clip="breathing_loop"
+              size={148}
+              loop
+              muted
+              glow={false}
+              interactive={false}
+            />
           </View>
         </Animated.View>
+      </View>
+
+      {/* Phase + countdown badge — compact info below the ring */}
+      <View style={s.phaseBadge}>
+        <View style={[s.phaseDot, { backgroundColor: phase.accentColor }]} />
+        <TextR style={[s.phaseText, { color: phase.accentColor }]}>
+          {phase.label}
+        </TextR>
+        <TextR style={s.phaseBadgeSep}>·</TextR>
+        <TextR serif style={[s.phaseBadgeSec, { color: phase.accentColor }]}>
+          {String(secondsLeft).padStart(2, "0")}
+        </TextR>
+        <TextR style={s.phaseBadgeUnit}>s</TextR>
       </View>
 
       {/* Guided Instruction Prompt Pill */}
@@ -277,10 +302,7 @@ export default function Breathe() {
                 ]}
               >
                 <View style={s.phaseTileRow}>
-                  <item.Icon
-                    size={16}
-                    color={isActive ? C.white : C.inkSoft}
-                  />
+                  <item.Icon size={16} color={isActive ? C.white : C.inkSoft} />
                   <TextR
                     style={[
                       s.phaseTileTitle,
@@ -291,10 +313,7 @@ export default function Breathe() {
                   </TextR>
                 </View>
                 <TextR
-                  style={[
-                    s.phaseTileSub,
-                    isActive && s.phaseTileSubActive,
-                  ]}
+                  style={[s.phaseTileSub, isActive && s.phaseTileSubActive]}
                 >
                   10 Sec
                 </TextR>
@@ -325,7 +344,11 @@ export default function Breathe() {
         <View style={s.resonanceLeft}>
           <View style={[s.soundIcon, !muted && s.soundIconActive]}>
             {!muted ? (
-              <AudioSpectrumVisualizer isPlaying={!muted} barCount={5} height={16} />
+              <AudioSpectrumVisualizer
+                isPlaying={!muted}
+                barCount={5}
+                height={16}
+              />
             ) : (
               <Music size={18} color={C.muted} />
             )}
@@ -341,7 +364,11 @@ export default function Breathe() {
         <View style={s.audioControlsGroup}>
           {!muted && (
             <View style={s.spectrumContainer}>
-              <AudioSpectrumVisualizer isPlaying={!muted} barCount={6} height={20} />
+              <AudioSpectrumVisualizer
+                isPlaying={!muted}
+                barCount={6}
+                height={20}
+              />
             </View>
           )}
           <Pressable
@@ -384,7 +411,7 @@ export default function Breathe() {
           ) : (
             <Pause size={18} color={C.ink} fill={C.ink} />
           )}
-          <TextR style={s.pauseText}>{paused ? 'Resume' : 'Pause'}</TextR>
+          <TextR style={s.pauseText}>{paused ? "Resume" : "Pause"}</TextR>
         </Pressable>
         <Pressable
           onPress={() => setComplete((value) => !value)}
@@ -392,7 +419,7 @@ export default function Breathe() {
         >
           <CheckCircle2 size={19} color={C.white} />
           <TextR style={s.completeText}>
-            {complete ? 'Session Complete' : 'Complete Session'}
+            {complete ? "Session Complete" : "Complete Session"}
           </TextR>
         </Pressable>
       </View>
@@ -426,20 +453,20 @@ function Metric({
 
 const s = StyleSheet.create({
   hero: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 2,
     marginBottom: 8,
   },
   modeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     paddingHorizontal: 13,
     paddingVertical: 5,
     borderRadius: 999,
     backgroundColor: C.surfaceContainer,
     borderWidth: 1,
-    borderColor: 'rgba(229, 107, 39, 0.22)',
+    borderColor: "rgba(229, 107, 39, 0.22)",
     shadowColor: C.primary,
     shadowOpacity: 0.05,
     shadowRadius: 6,
@@ -449,15 +476,15 @@ const s = StyleSheet.create({
   modeText: {
     fontSize: 11.5,
     lineHeight: 14,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 1.6,
     color: C.inkSoft,
   },
   title: {
     fontSize: 25,
     lineHeight: 31,
-    fontWeight: '800',
-    textAlign: 'center',
+    fontWeight: "800",
+    textAlign: "center",
     color: C.ink,
   },
   subtitle: {
@@ -466,48 +493,48 @@ const s = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: C.inkSoft,
-    textAlign: 'center',
+    textAlign: "center",
   },
   orbStage: {
     height: 220,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
     marginVertical: 12,
   },
   glowOuter: {
-    position: 'absolute',
+    position: "absolute",
     width: 205,
     height: 205,
     borderRadius: 102.5,
-    backgroundColor: '#FFE6CF',
+    backgroundColor: "#FFE6CF",
     shadowColor: C.saffron,
     shadowOpacity: 0.32,
     shadowRadius: 36,
     elevation: 4,
   },
   glowMiddle: {
-    position: 'absolute',
+    position: "absolute",
     width: 175,
     height: 175,
     borderRadius: 87.5,
-    backgroundColor: '#FFF2E9',
+    backgroundColor: "#FFF2E9",
     borderWidth: 14,
-    borderColor: '#FFE6D3',
+    borderColor: "#FFE6D3",
     opacity: 0.94,
   },
   ringWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
     width: 190,
     height: 190,
   },
   progressRing: {
-    position: 'absolute',
+    position: "absolute",
   },
   roamingOrbTip: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     width: 12,
@@ -515,34 +542,20 @@ const s = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: C.gold,
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    shadowColor: '#FF6D00',
+    borderColor: "#FFFFFF",
+    shadowColor: "#FF6D00",
     shadowOpacity: 0.95,
     shadowRadius: 8,
     elevation: 6,
     zIndex: 10,
   },
-  orbCore: {
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    backgroundColor: 'rgba(255, 255, 255, 0.97)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(216, 144, 64, 0.35)',
-    borderBottomWidth: 3,
-    shadowColor: '#8C4010',
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 6,
+  aruInOrb: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   phaseRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 5,
   },
   phaseDot: {
@@ -552,21 +565,45 @@ const s = StyleSheet.create({
   },
   phaseText: {
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 1.1,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
-  countdown: {
-    fontSize: 42,
-    lineHeight: 48,
-    fontWeight: '300',
-    marginTop: 2,
-    color: C.ink,
+  phaseBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: -4,
+    marginBottom: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: C.surfaceLow,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.9)",
+    borderTopColor: "#FFFFFF",
+    alignSelf: "center",
+    shadowColor: "#8C4010",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 1,
   },
-  countdownLabel: {
-    fontSize: 11.5,
+  phaseBadgeSep: {
+    fontSize: 14,
+    color: C.muted,
+    fontWeight: "300",
+  },
+  phaseBadgeSec: {
+    fontSize: 22,
+    lineHeight: 26,
+    fontWeight: "300",
+  },
+  phaseBadgeUnit: {
+    fontSize: 13,
     color: C.inkSoft,
-    marginTop: -2,
+    fontWeight: "700",
+    marginTop: 2,
   },
   prompt: {
     marginHorizontal: 10,
@@ -575,10 +612,10 @@ const s = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: C.surfaceLow,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopColor: '#FFFFFF',
-    alignItems: 'center',
-    shadowColor: '#8C4010',
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderTopColor: "#FFFFFF",
+    alignItems: "center",
+    shadowColor: "#8C4010",
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 1,
@@ -588,18 +625,18 @@ const s = StyleSheet.create({
     fontSize: 13.5,
     lineHeight: 19,
     color: C.inkSoft,
-    textAlign: 'center',
+    textAlign: "center",
   },
   cycleCard: {
     backgroundColor: C.white,
     borderRadius: 20,
     padding: 15,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(216, 144, 64, 0.25)',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(216, 144, 64, 0.25)",
     borderBottomWidth: 2.5,
-    shadowColor: '#8C4010',
+    shadowColor: "#8C4010",
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
@@ -607,41 +644,41 @@ const s = StyleSheet.create({
     marginBottom: 14,
   },
   cardTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 10,
   },
   sectionTitle: {
     fontSize: 11.5,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 1.3,
     color: C.inkSoft,
   },
   pattern: {
     fontSize: 11.5,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 1.3,
     color: C.primary,
   },
   phaseGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   phaseTile: {
     flex: 1,
     minHeight: 70,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 8,
   },
   phaseTileActive: {
     backgroundColor: C.saffron,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.85)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: '#A8470C',
+    borderColor: "rgba(255, 255, 255, 0.85)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "#A8470C",
     borderBottomWidth: 3,
     shadowColor: C.saffron,
     shadowOpacity: 0.3,
@@ -652,9 +689,9 @@ const s = StyleSheet.create({
   phaseTileIdle: {
     backgroundColor: C.surfaceContainer,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(216, 144, 64, 0.2)',
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(216, 144, 64, 0.2)",
     borderBottomWidth: 2,
   },
   phaseTilePressed: {
@@ -662,13 +699,13 @@ const s = StyleSheet.create({
     transform: [{ scale: 0.96 }],
   },
   phaseTileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 5,
   },
   phaseTileTitle: {
     fontSize: 14.5,
-    fontWeight: '800',
+    fontWeight: "800",
     color: C.inkSoft,
   },
   phaseTileTitleActive: {
@@ -681,26 +718,26 @@ const s = StyleSheet.create({
   },
   phaseTileSubActive: {
     color: C.white,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   statsGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
     marginBottom: 14,
   },
   metricCard: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
     minHeight: 74,
     padding: 12,
     borderRadius: 18,
     backgroundColor: C.surfaceLow,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    shadowColor: '#8C4010',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    shadowColor: "#8C4010",
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
@@ -709,12 +746,12 @@ const s = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   metricLabel: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 1.3,
     color: C.inkSoft,
   },
@@ -723,20 +760,20 @@ const s = StyleSheet.create({
     lineHeight: 21,
     color: C.ink,
     marginTop: 1,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   resonanceCard: {
     minHeight: 80,
     borderRadius: 22,
     backgroundColor: C.white,
     padding: 14,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    shadowColor: '#8C4010',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    shadowColor: "#8C4010",
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 3,
@@ -744,8 +781,8 @@ const s = StyleSheet.create({
   },
   resonanceLeft: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   soundIcon: {
@@ -753,29 +790,29 @@ const s = StyleSheet.create({
     height: 42,
     borderRadius: 21,
     backgroundColor: C.surfaceContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.85)',
-    overflow: 'hidden',
+    borderColor: "rgba(255, 255, 255, 0.85)",
+    overflow: "hidden",
   },
   soundIconActive: {
-    backgroundColor: 'rgba(254, 236, 220, 0.95)',
-    borderColor: 'rgba(229, 107, 39, 0.3)',
+    backgroundColor: "rgba(254, 236, 220, 0.95)",
+    borderColor: "rgba(229, 107, 39, 0.3)",
   },
   resonanceCopy: {
     flex: 1,
   },
   resonanceKicker: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 1.7,
     color: C.primary,
   },
   resonanceTitle: {
     fontSize: 15,
     lineHeight: 19,
-    fontWeight: '800',
+    fontWeight: "800",
     color: C.ink,
   },
   resonanceSub: {
@@ -783,29 +820,29 @@ const s = StyleSheet.create({
     color: C.inkSoft,
   },
   audioControlsGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   spectrumContainer: {
     paddingHorizontal: 6,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: 'rgba(254, 236, 220, 0.6)',
+    backgroundColor: "rgba(254, 236, 220, 0.6)",
   },
   volumeBtn: {
     width: 42,
     height: 42,
     borderRadius: 21,
     backgroundColor: C.surfaceContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.85)',
+    borderColor: "rgba(255, 255, 255, 0.85)",
   },
   volumeBtnActive: {
     backgroundColor: C.saffron,
-    borderColor: '#FFFFFF',
+    borderColor: "#FFFFFF",
     shadowColor: C.saffron,
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -815,44 +852,44 @@ const s = StyleSheet.create({
   imageCard: {
     height: 106,
     borderRadius: 18,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 16,
     backgroundColor: C.surfaceContainer,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    shadowColor: '#8C4010',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    shadowColor: "#8C4010",
     shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 3,
   },
   ghatImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   imageOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(35, 26, 17, 0.42)',
+    backgroundColor: "rgba(35, 26, 17, 0.42)",
   },
   imageText: {
-    position: 'absolute',
+    position: "absolute",
     left: 15,
     right: 15,
     bottom: 15,
   },
   imageKicker: {
-    color: '#FFDEA7',
+    color: "#FFDEA7",
     fontSize: 11.5,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 1.5,
   },
   imageSub: {
     color: C.white,
     fontSize: 14,
     marginTop: 2,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   actionRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginBottom: 18,
   },
@@ -862,22 +899,22 @@ const s = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: C.surfaceContainer,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(216, 144, 64, 0.25)',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(216, 144, 64, 0.25)",
     borderBottomWidth: 2.5,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
-    shadowColor: '#8C4010',
+    shadowColor: "#8C4010",
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
   pauseText: {
     fontSize: 15.5,
-    fontWeight: '800',
+    fontWeight: "800",
     color: C.ink,
   },
   completeButton: {
@@ -886,13 +923,13 @@ const s = StyleSheet.create({
     borderRadius: 999,
     backgroundColor: C.saffron,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: '#A8470C',
+    borderColor: "rgba(255, 255, 255, 0.5)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "#A8470C",
     borderBottomWidth: 3,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
     shadowColor: C.saffron,
     shadowOpacity: 0.28,
@@ -902,7 +939,7 @@ const s = StyleSheet.create({
   },
   completeText: {
     fontSize: 15.5,
-    fontWeight: '800',
+    fontWeight: "800",
     color: C.white,
   },
   pressed: {
