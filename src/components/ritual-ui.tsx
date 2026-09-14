@@ -360,11 +360,13 @@ export function Header({
   title,
   night = false,
   back = false,
+  logo,
 }: {
   eyebrow: string;
   title?: string;
   night?: boolean;
   back?: boolean;
+  logo?: ReactNode;
 }) {
   const color = night ? '#F1F3F9' : C.ink;
   const eyebrowColor = night ? '#F4B942' : C.saffron;
@@ -378,6 +380,8 @@ export function Header({
               <ChevronLeft size={28} color={color} />
             </Pressable>
           </Link>
+        ) : logo ? (
+          logo
         ) : (
           <Image source={MORNING_RITUAL_LOGO} style={styles.logoMarkOnly} />
         )}

@@ -4,7 +4,6 @@ import {
   BookOpen,
   Bookmark,
   CheckCircle2,
-  Flame,
   Leaf,
   Pause,
   Play,
@@ -15,11 +14,11 @@ import { useState } from "react";
 import { Image, Pressable, Share, StyleSheet, View } from "react-native";
 
 import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
-import { Interactive3DCard } from "@/components/interactive-3d-card";
+import { AruMascot } from "@/components/aru-mascot";
 import { MindsetCelebrationModal } from "@/components/mindset-celebration-modal";
 import { ModeType } from "@/components/mode-segmented-control";
+import { MovingChakra } from "@/components/moving-chakra";
 import { Header, Screen, TextR } from "@/components/ritual-ui";
-import { SacredLotusCoin } from "@/components/sacred-lotus-coin";
 import { C } from "@/constants/ritual-theme";
 
 const SUTRA_IMAGE_URL =
@@ -50,7 +49,7 @@ export default function Gita() {
       {/* Sacred Pre-Dawn Sub-Header & Chapter Indicator */}
       <View style={s.topHeaderSection}>
         <View style={s.chapterBadge}>
-          <Flame size={16} color={C.saffron} fill={C.saffron} />
+          <MovingChakra size={18} color={C.saffron} />
           <TextR style={s.chapterText}>CHAPTER 2 · SHLOKA 47</TextR>
         </View>
         <TextR style={s.topSubtitle}>
@@ -177,11 +176,18 @@ export default function Gita() {
         </Pressable>
       </View>
 
-      {/* Sacred Shloka Focus Card with 3D Parallax Tilt & Parchment Mesh */}
-      <Interactive3DCard style={{ marginBottom: 22, alignItems: "center" }}>
-        {/* Sacred 3D Relief Gold Coin Lotus Emblem */}
-        <View style={{ marginBottom: 14 }}>
-          <SacredLotusCoin size={60} />
+      {/* Sacred Shloka Focus Card — static parchment glass, no gesture animation */}
+      <View style={[s.shlokaCard, { marginBottom: 22, alignItems: "center" }]}>
+        {/* Aru reading the open book — guru opening scripture before recitation */}
+        <View style={s.aruReaderWrap}>
+          <AruMascot
+            clip="gita_reading"
+            size={180}
+            loop
+            muted
+            glow="day"
+            interactive={false}
+          />
         </View>
 
         {/* Sanskrit Original with Dynamic Karaokē Word Highlighting */}
@@ -253,7 +259,7 @@ export default function Gita() {
             </View>
           </Pressable>
         </View>
-      </Interactive3DCard>
+      </View>
 
       {/* Interactive Audio Recitation Player Pod with Spectrum Visualizer */}
       <View style={s.audioPlayerPod}>
@@ -344,6 +350,17 @@ export default function Gita() {
 }
 
 const s = StyleSheet.create({
+  aruReaderWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+    position: 'relative',
+  },
+  lotusBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: -8,
+  },
   topHeaderSection: {
     alignItems: "center",
     marginBottom: 20,
