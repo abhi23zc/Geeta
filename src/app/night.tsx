@@ -22,6 +22,7 @@ import Animated, {
 import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import { Header, Screen, TextR } from "@/components/ritual-ui";
+import { AruMascot } from "@/components/aru-mascot";
 import { Interactive3DCard } from "@/components/interactive-3d-card";
 import { C } from "@/constants/ritual-theme";
 import { Task, useRitual } from "@/state/ritual-store";
@@ -102,25 +103,11 @@ export default function Night() {
               </View>
               <TextR style={s.heroTitle}>Night Reflection</TextR>
               <TextR style={s.heroSubtitle}>
-                Close your day in stillness &{"\n"}gratitude
+                Close your day in stillness & gratitude
               </TextR>
             </View>
-            <View style={s.moonBadgeWrapper}>
-              <View style={s.moonGlowHalo} pointerEvents="none">
-                <Svg width={100} height={100} viewBox="0 0 100 100">
-                  <Defs>
-                    <RadialGradient id="moonAuraGrad" cx="50%" cy="50%" r="50%">
-                      <Stop offset="0%" stopColor="#F4B942" stopOpacity="0.55" />
-                      <Stop offset="50%" stopColor="#FF9E44" stopOpacity="0.25" />
-                      <Stop offset="100%" stopColor="#F4B942" stopOpacity="0" />
-                    </RadialGradient>
-                  </Defs>
-                  <Rect width={100} height={100} fill="url(#moonAuraGrad)" />
-                </Svg>
-              </View>
-              <View style={s.moonBadgeContainer}>
-                <CelestialMoonIcon size={34} />
-              </View>
+            <View style={s.mascotAbsolute}>
+              <AruMascot clip="night_reflection_lamp" size={135} glow="night" />
             </View>
           </View>
 
@@ -464,14 +451,17 @@ function ReviewRow({
 const s = StyleSheet.create({
   heroCard3D: {},
   heroTop: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 16,
+    position: "relative",
+    minHeight: 110,
+    justifyContent: "center",
   },
   heroCopy: {
-    flex: 1,
-    paddingRight: 4,
+    paddingRight: 115,
+  },
+  mascotAbsolute: {
+    position: "absolute",
+    right: -8,
+    top: -10,
   },
   sandhiChip: {
     alignSelf: "flex-start",

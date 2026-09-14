@@ -1,15 +1,3 @@
-import React from 'react';
-import { DimensionValue, Image, Pressable, StyleSheet, View } from 'react-native';
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
-import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import {
   BookOpen,
   Check,
@@ -22,17 +10,30 @@ import {
   Plus,
   Quote,
   SunMedium,
-} from 'lucide-react-native';
+} from "lucide-react-native";
+import React from "react";
+import { Image, Pressable, StyleSheet, View } from "react-native";
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
+import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
-import { Header, Screen, TextR } from '@/components/ritual-ui';
-import { Interactive3DCard } from '@/components/interactive-3d-card';
-import { C } from '@/constants/ritual-theme';
-import { Task, useRitual } from '@/state/ritual-store';
+import { AruMascot } from "@/components/aru-mascot";
+import { Interactive3DCard } from "@/components/interactive-3d-card";
+import { Header, Screen, TextR } from "@/components/ritual-ui";
+import { C } from "@/constants/ritual-theme";
+import { Task, useRitual } from "@/state/ritual-store";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const SERENITY_IMAGE_URL =
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuBEIEoiZiaHM4XJ6TexRv_WLW2SN251hi9lx11JXnpdm1yKCxY26NO_g1eC8i7w0sD6hOWyDdKUJcz1lI7W6PBk4hURk17Y2X7s1Zx7zzbZ1Jcz76Y4H4u2z0J0kA41JcPe1BdIs1bEKs904cpmQXbPn118nSl3P4eTBmz6w6CPLg4RkpMKRLRZ196cfvj45SKcWMzIJUa1o_ZMS7iar0--voJR45OLZqxSmSmZflGPytD_NElprteWpg';
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuBEIEoiZiaHM4XJ6TexRv_WLW2SN251hi9lx11JXnpdm1yKCxY26NO_g1eC8i7w0sD6hOWyDdKUJcz1lI7W6PBk4hURk17Y2X7s1Zx7zzbZ1Jcz76Y4H4u2z0J0kA41JcPe1BdIs1bEKs904cpmQXbPn118nSl3P4eTBmz6w6CPLg4RkpMKRLRZ196cfvj45SKcWMzIJUa1o_ZMS7iar0--voJR45OLZqxSmSmZflGPytD_NElprteWpg";
 
 export default function Today() {
   const { tasks, toggleTask, addTask } = useRitual();
@@ -42,14 +43,30 @@ export default function Today() {
   const btnPress = useSharedValue(0);
   const animatedBtnStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateY: withSpring(btnPress.value ? 3 : 0, { damping: 14, stiffness: 240 }) },
-      { scale: withSpring(btnPress.value ? 0.98 : 1, { damping: 14, stiffness: 240 }) },
+      {
+        translateY: withSpring(btnPress.value ? 3 : 0, {
+          damping: 14,
+          stiffness: 240,
+        }),
+      },
+      {
+        scale: withSpring(btnPress.value ? 0.98 : 1, {
+          damping: 14,
+          stiffness: 240,
+        }),
+      },
     ],
     shadowOffset: {
       width: 0,
-      height: withSpring(btnPress.value ? 2 : 7, { damping: 14, stiffness: 240 }),
+      height: withSpring(btnPress.value ? 2 : 7, {
+        damping: 14,
+        stiffness: 240,
+      }),
     },
-    shadowOpacity: withSpring(btnPress.value ? 0.12 : 0.28, { damping: 14, stiffness: 240 }),
+    shadowOpacity: withSpring(btnPress.value ? 0.12 : 0.28, {
+      damping: 14,
+      stiffness: 240,
+    }),
   }));
 
   return (
@@ -60,13 +77,29 @@ export default function Today() {
       <View style={s.headerAuraWrap}>
         <BrahmaMuhurtaAura />
         <View style={s.titleRow}>
-          <View>
+          <View style={{ flex: 1, paddingRight: 10 }}>
             <TextR style={s.title}>Today</TextR>
             <TextR style={s.subtitle}>Mindful actions for this day</TextR>
+            <View
+              style={[
+                s.muhurtaChip,
+                { marginTop: 10, alignSelf: "flex-start" },
+              ]}
+            >
+              <View style={s.pulseDot} />
+              <TextR style={s.muhurtaText}>BRAHMA MUHURTA</TextR>
+            </View>
           </View>
-          <View style={s.muhurtaChip}>
-            <View style={s.pulseDot} />
-            <TextR style={s.muhurtaText}>BRAHMA MUHURTA</TextR>
+          <View
+            style={{
+              marginTop: -16,
+              marginRight: -8,
+              marginBottom: -16,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <AruMascot clip="tasks_pointing" size={155} glow="day" />
           </View>
         </View>
       </View>
@@ -131,7 +164,11 @@ export default function Today() {
 
       <View style={s.taskList}>
         {tasks.map((task) => (
-          <TaskRow key={task.id} task={task} onPress={() => toggleTask(task.id)} />
+          <TaskRow
+            key={task.id}
+            task={task}
+            onPress={() => toggleTask(task.id)}
+          />
         ))}
       </View>
 
@@ -156,8 +193,8 @@ export default function Today() {
         <View style={{ flex: 1 }}>
           <TextR style={s.noteTitle}>
             {remaining === 0
-              ? 'All intentions fulfilled for today.'
-              : `${remaining} mindful intention${remaining === 1 ? '' : 's'} remaining.`}
+              ? "All intentions fulfilled for today."
+              : `${remaining} mindful intention${remaining === 1 ? "" : "s"} remaining.`}
           </TextR>
           <TextR style={s.noteBody}>
             Act with wholehearted presence, detachment from fruits.
@@ -198,21 +235,37 @@ function TaskRow({ task, onPress }: { task: Task; onPress: () => void }) {
   const handlePress = () => {
     checkScale.value = withSequence(
       withSpring(1.3, { damping: 8, stiffness: 300 }),
-      withSpring(1, { damping: 12, stiffness: 200 })
+      withSpring(1, { damping: 12, stiffness: 200 }),
     );
     onPress();
   };
 
   const animatedCardStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateY: withSpring(pressVal.value ? 3 : 0, { damping: 14, stiffness: 240 }) },
-      { scale: withSpring(pressVal.value ? 0.985 : 1, { damping: 14, stiffness: 240 }) },
+      {
+        translateY: withSpring(pressVal.value ? 3 : 0, {
+          damping: 14,
+          stiffness: 240,
+        }),
+      },
+      {
+        scale: withSpring(pressVal.value ? 0.985 : 1, {
+          damping: 14,
+          stiffness: 240,
+        }),
+      },
     ],
     shadowOffset: {
       width: 0,
-      height: withSpring(pressVal.value ? 2 : 6, { damping: 14, stiffness: 240 }),
+      height: withSpring(pressVal.value ? 2 : 6, {
+        damping: 14,
+        stiffness: 240,
+      }),
     },
-    shadowOpacity: withSpring(pressVal.value ? 0.06 : 0.14, { damping: 14, stiffness: 240 }),
+    shadowOpacity: withSpring(pressVal.value ? 0.06 : 0.14, {
+      damping: 14,
+      stiffness: 240,
+    }),
   }));
 
   const animatedCheckStyle = useAnimatedStyle(() => ({
@@ -282,19 +335,19 @@ function BrahmaMuhurtaAura() {
     scale.value = withRepeat(
       withSequence(
         withTiming(1.15, { duration: 3200, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.95, { duration: 3200, easing: Easing.inOut(Easing.ease) })
+        withTiming(0.95, { duration: 3200, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
-      true
+      true,
     );
 
     opacity.value = withRepeat(
       withSequence(
         withTiming(0.65, { duration: 3200, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.35, { duration: 3200, easing: Easing.inOut(Easing.ease) })
+        withTiming(0.35, { duration: 3200, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
-      true
+      true,
     );
   }, []);
 
@@ -322,7 +375,13 @@ function BrahmaMuhurtaAura() {
   );
 }
 
-function SacredBeadProgress({ total, completed }: { total: number; completed: number }) {
+function SacredBeadProgress({
+  total,
+  completed,
+}: {
+  total: number;
+  completed: number;
+}) {
   const percent = total > 0 ? (completed / total) * 100 : 0;
 
   const animatedFillStyle = useAnimatedStyle(() => ({
@@ -337,23 +396,27 @@ function SacredBeadProgress({ total, completed }: { total: number; completed: nu
         {Array.from({ length: Math.max(total, 1) }).map((_, idx) => {
           const isDone = idx < completed;
           const isCurrent = idx === completed;
-          return (
-            <BeadNode key={idx} isDone={isDone} isCurrent={isCurrent} />
-          );
+          return <BeadNode key={idx} isDone={isDone} isCurrent={isCurrent} />;
         })}
       </View>
     </View>
   );
 }
 
-function BeadNode({ isDone, isCurrent }: { isDone: boolean; isCurrent: boolean }) {
+function BeadNode({
+  isDone,
+  isCurrent,
+}: {
+  isDone: boolean;
+  isCurrent: boolean;
+}) {
   const scale = useSharedValue(isDone ? 1.15 : 1);
 
   React.useEffect(() => {
     if (isDone) {
       scale.value = withSequence(
         withSpring(1.35, { damping: 8, stiffness: 300 }),
-        withSpring(1.1, { damping: 12, stiffness: 200 })
+        withSpring(1.1, { damping: 12, stiffness: 200 }),
       );
     } else {
       scale.value = withSpring(1, { damping: 14, stiffness: 200 });
@@ -384,13 +447,13 @@ function BeadNode({ isDone, isCurrent }: { isDone: boolean; isCurrent: boolean }
 
 function taskIcon(category: string) {
   switch (category.toLowerCase()) {
-    case 'pranayama':
+    case "pranayama":
       return SunMedium;
-    case 'work':
+    case "work":
       return PenLine;
-    case 'mind':
+    case "mind":
       return BookOpen;
-    case 'health':
+    case "health":
       return Dumbbell;
     default:
       return ListTodo;
@@ -399,17 +462,17 @@ function taskIcon(category: string) {
 
 const s = StyleSheet.create({
   headerAuraWrap: {
-    position: 'relative',
+    position: "relative",
     marginBottom: 28,
   },
   auraContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: -90,
     right: -50,
     width: 300,
     height: 300,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     zIndex: -1,
   },
   auraCircle: {
@@ -417,14 +480,14 @@ const s = StyleSheet.create({
     height: 300,
   },
   titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
   },
   title: {
     fontSize: 30,
     lineHeight: 36,
-    fontWeight: '800',
+    fontWeight: "800",
     color: C.ink,
   },
   subtitle: {
@@ -432,7 +495,7 @@ const s = StyleSheet.create({
     fontSize: 16,
     lineHeight: 23,
     color: C.inkSoft,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   pulseDot: {
     width: 7,
@@ -441,17 +504,17 @@ const s = StyleSheet.create({
     backgroundColor: C.saffron,
   },
   muhurtaChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 7,
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: 'rgba(254, 236, 220, 0.85)',
+    backgroundColor: "rgba(254, 236, 220, 0.85)",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(140, 64, 16, 0.15)',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(140, 64, 16, 0.15)",
     borderBottomWidth: 2,
     shadowColor: C.saffron,
     shadowOpacity: 0.12,
@@ -462,7 +525,7 @@ const s = StyleSheet.create({
   },
   muhurtaText: {
     fontSize: 11.5,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 1.2,
     color: C.primary,
   },
@@ -470,14 +533,14 @@ const s = StyleSheet.create({
     height: 60,
     borderRadius: 999,
     backgroundColor: C.saffron,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 10,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(140, 64, 16, 0.35)',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(140, 64, 16, 0.35)",
     borderBottomWidth: 3.5,
     shadowColor: C.saffron,
     shadowOpacity: 0.28,
@@ -488,23 +551,23 @@ const s = StyleSheet.create({
   },
   addText: {
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: "800",
     color: C.white,
   },
   noteCard: {
     minHeight: 108,
     borderRadius: 26,
-    backgroundColor: 'rgba(255, 252, 248, 0.95)',
+    backgroundColor: "rgba(255, 252, 248, 0.95)",
     padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 16,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(140, 64, 16, 0.15)',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(140, 64, 16, 0.15)",
     borderBottomWidth: 2.5,
-    shadowColor: '#8C4010',
+    shadowColor: "#8C4010",
     shadowOpacity: 0.08,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 5 },
@@ -515,13 +578,13 @@ const s = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: 'rgba(254, 236, 220, 0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(254, 236, 220, 0.95)",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(140, 64, 16, 0.18)',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(140, 64, 16, 0.18)",
     borderBottomWidth: 2,
     shadowColor: C.saffron,
     shadowOpacity: 0.12,
@@ -531,13 +594,13 @@ const s = StyleSheet.create({
   },
   noteIconText: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: "800",
     color: C.ink,
   },
   noteTitle: {
     fontSize: 17,
     lineHeight: 23,
-    fontWeight: '700',
+    fontWeight: "700",
     color: C.ink,
   },
   noteBody: {
@@ -545,18 +608,18 @@ const s = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: C.inkSoft,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   serenityCard: {
     borderRadius: 28,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255, 253, 249, 0.98)',
+    overflow: "hidden",
+    backgroundColor: "rgba(255, 253, 249, 0.98)",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(140, 64, 16, 0.22)',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(140, 64, 16, 0.22)",
     borderBottomWidth: 3.5,
-    shadowColor: '#8C4010',
+    shadowColor: "#8C4010",
     shadowOpacity: 0.14,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 7 },
@@ -565,29 +628,29 @@ const s = StyleSheet.create({
   },
   serenityImageWrap: {
     height: 178,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   serenityImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   imageFade: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(35, 26, 17, 0.25)',
+    backgroundColor: "rgba(35, 26, 17, 0.25)",
   },
   serenityPill: {
-    position: 'absolute',
+    position: "absolute",
     top: 14,
     right: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor: 'rgba(255, 249, 245, 0.92)',
+    backgroundColor: "rgba(255, 249, 245, 0.92)",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderColor: "rgba(255, 255, 255, 0.95)",
     shadowColor: C.saffron,
     shadowOpacity: 0.15,
     shadowRadius: 8,
@@ -595,7 +658,7 @@ const s = StyleSheet.create({
   },
   serenityPillText: {
     fontSize: 11.5,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 1.6,
     color: C.primary,
   },
@@ -603,33 +666,33 @@ const s = StyleSheet.create({
     minHeight: 82,
     paddingHorizontal: 20,
     paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 14,
   },
   serenityTitle: {
     fontSize: 18.5,
     lineHeight: 24,
-    fontWeight: '800',
+    fontWeight: "800",
     color: C.ink,
   },
   serenitySub: {
     fontSize: 14.5,
     lineHeight: 21,
     color: C.inkSoft,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   moonCircle: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(254, 236, 220, 0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(254, 236, 220, 0.95)",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(140, 64, 16, 0.2)',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(140, 64, 16, 0.2)",
     borderBottomWidth: 2,
     shadowColor: C.saffron,
     shadowOpacity: 0.14,
@@ -641,8 +704,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
   },
   quoteCardContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 14,
     padding: 6,
   },
@@ -650,13 +713,13 @@ const s = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(254, 236, 220, 0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(254, 236, 220, 0.95)",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(140, 64, 16, 0.2)',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(140, 64, 16, 0.2)",
     borderBottomWidth: 2,
     shadowColor: C.saffron,
     shadowOpacity: 0.12,
@@ -671,12 +734,12 @@ const s = StyleSheet.create({
     fontSize: 24,
     lineHeight: 35,
     color: C.ink,
-    fontStyle: 'italic',
-    fontWeight: '500',
+    fontStyle: "italic",
+    fontWeight: "500",
   },
   quoteMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginTop: 10,
   },
@@ -689,20 +752,20 @@ const s = StyleSheet.create({
   quoteMeta: {
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 1.4,
     color: C.inkSoft,
   },
   cadenceCard: {
     borderRadius: 28,
-    backgroundColor: 'rgba(255, 253, 249, 0.98)',
+    backgroundColor: "rgba(255, 253, 249, 0.98)",
     padding: 22,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(140, 64, 16, 0.22)',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(140, 64, 16, 0.22)",
     borderBottomWidth: 3.5,
-    shadowColor: '#8C4010',
+    shadowColor: "#8C4010",
     shadowOpacity: 0.12,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 7 },
@@ -710,27 +773,27 @@ const s = StyleSheet.create({
     marginBottom: 28,
   },
   cadenceTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 12,
   },
   cadenceTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   cadenceIconCircle: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E8F5E9',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#E8F5E9",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(42, 92, 51, 0.25)',
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(42, 92, 51, 0.25)",
     borderBottomWidth: 2,
     shadowColor: C.greenDark,
     shadowOpacity: 0.14,
@@ -741,46 +804,46 @@ const s = StyleSheet.create({
   cadenceTitle: {
     fontSize: 18.5,
     lineHeight: 23,
-    fontWeight: '800',
+    fontWeight: "800",
     color: C.ink,
   },
   progressSubtext: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: C.mutedSoft,
     marginTop: 1,
   },
   progressBadge: {
-    backgroundColor: 'rgba(254, 236, 220, 0.85)',
+    backgroundColor: "rgba(254, 236, 220, 0.85)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderColor: "rgba(255, 255, 255, 0.9)",
   },
   progressText: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 1.1,
     color: C.saffron,
   },
   sacredBeadContainer: {
     height: 38,
-    justifyContent: 'center',
+    justifyContent: "center",
     marginTop: 18,
     marginBottom: 6,
-    position: 'relative',
+    position: "relative",
   },
   beadTrackLine: {
-    position: 'absolute',
+    position: "absolute",
     left: 10,
     right: 10,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(238, 210, 190, 0.7)',
+    backgroundColor: "rgba(238, 210, 190, 0.7)",
   },
   beadFillLine: {
-    position: 'absolute',
+    position: "absolute",
     left: 10,
     height: 4,
     borderRadius: 2,
@@ -791,21 +854,21 @@ const s = StyleSheet.create({
     elevation: 3,
   },
   beadNodesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 2,
   },
   beadNode: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#FFF8EE',
+    backgroundColor: "#FFF8EE",
     borderWidth: 1.8,
-    borderColor: '#DEC0B4',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#8C4010',
+    borderColor: "#DEC0B4",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#8C4010",
     shadowOpacity: 0.08,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
@@ -813,7 +876,7 @@ const s = StyleSheet.create({
   },
   beadNodeDone: {
     backgroundColor: C.saffron,
-    borderColor: '#FFFFFF',
+    borderColor: "#FFFFFF",
     shadowColor: C.saffron,
     shadowOpacity: 0.4,
     shadowRadius: 8,
@@ -823,7 +886,7 @@ const s = StyleSheet.create({
   beadNodeCurrent: {
     borderColor: C.gold,
     borderWidth: 2,
-    backgroundColor: '#FFF3DB',
+    backgroundColor: "#FFF3DB",
     shadowColor: C.gold,
     shadowOpacity: 0.5,
     shadowRadius: 6,
@@ -833,22 +896,22 @@ const s = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#DEC0B4',
+    backgroundColor: "#DEC0B4",
   },
   innerBeadDotCurrent: {
     backgroundColor: C.goldDark,
   },
   cadenceBottom: {
     marginTop: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 14,
   },
   steadyRow: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   goldDot: {
@@ -862,17 +925,17 @@ const s = StyleSheet.create({
     fontSize: 14.5,
     lineHeight: 21,
     color: C.inkSoft,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   karmaBadge: {
-    backgroundColor: 'rgba(254, 236, 220, 0.95)',
+    backgroundColor: "rgba(254, 236, 220, 0.95)",
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(140, 64, 16, 0.18)',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(140, 64, 16, 0.18)",
     borderBottomWidth: 2,
     shadowColor: C.saffron,
     shadowOpacity: 0.12,
@@ -881,21 +944,21 @@ const s = StyleSheet.create({
   },
   karmaText: {
     fontSize: 11.5,
-    fontWeight: '900',
+    fontWeight: "900",
     letterSpacing: 1.6,
     color: C.primary,
   },
   intentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 4,
     marginBottom: 16,
   },
   intentTitle: {
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 2.4,
     color: C.ink,
   },
@@ -910,17 +973,17 @@ const s = StyleSheet.create({
   taskCard: {
     minHeight: 88,
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 252, 248, 0.96)',
+    backgroundColor: "rgba(255, 252, 248, 0.96)",
     paddingHorizontal: 18,
     paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 14,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(180, 120, 80, 0.25)',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(180, 120, 80, 0.25)",
     borderBottomWidth: 3,
     shadowColor: C.shadow3D,
     shadowOpacity: 0.14,
@@ -931,27 +994,27 @@ const s = StyleSheet.create({
   taskLeft: {
     flex: 1,
     minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 14,
   },
   taskRightIconWrap: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(254, 236, 220, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(254, 236, 220, 0.5)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   checkCircle: {
     width: 30,
     height: 30,
     borderRadius: 15,
     backgroundColor: C.surfaceContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: '#E4BFAE',
+    borderColor: "#E4BFAE",
   },
   checkCircleDone: {
     backgroundColor: C.green,
@@ -962,7 +1025,7 @@ const s = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: '#C99F88',
+    borderColor: "#C99F88",
   },
   taskCopy: {
     flex: 1,
@@ -971,16 +1034,16 @@ const s = StyleSheet.create({
   taskTitle: {
     fontSize: 18,
     lineHeight: 24,
-    fontWeight: '700',
+    fontWeight: "700",
     color: C.ink,
   },
   taskTitleDone: {
     color: C.muted,
-    textDecorationLine: 'line-through',
+    textDecorationLine: "line-through",
   },
   metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 7,
     marginTop: 6,
   },
@@ -992,7 +1055,7 @@ const s = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#DEC0B4',
+    backgroundColor: "#DEC0B4",
   },
   categoryPill: {
     paddingHorizontal: 10,
@@ -1001,11 +1064,11 @@ const s = StyleSheet.create({
     backgroundColor: C.surfaceHigh,
   },
   categoryPillDone: {
-    backgroundColor: '#D7EACD',
+    backgroundColor: "#D7EACD",
   },
   categoryText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 1.4,
     color: C.inkSoft,
   },
