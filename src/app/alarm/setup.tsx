@@ -20,6 +20,8 @@ import {
 } from 'lucide-react-native';
 
 import { MORNING_RITUAL_LOGO, Screen, TextR } from '@/components/ritual-ui';
+import { Interactive3DCard } from '@/components/interactive-3d-card';
+import { AudioSpectrumVisualizer } from '@/components/audio-spectrum-visualizer';
 import { C } from '@/constants/ritual-theme';
 import { useRitual } from '@/state/ritual-store';
 
@@ -181,7 +183,7 @@ export default function Setup() {
         </Pressable>
       </View>
 
-      <View style={s.timeCard}>
+      <Interactive3DCard maxTiltDeg={6} style={s.timeCard}>
         <View style={s.glowOne} />
         <View style={s.glowTwo} />
         <View style={s.windowTitle}>
@@ -229,7 +231,7 @@ export default function Setup() {
             Sunrise is at <TextR style={s.sunriseStrong}>06:18 AM</TextR> today
           </TextR>
         </View>
-      </View>
+      </Interactive3DCard>
 
       <View style={s.recurrenceHeader}>
         <TextR style={s.label}>Weekly Recurrence</TextR>
@@ -416,9 +418,19 @@ function ModeCard({
           )}
         </View>
         <TextR style={s.modeDescription}>{item.description}</TextR>
+        {active && (
+          <View style={s.activeAudioRow}>
+            <AudioSpectrumVisualizer isPlaying barCount={6} height={12} />
+            <TextR style={s.activeAudioText}>Previewing tone</TextR>
+          </View>
+        )}
       </View>
       <View style={[s.radio, active && s.radioActive]}>
-        {active && <Check size={17} color={C.white} strokeWidth={3} />}
+        {active ? (
+          <Check size={16} color={C.white} strokeWidth={3} />
+        ) : (
+          <View style={s.radioDot} />
+        )}
       </View>
     </Pressable>
   );
@@ -473,7 +485,9 @@ function CompanionCard({
     <View style={s.companionCard}>
       <Image source={{ uri: image }} style={s.companionImage} />
       <View style={s.companionCopy}>
-        <TextR style={[s.companionLabel, { color }]}>{label}</TextR>
+        <TextR numberOfLines={1} style={[s.companionLabel, { color }]}>
+          {label}
+        </TextR>
         <TextR style={s.companionTitle}>{title}</TextR>
       </View>
     </View>
@@ -565,11 +579,20 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFD8CA',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderTopColor: '#FFFFFF',
+    borderBottomColor: 'rgba(180, 80, 30, 0.3)',
+    borderBottomWidth: 2,
+    shadowColor: C.saffron,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
   saveText: {
     color: C.ink,
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0.3,
   },
   timeCard: {
@@ -583,8 +606,8 @@ const s = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#FFF0E7',
     shadowColor: '#B86D3A',
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
+    shadowOpacity: 0.12,
+    shadowRadius: 22,
     shadowOffset: { width: 0, height: 10 },
   },
   glowOne: {
@@ -651,6 +674,8 @@ const s = StyleSheet.create({
     padding: 5,
     borderRadius: 24,
     backgroundColor: 'rgba(255,248,245,0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
   },
   meridiemButton: {
     minWidth: 43,
@@ -661,9 +686,12 @@ const s = StyleSheet.create({
   },
   meridiemActive: {
     backgroundColor: C.primary,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    borderTopColor: '#FFFFFF',
     shadowColor: C.primary,
-    shadowOpacity: 0.18,
-    shadowRadius: 7,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
   },
   meridiemText: {
@@ -683,7 +711,13 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(248,229,214,0.9)',
+    backgroundColor: 'rgba(248,229,214,0.95)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    shadowColor: '#8C4010',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
   sunriseText: {
     fontSize: 14,
@@ -723,16 +757,29 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FCEADD',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderTopColor: '#FFFFFF',
+    borderBottomColor: 'rgba(180, 120, 80, 0.25)',
+    borderBottomWidth: 2,
+    shadowColor: '#8C4010',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
   daySelected: {
     backgroundColor: C.primary,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderTopColor: '#FFFFFF',
+    borderBottomColor: 'rgba(140, 45, 5, 0.45)',
+    borderBottomWidth: 3,
     shadowColor: C.primary,
-    shadowOpacity: 0.14,
-    shadowRadius: 8,
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 5 },
   },
   dayPressed: {
-    transform: [{ scale: 0.94 }],
+    transform: [{ scale: 0.93 }],
   },
   dayText: {
     color: C.inkSoft,
@@ -764,16 +811,27 @@ const s = StyleSheet.create({
     padding: 18,
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderTopColor: '#FFFFFF',
   },
   modeCardActive: {
     backgroundColor: '#FDE4D5',
+    borderBottomColor: 'rgba(195, 100, 45, 0.35)',
+    borderBottomWidth: 3,
     shadowColor: '#C97544',
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
+    shadowOpacity: 0.16,
+    shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
   },
   modeCardRest: {
     backgroundColor: '#FFF0E8',
+    borderBottomColor: 'rgba(215, 170, 140, 0.25)',
+    borderBottomWidth: 2,
+    shadowColor: '#8C4010',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
   },
   modeIcon: {
     width: 50,
@@ -782,13 +840,18 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
   },
   modeIconActive: {
     backgroundColor: C.saffron,
+    borderTopColor: '#FFFFFF',
+    borderBottomColor: 'rgba(120, 35, 0, 0.4)',
+    borderBottomWidth: 2,
     shadowColor: C.saffron,
-    shadowOpacity: 0.22,
+    shadowOpacity: 0.3,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 5 },
   },
   modeIconRest: {
     backgroundColor: '#F8DFCA',
@@ -828,6 +891,17 @@ const s = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
   },
+  activeAudioRow: {
+    marginTop: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  activeAudioText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: C.saffron,
+  },
   radio: {
     width: 26,
     height: 26,
@@ -835,15 +909,38 @@ const s = StyleSheet.create({
     backgroundColor: '#FBE6D8',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+  },
+  radioDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#D6BAAA',
   },
   radioActive: {
     backgroundColor: C.primary,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderTopColor: '#FFFFFF',
+    shadowColor: C.primary,
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
   soundCard: {
     borderRadius: 30,
     padding: 18,
     marginBottom: 26,
     backgroundColor: '#FFF0E8',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderTopColor: '#FFFFFF',
+    borderBottomColor: 'rgba(215, 170, 140, 0.25)',
+    borderBottomWidth: 2,
+    shadowColor: '#8C4010',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
   },
   soundRow: {
     paddingBottom: 16,
@@ -864,6 +961,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(244,185,66,0.45)',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    shadowColor: C.goldDark,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
   soundTextBlock: {
     flex: 1,
@@ -888,6 +991,13 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FBE6D8',
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderTopColor: '#FFFFFF',
+    shadowColor: C.saffron,
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
   previewActive: {
     backgroundColor: '#FFD8CA',
@@ -932,7 +1042,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   switchOn: {
-    backgroundColor: C.green,
+    backgroundColor: C.saffron,
   },
   switchOff: {
     backgroundColor: '#E9D7C8',
@@ -963,6 +1073,15 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FCE5D6',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderTopColor: '#FFFFFF',
+    borderBottomColor: 'rgba(200, 140, 100, 0.3)',
+    borderBottomWidth: 2.5,
+    shadowColor: '#8C4010',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
   },
   companionImage: {
     width: 55,
@@ -970,16 +1089,18 @@ const s = StyleSheet.create({
     borderRadius: 28,
     marginRight: 11,
     backgroundColor: C.sand,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
   },
   companionCopy: {
     flex: 1,
   },
   companionLabel: {
     textTransform: 'uppercase',
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 11,
+    lineHeight: 15,
     fontWeight: '900',
-    letterSpacing: 1.4,
+    letterSpacing: 0.8,
   },
   companionTitle: {
     marginTop: 5,
@@ -997,13 +1118,19 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     backgroundColor: C.saffron,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderTopColor: '#FFFFFF',
+    borderBottomColor: 'rgba(160, 50, 10, 0.4)',
+    borderBottomWidth: 3,
     shadowColor: C.saffron,
-    shadowOpacity: 0.24,
+    shadowOpacity: 0.32,
     shadowRadius: 18,
-    shadowOffset: { width: 0, height: 9 },
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
   primaryPressed: {
-    transform: [{ scale: 0.985 }],
+    transform: [{ scale: 0.98 }],
     opacity: 0.92,
   },
   primaryText: {
