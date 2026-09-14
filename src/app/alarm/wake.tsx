@@ -71,7 +71,7 @@ export default function Wake() {
         {/* Aru Mascot — 3D Hero Shrine */}
         <View style={s.mascotHero}>
           <AruMascot
-            clip="alarm_sleepy_idle"
+            clip="start_my_day_wake"
             size={260}
             loop
             muted

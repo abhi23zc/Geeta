@@ -1,4 +1,4 @@
-import { ReactNode, useRef } from "react";
+import { ReactNode } from "react";
 import {
   LayoutChangeEvent,
   StyleProp,
@@ -35,13 +35,13 @@ export function Interactive3DCard({
   const rotateY = useSharedValue(0);
   const sheenX = useSharedValue(-200);
 
-  const cardWidthRef = useRef(340);
-  const cardHeightRef = useRef(400);
+  const cardWidth = useSharedValue(340);
+  const cardHeight = useSharedValue(400);
 
   const handleLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
-    cardWidthRef.current = width;
-    cardHeightRef.current = height;
+    cardWidth.value = width;
+    cardHeight.value = height;
   };
 
   // Pan gesture — only fires when the user DRAGS (not taps).
@@ -49,8 +49,9 @@ export function Interactive3DCard({
   const panGesture = Gesture.Pan()
     .minDistance(4) // must move at least 4px before considered a drag
     .onUpdate((e) => {
-      const centerX = cardWidthRef.current / 2;
-      const centerY = cardHeightRef.current / 2;
+      "worklet";
+      const centerX = cardWidth.value / 2;
+      const centerY = cardHeight.value / 2;
       const normX = Math.max(-1, Math.min(1, (e.x - centerX) / centerX));
       const normY = Math.max(-1, Math.min(1, (e.y - centerY) / centerY));
 
@@ -62,7 +63,7 @@ export function Interactive3DCard({
         duration: 80,
         easing: Easing.out(Easing.quad),
       });
-      sheenX.value = withTiming((normX + 0.5) * cardWidthRef.current, {
+      sheenX.value = withTiming((normX + 0.5) * cardWidth.value, {
         duration: 80,
       });
     })
