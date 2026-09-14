@@ -1,6 +1,7 @@
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { TabBar } from '@/components/ritual-ui';
 import { RitualProvider } from '@/state/ritual-store';
 
@@ -28,9 +29,11 @@ function AppChrome() {
 
 export default function RootLayout() {
   return (
-    <RitualProvider>
-      <StatusBar style="dark" />
-      <AppChrome />
-    </RitualProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <RitualProvider>
+        <StatusBar style="dark" />
+        <AppChrome />
+      </RitualProvider>
+    </GestureHandlerRootView>
   );
 }

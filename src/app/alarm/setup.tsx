@@ -1,6 +1,4 @@
-import React, { useMemo, useState } from 'react';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
-import { router } from 'expo-router';
+import { router } from "expo-router";
 import {
   AlarmClockPlus,
   ArrowLeft,
@@ -17,21 +15,23 @@ import {
   User,
   Vibrate,
   Wind,
-} from 'lucide-react-native';
+} from "lucide-react-native";
+import React, { useMemo, useState } from "react";
+import { Image, Pressable, StyleSheet, View } from "react-native";
 
-import { MORNING_RITUAL_LOGO, Screen, TextR } from '@/components/ritual-ui';
-import { Interactive3DCard } from '@/components/interactive-3d-card';
-import { AudioSpectrumVisualizer } from '@/components/audio-spectrum-visualizer';
-import { C } from '@/constants/ritual-theme';
-import { useRitual } from '@/state/ritual-store';
+import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
+import { Interactive3DCard } from "@/components/interactive-3d-card";
+import { MORNING_RITUAL_LOGO, Screen, TextR } from "@/components/ritual-ui";
+import { C } from "@/constants/ritual-theme";
+import { useRitual } from "@/state/ritual-store";
 
 const PUJA_IMAGE_URL =
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuBp3Nwdm0p15VSxkX_JCaO4lj2fq6_IyJkZeR82e7JFo6VjuqD_WVtF5LYPj6f2zb0H2WRFEq8_8iGiHTHOZWVoiBRFwy5AuLcoMfCCfTrMhZnfLI3WP982R9FP-F8EuJKCsPf9eD4oiJMZn1Z_LBPHQHZNSppMN8c4rCT4svlc-Wwqx-fMND5xRGnttiW3OlDdinGo0vKF0KLGqfkhZZoTz1sS16DoWW4QVKArxQeTT-0kvdN5wSTfvw';
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuBp3Nwdm0p15VSxkX_JCaO4lj2fq6_IyJkZeR82e7JFo6VjuqD_WVtF5LYPj6f2zb0H2WRFEq8_8iGiHTHOZWVoiBRFwy5AuLcoMfCCfTrMhZnfLI3WP982R9FP-F8EuJKCsPf9eD4oiJMZn1Z_LBPHQHZNSppMN8c4rCT4svlc-Wwqx-fMND5xRGnttiW3OlDdinGo0vKF0KLGqfkhZZoTz1sS16DoWW4QVKArxQeTT-0kvdN5wSTfvw";
 
 const DHYAN_IMAGE_URL =
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuDay_gr8PATPcb_Du4k9MPsdJc4xm28aAmyC9qTKc4WDpGEqY0W2PEotVpjz5J4WSocxeV4k6Us2wAlR8L2dpM2xnW8SFBOjAnK-qnX5rYcrggfGKwxw_VrkvpzdrhxvgHRPykTWDwM0eZR17dnI1KAnwiiCgx7zjc8xUKXDueysLvi353rUMEnURxz3CzVVd1Lnhe4cx1jfITm2C9jXreojDsIg-rxX7-DC13JkMdSimgIYoUnm-pNqA';
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuDay_gr8PATPcb_Du4k9MPsdJc4xm28aAmyC9qTKc4WDpGEqY0W2PEotVpjz5J4WSocxeV4k6Us2wAlR8L2dpM2xnW8SFBOjAnK-qnX5rYcrggfGKwxw_VrkvpzdrhxvgHRPykTWDwM0eZR17dnI1KAnwiiCgx7zjc8xUKXDueysLvi353rUMEnURxz3CzVVd1Lnhe4cx1jfITm2C9jXreojDsIg-rxX7-DC13JkMdSimgIYoUnm-pNqA";
 
-type ModeKey = 'gita' | 'shankh' | 'pranayama';
+type ModeKey = "gita" | "shankh" | "pranayama";
 
 const modes: Array<{
   key: ModeKey;
@@ -42,57 +42,59 @@ const modes: Array<{
   tone: string;
 }> = [
   {
-    key: 'gita',
-    title: 'Gita Awakening',
-    description: 'Morning shloka chant seamlessly blended with bamboo bansuri',
+    key: "gita",
+    title: "Gita Awakening",
+    description: "Morning shloka chant seamlessly blended with bamboo bansuri",
     Icon: Flame,
     iconColor: C.saffron,
-    tone: 'Raag Bhairav & Sacred Flute',
+    tone: "Raag Bhairav & Sacred Flute",
   },
   {
-    key: 'shankh',
-    title: 'Gentle Shankh & Chants',
-    description: 'Vedic resonance, deep conch overtone, and subtle tanpura drone',
+    key: "shankh",
+    title: "Gentle Shankh & Chants",
+    description:
+      "Vedic resonance, deep conch overtone, and subtle tanpura drone",
     Icon: BellRing,
     iconColor: C.goldDark,
-    tone: 'Gentle Shankh & Chants',
+    tone: "Gentle Shankh & Chants",
   },
   {
-    key: 'pranayama',
-    title: 'Pranayama First',
-    description: 'Three gentle brass chimes transitioning into guided rhythmic breath',
+    key: "pranayama",
+    title: "Pranayama First",
+    description:
+      "Three gentle brass chimes transitioning into guided rhythmic breath",
     Icon: Wind,
     iconColor: C.greenDark,
-    tone: 'Pranayama First',
+    tone: "Pranayama First",
   },
 ];
 
 const weekSeed = [
-  { id: 'mon', label: 'M', selected: true },
-  { id: 'tue', label: 'T', selected: true },
-  { id: 'wed', label: 'W', selected: true },
-  { id: 'thu', label: 'T', selected: true },
-  { id: 'fri', label: 'F', selected: true },
-  { id: 'sat', label: 'S', selected: true },
-  { id: 'sun', label: 'S', selected: false },
+  { id: "mon", label: "M", selected: true },
+  { id: "tue", label: "T", selected: true },
+  { id: "wed", label: "W", selected: true },
+  { id: "thu", label: "T", selected: true },
+  { id: "fri", label: "F", selected: true },
+  { id: "sat", label: "S", selected: true },
+  { id: "sun", label: "S", selected: false },
 ];
 
 function parseAlarm(value: string) {
-  const [h = '06', m = '30'] = value.split(':');
+  const [h = "06", m = "30"] = value.split(":");
   const hour24 = Number(h);
   return {
     hour: hour24 > 12 ? hour24 - 12 : hour24 === 0 ? 12 : hour24,
     minute: Number(m),
-    meridiem: hour24 >= 12 ? 'PM' : 'AM',
+    meridiem: hour24 >= 12 ? "PM" : "AM",
   };
 }
 
-function toStoreTime(hour: number, minute: number, meridiem: 'AM' | 'PM') {
+function toStoreTime(hour: number, minute: number, meridiem: "AM" | "PM") {
   let h = hour % 12;
-  if (meridiem === 'PM') {
+  if (meridiem === "PM") {
     h += 12;
   }
-  return `${String(h).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  return `${String(h).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
 export default function Setup() {
@@ -100,12 +102,12 @@ export default function Setup() {
   const parsed = useMemo(() => parseAlarm(alarmTime), [alarmTime]);
   const [hour, setHour] = useState(parsed.hour);
   const [minute, setMinute] = useState(parsed.minute);
-  const [meridiem, setMeridiem] = useState<'AM' | 'PM'>(
-    parsed.meridiem as 'AM' | 'PM',
+  const [meridiem, setMeridiem] = useState<"AM" | "PM">(
+    parsed.meridiem as "AM" | "PM",
   );
   const [days, setDays] = useState(weekSeed);
   const [mode, setMode] = useState<ModeKey>(
-    modes.find((item) => item.tone === alarmTone)?.key ?? 'gita',
+    modes.find((item) => item.tone === alarmTone)?.key ?? "gita",
   );
   const [previewing, setPreviewing] = useState(false);
   const [gradual, setGradual] = useState(true);
@@ -122,7 +124,14 @@ export default function Setup() {
   };
 
   const updateHour = (direction: 1 | -1) => {
-    const next = direction === 1 ? (hour === 12 ? 1 : hour + 1) : hour === 1 ? 12 : hour - 1;
+    const next =
+      direction === 1
+        ? hour === 12
+          ? 1
+          : hour + 1
+        : hour === 1
+          ? 12
+          : hour - 1;
     setHour(next);
     commitTime(next, minute, meridiem);
   };
@@ -133,7 +142,7 @@ export default function Setup() {
     commitTime(hour, next, meridiem);
   };
 
-  const updateMeridiem = (next: 'AM' | 'PM') => {
+  const updateMeridiem = (next: "AM" | "PM") => {
     setMeridiem(next);
     commitTime(hour, minute, next);
   };
@@ -141,15 +150,15 @@ export default function Setup() {
   const save = () => {
     setAlarmTone(selectedMode.tone);
     setAlarmTime(toStoreTime(hour, minute, meridiem));
-    router.replace('/alarm/wake');
+    router.replace("/alarm/wake");
   };
 
   const selectedDays = days.filter((day) => day.selected);
   const recurrenceLabel =
     selectedDays.length === 6 && !days[6].selected
-      ? 'Mon - Sat'
+      ? "Mon - Sat"
       : selectedDays.length === 7
-        ? 'Every day'
+        ? "Every day"
         : `${selectedDays.length} days`;
 
   return (
@@ -163,7 +172,9 @@ export default function Setup() {
           >
             <ArrowLeft size={27} color={C.ink} strokeWidth={2.2} />
           </Pressable>
-          <Image source={MORNING_RITUAL_LOGO} style={s.logo} />
+          <View style={s.logoContainer}>
+            <Image source={MORNING_RITUAL_LOGO} style={s.logo} />
+          </View>
           <TextR style={s.headerTitle}>Set Alarm</TextR>
         </View>
         <View style={s.avatar}>
@@ -178,14 +189,17 @@ export default function Setup() {
           </View>
           <TextR style={s.mainTitle}>Sacred Timing</TextR>
         </View>
-        <Pressable onPress={save} style={({ pressed }) => [s.saveChip, pressed && s.pressed]}>
+        <Pressable
+          onPress={save}
+          style={({ pressed }) => [s.saveChip, pressed && s.pressed]}
+        >
           <TextR style={s.saveText}>Save</TextR>
         </Pressable>
       </View>
 
       <Interactive3DCard maxTiltDeg={6} style={s.timeCard}>
-        <View style={s.glowOne} />
-        <View style={s.glowTwo} />
+        {/* <View style={s.glowOne} /> */}
+        {/* <View style={s.glowTwo} /> */}
         <View style={s.windowTitle}>
           <Sun size={18} color={C.goldDark} />
           <TextR style={s.windowText}>Brahma Muhurta Window</TextR>
@@ -193,7 +207,7 @@ export default function Setup() {
 
         <View style={s.timePicker}>
           <TimeColumn
-            value={String(hour).padStart(2, '0')}
+            value={String(hour).padStart(2, "0")}
             onIncrease={() => updateHour(1)}
             onDecrease={() => updateHour(-1)}
             label="hour"
@@ -202,21 +216,27 @@ export default function Setup() {
             :
           </TextR>
           <TimeColumn
-            value={String(minute).padStart(2, '0')}
+            value={String(minute).padStart(2, "0")}
             onIncrease={() => updateMinute(1)}
             onDecrease={() => updateMinute(-1)}
             label="minute"
           />
           <View style={s.meridiemTrack}>
-            {(['AM', 'PM'] as const).map((value) => {
+            {(["AM", "PM"] as const).map((value) => {
               const active = meridiem === value;
               return (
                 <Pressable
                   key={value}
                   onPress={() => updateMeridiem(value)}
-                  style={[s.meridiemButton, active && s.meridiemActive]}
+                  style={({ pressed }) => [
+                    s.meridiemButton,
+                    active && s.meridiemActive,
+                    pressed && s.pressed,
+                  ]}
                 >
-                  <TextR style={[s.meridiemText, active && s.meridiemActiveText]}>
+                  <TextR
+                    style={[s.meridiemText, active && s.meridiemActiveText]}
+                  >
                     {value}
                   </TextR>
                 </Pressable>
@@ -244,7 +264,9 @@ export default function Setup() {
             onPress={() =>
               setDays((items) =>
                 items.map((item) =>
-                  item.id === day.id ? { ...item, selected: !item.selected } : item,
+                  item.id === day.id
+                    ? { ...item, selected: !item.selected }
+                    : item,
                 ),
               )
             }
@@ -337,7 +359,10 @@ export default function Setup() {
         />
       </View>
 
-      <Pressable onPress={save} style={({ pressed }) => [s.primaryButton, pressed && s.primaryPressed]}>
+      <Pressable
+        onPress={save}
+        style={({ pressed }) => [s.primaryButton, pressed && s.primaryPressed]}
+      >
         <Sun size={23} color={C.white} />
         <TextR style={s.primaryText}>Save Alarm & Morning Ritual</TextR>
       </Pressable>
@@ -361,10 +386,10 @@ function TimeColumn({
       <Pressable
         accessibilityLabel={`Increase ${label}`}
         onPress={onIncrease}
-        hitSlop={10}
-        style={s.chevronButton}
+        hitSlop={{ top: 12, bottom: 12, left: 14, right: 14 }}
+        style={({ pressed }) => [s.chevronButton, pressed && s.chevronPressed]}
       >
-        <ChevronUp size={22} color="#DABBAA" strokeWidth={2.2} />
+        <ChevronUp size={24} color={C.primary} strokeWidth={2.5} />
       </Pressable>
       <TextR serif style={s.timeNumber}>
         {value}
@@ -372,10 +397,10 @@ function TimeColumn({
       <Pressable
         accessibilityLabel={`Decrease ${label}`}
         onPress={onDecrease}
-        hitSlop={10}
-        style={s.chevronButton}
+        hitSlop={{ top: 12, bottom: 12, left: 14, right: 14 }}
+        style={({ pressed }) => [s.chevronButton, pressed && s.chevronPressed]}
       >
-        <ChevronDown size={22} color="#DABBAA" strokeWidth={2.2} />
+        <ChevronDown size={24} color={C.primary} strokeWidth={2.5} />
       </Pressable>
     </View>
   );
@@ -405,7 +430,7 @@ function ModeCard({
         <Icon
           size={25}
           color={active ? C.white : item.iconColor}
-          fill={active && item.key === 'gita' ? C.white : 'transparent'}
+          fill={active && item.key === "gita" ? C.white : "transparent"}
         />
       </View>
       <View style={s.modeBody}>
@@ -499,13 +524,13 @@ const s = StyleSheet.create({
     height: 64,
     marginHorizontal: -4,
     marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flexShrink: 1,
   },
   backButton: {
@@ -513,28 +538,49 @@ const s = StyleSheet.create({
     width: 44,
     marginLeft: -8,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoContainer: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    shadowColor: C.saffron,
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   logo: {
-    width: 38,
-    height: 38,
-    marginLeft: 2,
-    resizeMode: 'contain',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    resizeMode: "cover",
+  },
+  chevronPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.88 }],
   },
   headerTitle: {
     marginLeft: 14,
     fontSize: 26,
     lineHeight: 31,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: -0.8,
   },
   avatar: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: C.primary,
     shadowColor: C.primary,
     shadowOpacity: 0.18,
@@ -548,27 +594,27 @@ const s = StyleSheet.create({
   sectionTop: {
     marginTop: 3,
     marginBottom: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   sectionTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   sectionIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
     marginRight: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: C.sand,
   },
   mainTitle: {
     fontSize: 28,
     lineHeight: 34,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: -0.7,
   },
   saveChip: {
@@ -576,13 +622,13 @@ const s = StyleSheet.create({
     height: 38,
     paddingHorizontal: 18,
     borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFD8CA',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFD8CA",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(180, 80, 30, 0.3)',
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(180, 80, 30, 0.3)",
     borderBottomWidth: 2,
     shadowColor: C.saffron,
     shadowOpacity: 0.15,
@@ -592,7 +638,7 @@ const s = StyleSheet.create({
   saveText: {
     color: C.ink,
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 0.3,
   },
   timeCard: {
@@ -602,35 +648,35 @@ const s = StyleSheet.create({
     paddingHorizontal: 25,
     paddingTop: 30,
     paddingBottom: 28,
-    alignItems: 'center',
-    overflow: 'hidden',
-    backgroundColor: '#FFF0E7',
-    shadowColor: '#B86D3A',
+    alignItems: "center",
+    overflow: "hidden",
+    backgroundColor: "#B86D3A",
+    shadowColor: "#B86D3A",
     shadowOpacity: 0.12,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 10 },
   },
   glowOne: {
-    position: 'absolute',
+    position: "absolute",
     top: -72,
     right: -54,
     width: 185,
     height: 185,
     borderRadius: 95,
-    backgroundColor: 'rgba(229,107,39,0.08)',
+    backgroundColor: "rgba(229,107,39,0.08)",
   },
   glowTwo: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -78,
     left: -56,
     width: 185,
     height: 185,
     borderRadius: 95,
-    backgroundColor: 'rgba(244,185,66,0.16)',
+    backgroundColor: "rgba(244,185,66,0.16)",
   },
   windowTitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     marginBottom: 22,
   },
@@ -638,27 +684,27 @@ const s = StyleSheet.create({
     fontSize: 16,
     lineHeight: 23,
     color: C.inkSoft,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   timePicker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
   timeColumn: {
     width: 86,
-    alignItems: 'center',
+    alignItems: "center",
   },
   chevronButton: {
     height: 34,
     width: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   timeNumber: {
     fontSize: 57,
     lineHeight: 66,
-    fontWeight: '300',
+    fontWeight: "300",
     letterSpacing: -2.2,
   },
   colon: {
@@ -666,29 +712,29 @@ const s = StyleSheet.create({
     paddingBottom: 6,
     fontSize: 54,
     lineHeight: 62,
-    color: 'rgba(168,71,12,0.67)',
-    fontWeight: '300',
+    color: "rgba(168,71,12,0.67)",
+    fontWeight: "300",
   },
   meridiemTrack: {
     marginLeft: 10,
     padding: 5,
     borderRadius: 24,
-    backgroundColor: 'rgba(255,248,245,0.72)',
+    backgroundColor: "rgba(255,248,245,0.72)",
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    borderColor: "rgba(255, 255, 255, 0.8)",
   },
   meridiemButton: {
     minWidth: 43,
     height: 34,
     borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   meridiemActive: {
     backgroundColor: C.primary,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
-    borderTopColor: '#FFFFFF',
+    borderColor: "rgba(255, 255, 255, 0.6)",
+    borderTopColor: "#FFFFFF",
     shadowColor: C.primary,
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -696,7 +742,7 @@ const s = StyleSheet.create({
   },
   meridiemText: {
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: "900",
     letterSpacing: 0.6,
     color: C.muted,
   },
@@ -708,13 +754,13 @@ const s = StyleSheet.create({
     minHeight: 39,
     paddingHorizontal: 16,
     borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
-    backgroundColor: 'rgba(248,229,214,0.95)',
+    backgroundColor: "rgba(248,229,214,0.95)",
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    shadowColor: '#8C4010',
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    shadowColor: "#8C4010",
     shadowOpacity: 0.05,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
@@ -725,53 +771,53 @@ const s = StyleSheet.create({
   },
   sunriseStrong: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
     color: C.ink,
   },
   recurrenceHeader: {
     marginBottom: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   label: {
     fontSize: 19,
     lineHeight: 24,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: -0.2,
   },
   recurrenceValue: {
     color: C.primary,
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   weekRow: {
     marginBottom: 26,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   dayChip: {
     width: 49,
     height: 49,
     borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FCEADD',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FCEADD",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(180, 120, 80, 0.25)',
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(180, 120, 80, 0.25)",
     borderBottomWidth: 2,
-    shadowColor: '#8C4010',
+    shadowColor: "#8C4010",
     shadowOpacity: 0.08,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
   },
   daySelected: {
     backgroundColor: C.primary,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(140, 45, 5, 0.45)',
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(140, 45, 5, 0.45)",
     borderBottomWidth: 3,
     shadowColor: C.primary,
     shadowOpacity: 0.28,
@@ -784,16 +830,16 @@ const s = StyleSheet.create({
   dayText: {
     color: C.inkSoft,
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: "900",
   },
   dayTextSelected: {
     color: C.white,
   },
   modeHeader: {
     marginBottom: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   caption: {
     marginTop: 3,
@@ -809,26 +855,26 @@ const s = StyleSheet.create({
     minHeight: 108,
     borderRadius: 30,
     padding: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopColor: '#FFFFFF',
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderTopColor: "#FFFFFF",
   },
   modeCardActive: {
-    backgroundColor: '#FDE4D5',
-    borderBottomColor: 'rgba(195, 100, 45, 0.35)',
+    backgroundColor: "#FDE4D5",
+    borderBottomColor: "rgba(195, 100, 45, 0.35)",
     borderBottomWidth: 3,
-    shadowColor: '#C97544',
+    shadowColor: "#C97544",
     shadowOpacity: 0.16,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
   },
   modeCardRest: {
-    backgroundColor: '#FFF0E8',
-    borderBottomColor: 'rgba(215, 170, 140, 0.25)',
+    backgroundColor: "#FFF0E8",
+    borderBottomColor: "rgba(215, 170, 140, 0.25)",
     borderBottomWidth: 2,
-    shadowColor: '#8C4010',
+    shadowColor: "#8C4010",
     shadowOpacity: 0.05,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
@@ -837,16 +883,16 @@ const s = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 16,
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderColor: "rgba(255, 255, 255, 0.9)",
   },
   modeIconActive: {
     backgroundColor: C.saffron,
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(120, 35, 0, 0.4)',
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(120, 35, 0, 0.4)",
     borderBottomWidth: 2,
     shadowColor: C.saffron,
     shadowOpacity: 0.3,
@@ -854,35 +900,35 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 5 },
   },
   modeIconRest: {
-    backgroundColor: '#F8DFCA',
+    backgroundColor: "#F8DFCA",
   },
   modeBody: {
     flex: 1,
     paddingRight: 8,
   },
   modeTitleLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
     gap: 8,
   },
   modeTitle: {
     fontSize: 18,
     lineHeight: 23,
-    fontWeight: '900',
+    fontWeight: "900",
     letterSpacing: 0.1,
   },
   activePill: {
     paddingHorizontal: 11,
     height: 25,
     borderRadius: 13,
-    justifyContent: 'center',
-    backgroundColor: '#FFD8CA',
+    justifyContent: "center",
+    backgroundColor: "#FFD8CA",
   },
   activePillText: {
     color: C.ink,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: "900",
     letterSpacing: 1.4,
   },
   modeDescription: {
@@ -893,35 +939,35 @@ const s = StyleSheet.create({
   },
   activeAudioRow: {
     marginTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   activeAudioText: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
     color: C.saffron,
   },
   radio: {
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#FBE6D8',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#FBE6D8",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    borderColor: "rgba(255, 255, 255, 0.8)",
   },
   radioDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#D6BAAA',
+    backgroundColor: "#D6BAAA",
   },
   radioActive: {
     backgroundColor: C.primary,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopColor: '#FFFFFF',
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderTopColor: "#FFFFFF",
     shadowColor: C.primary,
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -931,26 +977,26 @@ const s = StyleSheet.create({
     borderRadius: 30,
     padding: 18,
     marginBottom: 26,
-    backgroundColor: '#FFF0E8',
+    backgroundColor: "#FFF0E8",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(215, 170, 140, 0.25)',
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(215, 170, 140, 0.25)",
     borderBottomWidth: 2,
-    shadowColor: '#8C4010',
+    shadowColor: "#8C4010",
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
   },
   soundRow: {
     paddingBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   soundLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   musicIcon: {
@@ -958,11 +1004,11 @@ const s = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     marginRight: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(244,185,66,0.45)',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(244,185,66,0.45)",
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderColor: "rgba(255, 255, 255, 0.9)",
     shadowColor: C.goldDark,
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -972,52 +1018,52 @@ const s = StyleSheet.create({
     flex: 1,
   },
   caps: {
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     color: C.muted,
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: "900",
     letterSpacing: 1.8,
   },
   soundTitle: {
     marginTop: 3,
     fontSize: 17,
     lineHeight: 22,
-    fontWeight: '900',
+    fontWeight: "900",
   },
   previewButton: {
     width: 43,
     height: 43,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FBE6D8',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FBE6D8",
     borderWidth: 1.2,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopColor: '#FFFFFF',
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderTopColor: "#FFFFFF",
     shadowColor: C.saffron,
     shadowOpacity: 0.1,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
   },
   previewActive: {
-    backgroundColor: '#FFD8CA',
+    backgroundColor: "#FFD8CA",
   },
   toggleRow: {
     minHeight: 70,
     paddingVertical: 11,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   toggleCopy: {
     flex: 1,
     paddingRight: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   inlineIcon: {
     width: 28,
-    alignItems: 'center',
+    alignItems: "center",
     marginRight: 9,
   },
   toggleText: {
@@ -1026,7 +1072,7 @@ const s = StyleSheet.create({
   toggleTitle: {
     fontSize: 18,
     lineHeight: 23,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   toggleDescription: {
     marginTop: 2,
@@ -1039,20 +1085,20 @@ const s = StyleSheet.create({
     height: 32,
     borderRadius: 18,
     padding: 4,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   switchOn: {
     backgroundColor: C.saffron,
   },
   switchOff: {
-    backgroundColor: '#E9D7C8',
+    backgroundColor: "#E9D7C8",
   },
   switchKnob: {
     width: 24,
     height: 24,
     borderRadius: 12,
     backgroundColor: C.white,
-    shadowColor: '#32170A',
+    shadowColor: "#32170A",
     shadowOpacity: 0.14,
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 2 },
@@ -1061,7 +1107,7 @@ const s = StyleSheet.create({
     transform: [{ translateX: 21 }],
   },
   companionGrid: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 14,
     marginBottom: 36,
   },
@@ -1070,15 +1116,15 @@ const s = StyleSheet.create({
     minHeight: 148,
     borderRadius: 30,
     padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FCE5D6',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FCE5D6",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(200, 140, 100, 0.3)',
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(200, 140, 100, 0.3)",
     borderBottomWidth: 2.5,
-    shadowColor: '#8C4010',
+    shadowColor: "#8C4010",
     shadowOpacity: 0.08,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 5 },
@@ -1090,38 +1136,38 @@ const s = StyleSheet.create({
     marginRight: 11,
     backgroundColor: C.sand,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
+    borderColor: "rgba(255, 255, 255, 0.8)",
   },
   companionCopy: {
     flex: 1,
   },
   companionLabel: {
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     fontSize: 11,
     lineHeight: 15,
-    fontWeight: '900',
+    fontWeight: "900",
     letterSpacing: 0.8,
   },
   companionTitle: {
     marginTop: 5,
     fontSize: 16,
     lineHeight: 23,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   primaryButton: {
     minHeight: 63,
     borderRadius: 32,
     marginBottom: 6,
     paddingHorizontal: 22,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 10,
     backgroundColor: C.saffron,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(160, 50, 10, 0.4)',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(160, 50, 10, 0.4)",
     borderBottomWidth: 3,
     shadowColor: C.saffron,
     shadowOpacity: 0.32,
@@ -1136,7 +1182,7 @@ const s = StyleSheet.create({
   primaryText: {
     color: C.white,
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: "900",
     letterSpacing: 0.1,
   },
 });
