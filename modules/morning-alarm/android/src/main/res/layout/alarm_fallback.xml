@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Native twin of src/app/alarm/wake.tsx, visible until React is ready. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/alarm_fallback"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:paddingLeft="24dp"
+    android:paddingTop="20dp"
+    android:paddingRight="24dp"
+    android:paddingBottom="14dp"
+    android:background="#FFF7EF">
+
+  <TextView
+      android:id="@+id/alarm_pill"
+      android:layout_width="wrap_content"
+      android:layout_height="28dp"
+      android:gravity="center"
+      android:background="@drawable/alarm_pill"
+      android:paddingLeft="14dp"
+      android:paddingRight="14dp"
+      android:text="☀  BRAHMA MUHURTA · SUNRISE"
+      android:textColor="#8A5D18"
+      android:textSize="9sp"
+      android:letterSpacing="0.12"
+      android:textStyle="bold"
+      android:includeFontPadding="false" />
+
+  <LinearLayout
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="10dp"
+      android:gravity="bottom"
+      android:orientation="horizontal"
+      android:baselineAligned="true">
+    <TextView
+        android:id="@+id/alarm_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:includeFontPadding="false"
+        android:textColor="#1F140E"
+        android:textSize="52sp"
+        android:fontFamily="serif" />
+    <TextView
+        android:id="@+id/alarm_meridiem"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="8dp"
+        android:layout_marginBottom="8dp"
+        android:includeFontPadding="false"
+        android:textColor="#E56B27"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+  </LinearLayout>
+
+  <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="2dp"
+      android:includeFontPadding="false"
+      android:text="Softly illuminated · Tuesday, Kartik Shukla"
+      android:textColor="#7C675B"
+      android:textSize="11sp" />
+
+  <ImageView
+      android:id="@+id/alarm_mascot"
+      android:layout_width="220dp"
+      android:layout_height="178dp"
+      android:layout_marginTop="4dp"
+      android:contentDescription="Aru welcomes you to your morning ritual"
+      android:scaleType="centerInside" />
+
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:gravity="center_horizontal"
+      android:orientation="vertical">
+    <TextView
+        android:layout_width="24dp"
+        android:layout_height="20dp"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:text="✦"
+        android:textColor="#E56B27"
+        android:textSize="18sp" />
+    <TextView
+        android:id="@+id/alarm_quote"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:text="“Awaken with gratitude. A brand new dawn to act with dharma.”"
+        android:textAlignment="center"
+        android:textColor="#261C14"
+        android:textSize="20sp"
+        android:lineSpacingExtra="3dp"
+        android:fontFamily="serif"
+        android:textStyle="italic" />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:text="GITA CH. 2 · SACRED CONTEMPLATION"
+        android:textColor="#8C7467"
+        android:textSize="9sp"
+        android:letterSpacing="0.14"
+        android:textStyle="bold" />
+  </LinearLayout>
+
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="16dp"
+      android:orientation="vertical"
+      android:background="@drawable/alarm_card"
+      android:elevation="3dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+      <TextView
+          android:layout_width="42dp"
+          android:layout_height="42dp"
+          android:gravity="center"
+          android:background="@drawable/alarm_icon_disc"
+          android:text="≋"
+          android:textColor="#E56B27"
+          android:textSize="27sp"
+          android:textStyle="bold" />
+      <LinearLayout
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_marginLeft="12dp"
+          android:layout_weight="1"
+          android:orientation="vertical">
+        <TextView
+            android:id="@+id/alarm_tone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:includeFontPadding="false"
+            android:text="Morning ritual alarm"
+            android:textColor="#1C130D"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:includeFontPadding="false"
+            android:text="Gentle Tanpura &amp; Bansuri Flute"
+            android:textColor="#756054"
+            android:textSize="11sp" />
+      </LinearLayout>
+      <TextView
+          android:layout_width="42dp"
+          android:layout_height="42dp"
+          android:gravity="center"
+          android:background="@drawable/alarm_icon_disc_muted"
+          android:text="♬"
+          android:textColor="#2C1E16"
+          android:textSize="23sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/alarm_volume"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:text="Harmonic crescendo (0%)"
+        android:textColor="#236B43"
+        android:textSize="10sp"
+        android:letterSpacing="0.1"
+        android:textStyle="bold" />
+    <ProgressBar
+        android:id="@+id/alarm_volume_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="8dp"
+        android:layout_marginTop="9dp"
+        android:indeterminate="false"
+        android:max="100"
+        android:progress="0"
+        android:progressDrawable="@drawable/alarm_progress_track" />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="center"
+        android:includeFontPadding="false"
+        android:text="Volume rises gently over five minutes while the alarm continues"
+        android:textColor="#756054"
+        android:textSize="10sp" />
+  </LinearLayout>
+
+  <View
+      android:layout_width="1dp"
+      android:layout_height="0dp"
+      android:layout_weight="1" />
+
+  <FrameLayout
+      android:layout_width="match_parent"
+      android:layout_height="54dp"
+      android:layout_marginTop="12dp"
+      android:background="@drawable/alarm_primary_button"
+      android:elevation="4dp">
+    <Button
+        android:id="@+id/alarm_dismiss"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent"
+        android:text="☀  Hold to start my day"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFF"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+    <ProgressBar
+        android:id="@+id/alarm_dismiss_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="3dp"
+        android:layout_gravity="bottom"
+        android:indeterminate="false"
+        android:max="100"
+        android:progress="0"
+        android:progressDrawable="@drawable/alarm_hold_progress_track" />
+  </FrameLayout>
+
+  <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:gravity="center"
+      android:includeFontPadding="false"
+      android:text="Keep holding for 1.5 seconds. Releasing early resets the action."
+      android:textColor="#8C7467"
+      android:textSize="10sp" />
+
+  <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="9dp"
+      android:gravity="center"
+      android:includeFontPadding="false"
+      android:text="Your Surya Namaskar routine is prepared for 06:45 AM"
+      android:textColor="#7A6659"
+      android:textSize="10sp" />
+</LinearLayout>

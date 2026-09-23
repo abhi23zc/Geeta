@@ -1,0 +1,15 @@
+<resources>
+  <!-- ReactActivity is AppCompat based. Using a platform theme here makes it crash
+       before React can render on some devices. -->
+  <style name="MorningAlarmTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <item name="android:fontFamily">sans</item>
+    <item name="android:windowLightStatusBar">false</item>
+    <item name="android:statusBarColor">@android:color/transparent</item>
+    <item name="android:navigationBarColor">@android:color/transparent</item>
+    <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    <item name="android:windowActionModeOverlay">true</item>
+    <item name="android:windowNoTitle">true</item>
+    <item name="android:windowDisablePreview">true</item>
+    <item name="android:windowIsTranslucent">false</item>
+  </style>
+</resources>

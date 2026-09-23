@@ -1,735 +1,211 @@
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { router } from "expo-router";
-import {
-  Activity,
-  BookOpen,
-  Bookmark,
-  CheckCircle2,
-  Leaf,
-  Pause,
-  Play,
-  Share2,
-  Sparkles,
-} from "lucide-react-native";
+import { Activity, BookOpen, Bookmark, Check, Flame, Leaf, Pause, Play, Share2, Sparkles } from "lucide-react-native";
 import { useState } from "react";
-import { Image, Pressable, Share, StyleSheet, View } from "react-native";
+import { Alert, Pressable, Share, StyleSheet, TextInput, View } from "react-native";
 
 import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
 import { AruMascot } from "@/components/aru-mascot";
 import { MindsetCelebrationModal } from "@/components/mindset-celebration-modal";
-import { ModeType } from "@/components/mode-segmented-control";
 import { MovingChakra } from "@/components/moving-chakra";
 import { Header, Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
+import { getDailyGitaVerse } from "@/data/gita-verses";
+import { useLocalDateKey } from "@/hooks/use-local-date-key";
+import { useGitaProgress } from "@/state/gita-store";
 
-const SUTRA_IMAGE_URL =
-  "https://images.unsplash.com/photo-1545205597-3d9d02c29597?q=80&w=800&auto=format&fit=crop";
+type Mode = "read" | "listen" | "breathe";
+
+function formatTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const whole = Math.floor(seconds);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
+}
 
 export default function Gita() {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [activeMode, setActiveMode] = useState<ModeType>("listen");
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const [isCelebrationVisible, setIsCelebrationVisible] = useState(false);
+  const { ready } = useGitaProgress();
+  const today = useLocalDateKey();
+  if (!ready) {
+    return (
+      <Screen>
+        <Header eyebrow="GITA" />
+        <View style={s.loading}>
+          <MovingChakra size={28} color={C.saffron} />
+          <TextR style={s.loadingText}>Preparing today’s contemplation…</TextR>
+        </View>
+      </Screen>
+    );
+  }
+  return <GitaContent key={today} today={today} />;
+}
+
+function GitaContent({ today }: { today: string }) {
+  const [year, month, day] = today.split("-").map(Number);
+  const verse = getDailyGitaVerse(new Date(year, month - 1, day));
+  const progressState = useGitaProgress();
+  const savedReflection = progressState.getReflection(today);
+  const [reflection, setReflection] = useState(savedReflection?.text ?? "");
+  const [activeMode, setActiveMode] = useState<Mode>("read");
+  const [showCelebration, setShowCelebration] = useState(false);
+  const player = useAudioPlayer(verse.audioSource, { updateInterval: 250 });
+  const status = useAudioPlayerStatus(player);
+  const hasAudio = Boolean(verse.audioSource);
+  const isPlaying = hasAudio && status.playing;
+  const playbackProgress = status.duration > 0 ? status.currentTime / status.duration : 0;
+  const isCompleted = progressState.completedDates.has(today);
+  const breathingComplete = progressState.breathingCompletedDates.has(today);
 
   const handleShare = async () => {
-    try {
-      await Share.share({
-        title: "Today’s Gita - Chapter 2 · Shloka 47",
-        message:
-          "कर्मण्येवाधिकारस्ते मा फलेषु कदाचन — Focus on your actions today. You have a duty to perform your work, but you are not entitled to the fruits of action.",
-      });
-    } catch (e) {
-      // Ignore
+    await Share.share({
+      title: `Today’s Gita · ${verse.chapter}.${verse.verse}`,
+      message: `${verse.sanskrit}\n\n${verse.meaning}\n\nToday’s practice: ${verse.takeaway}`,
+    }).catch(() => undefined);
+  };
+
+  const togglePlayback = () => {
+    setActiveMode("listen");
+    if (!hasAudio) return;
+    if (status.playing) player.pause();
+    else {
+      if (status.didJustFinish) player.seekTo(0).catch(() => undefined);
+      player.play();
     }
   };
 
-  return (
-    <Screen>
-      <Header eyebrow="GITA" />
+  const finishReflection = () => {
+    if (!progressState.completeReflection(today, verse.id, reflection)) {
+      Alert.alert("Write one thought", "A short sentence is enough to complete today’s reflection.");
+      return;
+    }
+    setShowCelebration(true);
+  };
 
-      {/* Sacred Pre-Dawn Sub-Header & Chapter Indicator */}
+  return (
+    <Screen contentContainerStyle={s.screenContent}>
+      <Header eyebrow="GITA" />
       <View style={s.topHeaderSection}>
         <View style={s.chapterBadge}>
-          <MovingChakra size={18} color={C.saffron} />
-          <TextR style={s.chapterText}>CHAPTER 2 · SHLOKA 47</TextR>
+          <MovingChakra size={17} color={C.saffron} />
+          <TextR style={s.chapterText}>CHAPTER {verse.chapter} · SHLOKA {verse.verse}</TextR>
         </View>
-        <TextR style={s.topSubtitle}>
-          Morning contemplation on selfless, centered dedication
-        </TextR>
-      </View>
-
-      {/* Spacious 3D Action Trio Control Cards (Read, Listen, Breathe) */}
-      <View style={s.actionTrioRow}>
-        {/* Deep Read Tile */}
-        <Pressable
-          onPress={() => setActiveMode("read")}
-          style={({ pressed }) => [
-            s.actionTile,
-            activeMode === "read" ? s.actionTileActive : s.actionTileInactive,
-            pressed && { opacity: 0.9 },
-          ]}
-        >
-          <View
-            style={[
-              s.actionIconCircle,
-              activeMode === "read"
-                ? s.actionIconCircleActive
-                : s.actionIconCircleInactive,
-            ]}
-          >
-            <BookOpen
-              size={24}
-              color={activeMode === "read" ? C.white : C.ink}
-            />
-          </View>
-          <TextR
-            style={[s.actionTitle, activeMode === "read" && s.actionTextActive]}
-          >
-            Deep Read
-          </TextR>
-          <TextR
-            style={[s.actionSub, activeMode === "read" && s.actionSubActive]}
-          >
-            Word-by-word
-          </TextR>
-        </Pressable>
-
-        {/* Listen Recitation Tile */}
-        <Pressable
-          onPress={() => {
-            setActiveMode("listen");
-            setIsPlaying(!isPlaying);
-          }}
-          style={({ pressed }) => [
-            s.actionTile,
-            activeMode === "listen" ? s.actionTileActive : s.actionTileInactive,
-            pressed && { opacity: 0.9 },
-          ]}
-        >
-          <View
-            style={[
-              s.actionIconCircle,
-              activeMode === "listen"
-                ? s.actionIconCircleActive
-                : s.actionIconCircleInactive,
-            ]}
-          >
-            <Activity
-              size={24}
-              color={activeMode === "listen" ? C.white : C.primary}
-            />
-          </View>
-          <TextR
-            style={[
-              s.actionTitle,
-              activeMode === "listen" && s.actionTextActive,
-            ]}
-          >
-            Recitation
-          </TextR>
-          <TextR
-            style={[s.actionSub, activeMode === "listen" && s.actionSubActive]}
-          >
-            1:24 min flute
-          </TextR>
-        </Pressable>
-
-        {/* Calm Pranayama Tile */}
-        <Pressable
-          onPress={() => {
-            setActiveMode("breathe");
-            router.push("/breathe");
-          }}
-          style={({ pressed }) => [
-            s.actionTile,
-            activeMode === "breathe"
-              ? s.actionTileActive
-              : s.actionTileInactive,
-            pressed && { opacity: 0.9 },
-          ]}
-        >
-          <View
-            style={[
-              s.actionIconCircle,
-              activeMode === "breathe"
-                ? s.actionIconCircleActive
-                : s.actionIconCircleInactive,
-            ]}
-          >
-            <Leaf
-              size={24}
-              color={activeMode === "breathe" ? C.white : C.greenDark}
-            />
-          </View>
-          <TextR
-            style={[
-              s.actionTitle,
-              activeMode === "breathe" && s.actionTextActive,
-            ]}
-          >
-            Breathe
-          </TextR>
-          <TextR
-            style={[s.actionSub, activeMode === "breathe" && s.actionSubActive]}
-          >
-            3 min calm
-          </TextR>
-        </Pressable>
-      </View>
-
-      {/* Sacred Shloka Focus Card — static parchment glass, no gesture animation */}
-      <View style={[s.shlokaCard, { marginBottom: 22, alignItems: "center" }]}>
-        {/* Aru reading the open book — guru opening scripture before recitation */}
-        <View style={s.aruReaderWrap}>
-          <AruMascot
-            clip="gita_reading"
-            size={180}
-            loop
-            muted
-            glow="day"
-            interactive={false}
-          />
-        </View>
-
-        {/* Sanskrit Original with Dynamic Karaokē Word Highlighting */}
-        <TextR serif style={s.devanagariText}>
-          {isPlaying ? (
-            <>
-              <TextR
-                serif
-                style={{
-                  color: C.saffron,
-                  fontWeight: "800",
-                  textShadowColor: "rgba(229, 107, 39, 0.4)",
-                  textShadowRadius: 8,
-                }}
-              >
-                कर्मण्येवाधिकारस्ते{" "}
-              </TextR>
-              <TextR serif style={{ color: C.goldDark, fontWeight: "700" }}>
-                मा फलेषु{" "}
-              </TextR>
-              <TextR serif style={{ color: "#231A11" }}>
-                कदाचन।{"\n"}
-              </TextR>
-              <TextR serif style={{ color: "#231A11" }}>
-                मा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥
-              </TextR>
-            </>
-          ) : (
-            `कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।\nमा कर्मफलहेतुर्भूर्मा ते सङ्गोऽस्त्वकर्मणि॥`
-          )}
-        </TextR>
-
-        {/* Transliteration */}
-        <TextR serif style={s.transliterationText}>
-          “karmaṇy-evādhikāras te mā phaleṣu kadācana |{"\n"}
-          mā karma-phala-hetur bhūr mā te saṅgo ’stvakarmaṇi ||”
-        </TextR>
-
-        {/* Subtle Golden Line Divider */}
-        <View style={s.goldenDivider} />
-
-        {/* Core Essence (Meaning) */}
-        <View style={s.meaningBox}>
-          <View style={s.meaningKickerRow}>
-            <View style={s.meaningDot} />
-            <TextR style={s.meaningKicker}>DAILY MEANING</TextR>
-          </View>
-          <TextR style={s.meaningBody}>
-            Focus on your actions today. You have a duty to perform your work,
-            but you are not entitled to the fruits of action. Never consider
-            yourself the cause of results, nor be attached to inaction.
-          </TextR>
-        </View>
-
-        {/* Key Daily Takeaway 3D Beveled Pill Button */}
-        <View style={s.mindsetContainer}>
-          <Pressable
-            onPress={() => setIsCelebrationVisible(true)}
-            style={({ pressed }) => [
-              { width: "100%" },
-              pressed && { opacity: 0.9 },
-            ]}
-          >
-            <View style={s.mindsetChip}>
-              <CheckCircle2 size={19} color={C.white} fill="#1B5E20" />
-              <TextR style={s.mindsetText}>
-                Mindset: Detached Excellence & Inner Peace
-              </TextR>
-            </View>
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Interactive Audio Recitation Player Pod with Spectrum Visualizer */}
-      <View style={s.audioPlayerPod}>
-        <View style={s.audioHeaderRow}>
-          <View style={s.audioLeftGroup}>
-            <Pressable
-              onPress={() => setIsPlaying(!isPlaying)}
-              style={s.playPauseBtn}
-            >
-              {isPlaying ? (
-                <Pause size={22} color={C.white} fill={C.white} />
-              ) : (
-                <Play size={22} color={C.white} fill={C.white} />
-              )}
-            </Pressable>
-            <View>
-              <TextR style={s.audioTitle}>Ch. 2 · Shloka 47 Dhwani</TextR>
-              <TextR style={s.audioSub}>Bansuri & Vedic Chant</TextR>
-            </View>
-          </View>
-          <View style={{ alignItems: "flex-end", gap: 4 }}>
-            <AudioSpectrumVisualizer
-              isPlaying={isPlaying}
-              barCount={12}
-              height={20}
-            />
-            <TextR style={s.audioTimer}>
-              {isPlaying ? "0:32 / 1:24" : "0:00 / 1:24"}
+        <TextR style={s.topSubtitle}>{verse.theme}</TextR>
+        <View style={s.progressRow}>
+          <View style={[s.progressChip, isCompleted && s.progressChipDone]}>
+            {isCompleted ? <Check size={13} color={C.white} strokeWidth={3} /> : <Sparkles size={13} color={C.goldDark} />}
+            <TextR style={[s.progressChipText, isCompleted && s.progressChipTextDone]}>
+              {isCompleted ? "Today complete" : "Daily reflection"}
             </TextR>
           </View>
-        </View>
-
-        {/* Audio Scrubber Bar */}
-        <View style={s.audioScrubberTrack}>
-          <View
-            style={[s.audioScrubberFill, { width: isPlaying ? "38%" : "14%" }]}
-          />
+          <View style={s.streakChip}>
+            <Flame size={13} color={C.saffron} fill={C.saffron} />
+            <TextR style={s.streakText}>{progressState.streak} day streak</TextR>
+          </View>
         </View>
       </View>
 
-      {/* Reflection & Brass Utilities Strip */}
-      <View style={s.reflectionStrip}>
-        <View style={s.reflectionTitleGroup}>
-          <Sparkles size={19} color={C.goldDark} />
-          <TextR style={s.reflectionTitle}>Today’s Sandhya Vimarsh</TextR>
-        </View>
+      <View style={s.actionTrioRow}>
+        <ModeTile title="Deep Read" subtitle="Word by word" active={activeMode === "read"}
+          icon={<BookOpen size={23} color={activeMode === "read" ? C.white : C.ink} />}
+          onPress={() => { setActiveMode("read"); router.push({ pathname: "/gita/deep-read", params: { id: verse.id } }); }} />
+        <ModeTile title="Recitation" subtitle={hasAudio ? (isPlaying ? "Playing" : "Listen") : "Awaiting audio"}
+          active={activeMode === "listen"} icon={<Activity size={23} color={activeMode === "listen" ? C.white : C.primary} />}
+          onPress={togglePlayback} />
+        <ModeTile title="Breathe" subtitle={breathingComplete ? "Complete" : "3 min calm"}
+          active={activeMode === "breathe"} icon={<Leaf size={23} color={activeMode === "breathe" ? C.white : C.greenDark} />}
+          onPress={() => { setActiveMode("breathe"); router.push({ pathname: "/breathe", params: { returnTo: "gita" } }); }} />
+      </View>
 
-        <View style={s.brassActionsGroup}>
-          <Pressable onPress={handleShare} style={s.brassBtn}>
-            <Share2 size={19} color="#271900" />
+      <View style={s.shlokaCard}>
+        <AruMascot clip="gita_reading" size={172} loop muted glow="day" interactive={false} />
+        <TextR serif style={s.devanagariText}>{verse.sanskrit}</TextR>
+        <TextR serif style={s.transliterationText}>“{verse.transliteration}”</TextR>
+        <View style={s.goldenDivider} />
+        <View style={s.meaningBox}>
+          <View style={s.kickerRow}><View style={s.meaningDot} /><TextR style={s.kicker}>DAILY MEANING</TextR></View>
+          <TextR style={s.meaningBody}>{verse.meaning}</TextR>
+        </View>
+        <View style={s.takeawayChip}><Sparkles size={17} color="#FFF6DF" /><TextR style={s.takeawayText}>{verse.takeaway}</TextR></View>
+      </View>
+
+      <View style={s.audioCard}>
+        <View style={s.audioHeader}>
+          <Pressable accessibilityRole="button" accessibilityLabel={isPlaying ? "Pause recitation" : "Play recitation"}
+            disabled={!hasAudio} onPress={togglePlayback}
+            style={({ pressed }) => [s.playButton, !hasAudio && s.playButtonDisabled, pressed && hasAudio && s.pressed]}>
+            {isPlaying ? <Pause size={21} color={C.white} fill={C.white} /> : <Play size={21} color={C.white} fill={C.white} />}
           </Pressable>
-          <Pressable
-            onPress={() => setIsBookmarked(!isBookmarked)}
-            style={s.brassBtn}
-          >
-            <Bookmark
-              size={19}
-              color="#271900"
-              fill={isBookmarked ? "#271900" : "transparent"}
-            />
+          <View style={s.audioCopy}>
+            <TextR style={s.audioTitle}>Sacred recitation</TextR>
+            <TextR style={s.audioSub}>{hasAudio ? (status.isBuffering ? "Preparing audio…" : `Chapter ${verse.chapter} · Shloka ${verse.verse}`) : "Reviewed recording will be added before release"}</TextR>
+          </View>
+          {hasAudio ? <View style={s.audioMeta}><AudioSpectrumVisualizer isPlaying={isPlaying} barCount={7} height={17} /><TextR style={s.audioTimer}>{formatTime(status.currentTime)} / {formatTime(status.duration)}</TextR></View> : null}
+        </View>
+        <View style={s.audioTrack}><View style={[s.audioFill, { width: `${Math.max(0, Math.min(100, playbackProgress * 100))}%` }]} /></View>
+      </View>
+
+      <View style={s.reflectionCard}>
+        <View style={s.reflectionHeader}>
+          <View style={s.kickerRow}><Sparkles size={17} color={C.goldDark} /><TextR style={s.reflectionKicker}>TODAY’S REFLECTION</TextR></View>
+          <View style={s.utilityRow}>
+            <Pressable accessibilityLabel="Share today’s verse" onPress={handleShare} style={s.utilityButton}><Share2 size={18} color={C.ink} /></Pressable>
+            <Pressable accessibilityLabel={progressState.bookmarks.has(verse.id) ? "Remove bookmark" : "Bookmark verse"} onPress={() => progressState.toggleBookmark(verse.id)} style={s.utilityButton}>
+              <Bookmark size={18} color={C.ink} fill={progressState.bookmarks.has(verse.id) ? C.gold : "transparent"} />
+            </Pressable>
+          </View>
+        </View>
+        <TextR serif style={s.prompt}>{verse.reflectionPrompt}</TextR>
+        <TextInput accessibilityLabel="Your reflection" value={reflection} onChangeText={setReflection}
+          onBlur={() => progressState.saveReflection(today, verse.id, reflection)} placeholder="Write one honest thought…"
+          placeholderTextColor="#9A8173" multiline textAlignVertical="top" maxLength={600} style={s.reflectionInput} />
+        <View style={s.reflectionFooter}>
+          <TextR style={s.savedHint}>{reflection.length}/600 · Saved locally when you leave or complete</TextR>
+          <Pressable accessibilityRole="button" onPress={finishReflection}
+            style={({ pressed }) => [s.completeButton, isCompleted && s.completeButtonDone, pressed && s.pressed]}>
+            <Check size={18} color={C.white} strokeWidth={3} /><TextR style={s.completeText}>{isCompleted ? "Completed" : "Complete reflection"}</TextR>
           </Pressable>
         </View>
       </View>
-
-      {/* Daily Practice Guidance Card (Morning Sutra) */}
-      <View style={s.sutraCard}>
-        <View style={s.sutraImageWrap}>
-          <Image source={{ uri: SUTRA_IMAGE_URL }} style={s.sutraImage} />
-        </View>
-        <View style={s.sutraContent}>
-          <TextR style={s.sutraKicker}>MORNING SUTRA</TextR>
-          <TextR style={s.sutraTitle} numberOfLines={2}>
-            Offer every action with zero dread of failure.
-          </TextR>
-          <TextR style={s.sutraSub}>
-            Recommended: Read after deep breathing
-          </TextR>
-        </View>
-      </View>
-
-      {/* Sankalpa Mindset Celebration Modal */}
-      <MindsetCelebrationModal
-        visible={isCelebrationVisible}
-        onClose={() => setIsCelebrationVisible(false)}
-      />
+      <MindsetCelebrationModal visible={showCelebration} onClose={() => setShowCelebration(false)} />
     </Screen>
   );
 }
 
+function ModeTile({ title, subtitle, icon, active, onPress }: { title: string; subtitle: string; icon: React.ReactNode; active: boolean; onPress: () => void }) {
+  return <Pressable accessibilityRole="button" accessibilityState={{ selected: active }} onPress={onPress}
+    style={({ pressed }) => [s.actionTile, active ? s.actionTileActive : s.actionTileIdle, pressed && s.pressed]}>
+    <View style={[s.actionIcon, active ? s.actionIconActive : s.actionIconIdle]}>{icon}</View>
+    <TextR style={[s.actionTitle, active && s.actionTextActive]}>{title}</TextR>
+    <TextR style={[s.actionSub, active && s.actionSubActive]} numberOfLines={1}>{subtitle}</TextR>
+  </Pressable>;
+}
+
 const s = StyleSheet.create({
-  aruReaderWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-    position: 'relative',
-  },
-  lotusBadge: {
-    position: 'absolute',
-    bottom: 8,
-    right: -8,
-  },
-  topHeaderSection: {
-    alignItems: "center",
-    marginBottom: 20,
-    marginTop: 4,
-  },
-  chapterBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(229, 107, 39, 0.08)",
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-    borderRadius: 999,
-    gap: 7,
-    borderWidth: 1,
-    borderColor: "rgba(229, 107, 39, 0.22)",
-    marginBottom: 8,
-  },
-  chapterText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#B8450A",
-    letterSpacing: 1.4,
-    textTransform: "uppercase",
-  },
-  topSubtitle: {
-    fontSize: 15.5,
-    lineHeight: 23,
-    color: "#423227",
-    textAlign: "center",
-    maxWidth: 310,
-    fontWeight: "600",
-  },
-  shlokaCard: {
-    backgroundColor: "rgba(255, 255, 255, 0.94)",
-    borderRadius: 26,
-    padding: 24,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.95)",
-    borderTopColor: "#FFFFFF",
-    alignItems: "center",
-    marginBottom: 22,
-    shadowColor: "#8C4010",
-    shadowOpacity: 0.09,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
-  },
-  ornamentCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: "rgba(254, 236, 220, 0.85)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.9)",
-  },
-  devanagariText: {
-    fontSize: 23,
-    lineHeight: 36,
-    textAlign: "center",
-    color: "#231A11",
-    fontWeight: "600",
-    marginBottom: 12,
-  },
-  transliterationText: {
-    fontSize: 15,
-    lineHeight: 23,
-    fontStyle: "italic",
-    textAlign: "center",
-    color: "#3D2E24",
-    maxWidth: 320,
-    fontWeight: "500",
-  },
-  goldenDivider: {
-    width: 64,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: "rgba(244, 185, 66, 0.45)",
-    marginVertical: 14,
-  },
-  meaningBox: {
-    width: "100%",
-    backgroundColor: "rgba(255, 245, 237, 0.85)",
-    borderRadius: 18,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.9)",
-    marginBottom: 16,
-  },
-  meaningKickerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 6,
-  },
-  meaningDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: C.primary,
-  },
-  meaningKicker: {
-    fontSize: 12.5,
-    fontWeight: "800",
-    color: C.primary,
-    letterSpacing: 1.2,
-  },
-  meaningBody: {
-    fontSize: 14.5,
-    lineHeight: 23,
-    color: "#231A11",
-    fontWeight: "500",
-  },
-  mindsetContainer: {
-    width: "100%",
-    alignItems: "center",
-  },
-  mindsetChip: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#4E9F5B",
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 999,
-    gap: 8,
-    borderTopWidth: 1.5,
-    borderTopColor: "rgba(255, 255, 255, 0.65)",
-    borderBottomWidth: 3,
-    borderBottomColor: "#25582D",
-    shadowColor: C.green,
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  mindsetText: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: C.white,
-  },
-  actionTrioRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 10,
-    marginBottom: 20,
-  },
-  actionTile: {
-    flex: 1,
-    borderRadius: 22,
-    paddingVertical: 18,
-    paddingHorizontal: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionTileInactive: {
-    backgroundColor: "rgba(255, 255, 255, 0.94)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.95)",
-    borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(216, 144, 64, 0.25)",
-    borderBottomWidth: 2,
-    shadowColor: C.saffron,
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  actionTileActive: {
-    backgroundColor: C.saffron,
-    borderWidth: 1.5,
-    borderColor: C.saffron,
-    borderTopColor: "rgba(255, 255, 255, 0.45)",
-    borderBottomColor: "rgba(168, 71, 12, 0.45)",
-    borderBottomWidth: 2,
-    shadowColor: C.saffron,
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 4,
-  },
-  actionIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
-  actionIconCircleInactive: {
-    backgroundColor: "rgba(254, 236, 220, 0.85)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.85)",
-  },
-  actionIconCircleActive: {
-    backgroundColor: "rgba(255, 255, 255, 0.25)",
-  },
-  actionTitle: {
-    fontSize: 14.5,
-    fontWeight: "800",
-    color: C.ink,
-    textAlign: "center",
-  },
-  actionTextActive: {
-    color: C.white,
-  },
-  actionSub: {
-    fontSize: 12.5,
-    color: "#574438",
-    marginTop: 3,
-    textAlign: "center",
-    fontWeight: "600",
-  },
-  actionSubActive: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-  },
-  audioPlayerPod: {
-    backgroundColor: "rgba(254, 236, 220, 0.88)",
-    borderRadius: 22,
-    padding: 18,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.95)",
-    borderTopColor: "#FFFFFF",
-    marginBottom: 22,
-    shadowColor: C.saffron,
-    shadowOpacity: 0.09,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
-  },
-  audioHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  audioLeftGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  playPauseBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: C.saffron,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: C.saffron,
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  audioTitle: {
-    fontSize: 15.5,
-    fontWeight: "800",
-    color: C.ink,
-  },
-  audioSub: {
-    fontSize: 13,
-    color: "#3D2E24",
-    marginTop: 2,
-    fontWeight: "500",
-  },
-  audioTimer: {
-    fontSize: 13.5,
-    fontWeight: "800",
-    color: C.goldDark,
-  },
-  audioScrubberTrack: {
-    width: "100%",
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: "rgba(242, 223, 209, 0.9)",
-    marginTop: 14,
-    overflow: "hidden",
-  },
-  audioScrubberFill: {
-    height: "100%",
-    borderRadius: 3.5,
-    backgroundColor: C.saffron,
-  },
-  reflectionStrip: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 20,
-    paddingHorizontal: 4,
-  },
-  reflectionTitleGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  reflectionTitle: {
-    fontSize: 15.5,
-    fontWeight: "700",
-    color: C.ink,
-  },
-  brassActionsGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  brassBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: C.gold,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: C.goldDark,
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.7)",
-  },
-  sutraCard: {
-    backgroundColor: "rgba(255, 245, 237, 0.88)",
-    borderRadius: 22,
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    marginBottom: 24,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.9)",
-    shadowColor: C.saffron,
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 3,
-  },
-  sutraImageWrap: {
-    width: 66,
-    height: 66,
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  sutraImage: {
-    width: "100%",
-    height: "100%",
-  },
-  sutraContent: {
-    flex: 1,
-  },
-  sutraKicker: {
-    fontSize: 12.5,
-    fontWeight: "800",
-    color: C.primary,
-    letterSpacing: 1.2,
-    textTransform: "uppercase",
-  },
-  sutraTitle: {
-    fontSize: 15.5,
-    fontWeight: "800",
-    color: C.ink,
-    marginTop: 2,
-    lineHeight: 22,
-  },
-  sutraSub: {
-    fontSize: 13,
-    color: "#3D2E24",
-    marginTop: 3,
-    fontWeight: "500",
-  },
+  screenContent: { paddingBottom: 130 },
+  loading: { minHeight: 420, alignItems: "center", justifyContent: "center", gap: 14 },
+  loadingText: { color: C.muted, fontSize: 15 },
+  topHeaderSection: { alignItems: "center", marginTop: 4, marginBottom: 18 },
+  chapterBadge: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999, backgroundColor: "rgba(229,107,39,0.08)", borderWidth: 1, borderColor: "rgba(229,107,39,0.2)" },
+  chapterText: { color: "#B8450A", fontSize: 11, fontWeight: "800", letterSpacing: 1.2 },
+  topSubtitle: { color: "#423227", fontSize: 15, fontWeight: "600", textAlign: "center", marginTop: 8 },
+  progressRow: { flexDirection: "row", gap: 8, marginTop: 12 },
+  progressChip: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, height: 29, borderRadius: 15, backgroundColor: "#FFF4E7" },
+  progressChipDone: { backgroundColor: C.green }, progressChipText: { fontSize: 11.5, fontWeight: "700", color: C.goldDark }, progressChipTextDone: { color: C.white },
+  streakChip: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 10, height: 29, borderRadius: 15, backgroundColor: C.white }, streakText: { fontSize: 11.5, fontWeight: "700", color: C.inkSoft },
+  actionTrioRow: { flexDirection: "row", gap: 9, marginBottom: 18 },
+  actionTile: { flex: 1, minHeight: 104, alignItems: "center", justifyContent: "center", paddingHorizontal: 6, borderRadius: 20, borderWidth: 1.5 },
+  actionTileIdle: { backgroundColor: "rgba(255,255,255,0.94)", borderColor: "#FFFFFF", borderBottomColor: "rgba(216,144,64,0.28)", elevation: 2 },
+  actionTileActive: { backgroundColor: C.saffron, borderColor: C.saffron, borderTopColor: "rgba(255,255,255,0.45)", elevation: 4 },
+  actionIcon: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", marginBottom: 7 }, actionIconIdle: { backgroundColor: "#FCECDF" }, actionIconActive: { backgroundColor: "rgba(255,255,255,0.22)" },
+  actionTitle: { fontSize: 13.5, fontWeight: "800", textAlign: "center" }, actionSub: { fontSize: 10.5, fontWeight: "600", color: C.inkSoft, marginTop: 2, textAlign: "center" }, actionTextActive: { color: C.white }, actionSubActive: { color: "#FFF7F1" },
+  shlokaCard: { alignItems: "center", padding: 22, marginBottom: 18, borderRadius: 26, backgroundColor: "rgba(255,255,255,0.96)", borderWidth: 1.5, borderColor: "#FFFFFF", elevation: 3, shadowColor: "#8C4010", shadowOpacity: 0.08, shadowRadius: 18, shadowOffset: { width: 0, height: 7 } },
+  devanagariText: { color: "#231A11", fontSize: 22, lineHeight: 35, fontWeight: "600", textAlign: "center", marginTop: 2, marginBottom: 12 }, transliterationText: { color: "#4A382D", fontSize: 14, lineHeight: 22, fontStyle: "italic", textAlign: "center" },
+  goldenDivider: { width: 62, height: 3, borderRadius: 2, backgroundColor: "rgba(244,185,66,0.46)", marginVertical: 15 },
+  meaningBox: { width: "100%", padding: 15, borderRadius: 17, backgroundColor: "#FFF6EF", marginBottom: 14 }, kickerRow: { flexDirection: "row", alignItems: "center", gap: 7 }, meaningDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.primary }, kicker: { color: C.primary, fontSize: 11.5, fontWeight: "800", letterSpacing: 1.1 }, meaningBody: { color: C.ink, fontSize: 14.5, lineHeight: 22, marginTop: 7 },
+  takeawayChip: { width: "100%", minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 11, borderRadius: 16, backgroundColor: C.green }, takeawayText: { flex: 1, color: C.white, fontSize: 14, lineHeight: 19, fontWeight: "700", textAlign: "center" },
+  audioCard: { padding: 16, marginBottom: 18, borderRadius: 21, backgroundColor: "#FDEDE1", borderWidth: 1, borderColor: "#FFFFFF" }, audioHeader: { flexDirection: "row", alignItems: "center" },
+  playButton: { width: 45, height: 45, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: C.saffron }, playButtonDisabled: { backgroundColor: "#C8A996" }, audioCopy: { flex: 1, marginHorizontal: 11 }, audioTitle: { fontSize: 14.5, fontWeight: "800" }, audioSub: { fontSize: 11.5, lineHeight: 16, color: C.inkSoft, marginTop: 2 }, audioMeta: { alignItems: "flex-end", gap: 3 }, audioTimer: { color: C.goldDark, fontSize: 11.5, fontWeight: "700" },
+  audioTrack: { height: 5, borderRadius: 3, overflow: "hidden", backgroundColor: "#E6CFBE", marginTop: 13 }, audioFill: { height: "100%", borderRadius: 3, backgroundColor: C.saffron },
+  reflectionCard: { padding: 18, borderRadius: 24, backgroundColor: "rgba(255,255,255,0.96)", borderWidth: 1.5, borderColor: C.white, elevation: 2 }, reflectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" }, reflectionKicker: { color: C.goldDark, fontSize: 11.5, fontWeight: "800", letterSpacing: 1.1 }, utilityRow: { flexDirection: "row", gap: 8 }, utilityButton: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", backgroundColor: "#F8E5CF" },
+  prompt: { color: C.ink, fontSize: 19, lineHeight: 27, marginTop: 16, marginBottom: 13 }, reflectionInput: { minHeight: 116, borderRadius: 17, borderWidth: 1, borderColor: "#EAD8CA", backgroundColor: "#FFF9F4", padding: 14, color: C.ink, fontSize: 15, lineHeight: 22 }, reflectionFooter: { marginTop: 12, gap: 11 }, savedHint: { color: C.muted, fontSize: 11.5 },
+  completeButton: { minHeight: 49, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingHorizontal: 18, borderRadius: 16, backgroundColor: C.saffron }, completeButtonDone: { backgroundColor: C.green }, completeText: { color: C.white, fontSize: 14.5, fontWeight: "800" }, pressed: { opacity: 0.84, transform: [{ scale: 0.98 }] },
 });

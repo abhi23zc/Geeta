@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   Image,
+  Linking,
   Pressable,
   StyleSheet,
   View,
@@ -30,6 +32,12 @@ import {
 import { DiyaGraphic, Header, Screen, TextR } from '@/components/ritual-ui';
 import { TactileTile } from '@/components/tactile-tile';
 import { C } from '@/constants/ritual-theme';
+import {
+  cancelScheduledAlarm,
+  openExactAlarmSettings,
+  openFullScreenIntentSettings,
+  scheduleRecurringAlarm,
+} from '@/services/alarm';
 import { useRitual } from '@/state/ritual-store';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -37,11 +45,27 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const DAWN_IMAGE_URL =
   'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1000&auto=format&fit=crop';
 
+function formatAlarm(value: string) {
+  const [rawHour = '6', minute = '30'] = value.split(':');
+  const hour = Number(rawHour);
+  return {
+    time: `${hour % 12 || 12}:${minute}`,
+    meridiem: hour >= 12 ? 'PM' : 'AM',
+  };
+}
+
 export default function Home() {
   const router = useRouter();
-  const { alarmTime } = useRitual();
-  const [alarmEnabled, setAlarmEnabled] = useState(true);
+  const {
+    alarmTime,
+    alarmTone,
+    alarmDays,
+    alarmEnabled,
+    setAlarmEnabled,
+    alarmReady,
+  } = useRitual();
   const [bookmarked, setBookmarked] = useState(false);
+  const formattedAlarm = formatAlarm(alarmTime);
 
   const bookmarkScale = useSharedValue(1);
 
@@ -54,6 +78,56 @@ export default function Home() {
       bookmarkScale.value = withSpring(1, { damping: 12, stiffness: 200 });
     });
     setBookmarked(!bookmarked);
+  };
+
+  const toggleAlarm = async () => {
+    if (!alarmReady) return;
+    try {
+      if (alarmEnabled) {
+        await cancelScheduledAlarm();
+        setAlarmEnabled(false);
+      } else {
+        const result = await scheduleRecurringAlarm({
+          time: alarmTime,
+          tone: alarmTone,
+          days: alarmDays,
+        });
+        setAlarmEnabled(true);
+        if (!result.capabilities.notifications) {
+          Alert.alert(
+            'Allow alarm notifications',
+            'Enable notifications so Android can show the ringing alarm over the lock screen.',
+            [
+              { text: 'Not now', style: 'cancel' },
+              { text: 'Open settings', onPress: () => Linking.openSettings() },
+            ],
+          );
+        } else if (!result.scheduled || !result.capabilities.exactAlarm) {
+          Alert.alert(
+            'Allow Alarms & reminders',
+            'Your alarm is saved, but Android needs exact-alarm access before it can be scheduled.',
+            [
+              { text: 'Not now', style: 'cancel' },
+              { text: 'Open settings', onPress: openExactAlarmSettings },
+            ],
+          );
+        } else if (!result.capabilities.fullScreenIntent) {
+          Alert.alert(
+            'Allow full-screen alarms',
+            'The alarm will ring as a heads-up notification until full-screen alarm access is enabled.',
+            [
+              { text: 'Continue', style: 'cancel' },
+              { text: 'Open settings', onPress: openFullScreenIntentSettings },
+            ],
+          );
+        }
+      }
+    } catch (error) {
+      Alert.alert(
+        "Could not update alarm",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    }
   };
 
   return (
@@ -88,15 +162,17 @@ export default function Home() {
             <TextR style={s.alarmKicker}>AWAKENING SANKALPA</TextR>
             <View style={s.timeRow}>
               <TextR serif style={s.alarmTime}>
-                {alarmTime}
+                {formattedAlarm.time}
               </TextR>
-              <TextR style={s.amText}>AM</TextR>
+              <TextR style={s.amText}>{formattedAlarm.meridiem}</TextR>
             </View>
           </View>
 
           {/* 3D Glass Toggle Switch */}
           <Pressable
-            onPress={() => setAlarmEnabled(!alarmEnabled)}
+            onPress={toggleAlarm}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: alarmEnabled, disabled: !alarmReady }}
             style={[
               s.switchTrack,
               alarmEnabled ? s.switchTrackOn : s.switchTrackOff,

@@ -11,6 +11,7 @@ import {
   VolumeX,
   Wind,
 } from "lucide-react-native";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Image, Pressable, StyleSheet, View } from "react-native";
 import Animated, {
@@ -30,6 +31,8 @@ import { AruMascot } from "@/components/aru-mascot";
 import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
 import { Header, Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
+import { localDateKey } from "@/data/gita-verses";
+import { useGitaProgress } from "@/state/gita-store";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -68,14 +71,18 @@ const phases = [
 // 190px Diameter Circle Settings
 const R_INNER = 76;
 const CIRCLE_PERIMETER = 2 * Math.PI * R_INNER; // 477.52
+const SESSION_SECONDS = 3 * 60;
 
 export default function Breathe() {
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const { completeBreathing } = useGitaProgress();
   const insets = useSafeAreaInsets();
   const [phaseIndex, setPhaseIndex] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(10);
   const [paused, setPaused] = useState(false);
   const [muted, setMuted] = useState(false);
   const [complete, setComplete] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const phase = phases[phaseIndex];
 
@@ -133,13 +140,22 @@ export default function Breathe() {
         duration: phase.seconds * 1000,
       });
     }
-  }, [phaseIndex, paused]);
+  }, [glowOpacity, orbScale, paused, phase.key, phase.seconds, phaseIndex, progressVal]);
 
   // 1-Second Countdown Timer
   useEffect(() => {
-    if (paused) return;
+    if (paused || complete) return;
 
     const id = setInterval(() => {
+      setElapsedSeconds((elapsed) => {
+        const next = Math.min(elapsed + 1, SESSION_SECONDS);
+        if (next === SESSION_SECONDS) {
+          setComplete(true);
+          setPaused(true);
+          completeBreathing(localDateKey());
+        }
+        return next;
+      });
       setSecondsLeft((current) => {
         if (current > 1) {
           return current - 1;
@@ -151,7 +167,12 @@ export default function Breathe() {
     }, 1000);
 
     return () => clearInterval(id);
-  }, [paused]);
+  }, [complete, completeBreathing, paused]);
+
+  const remainingSeconds = Math.max(0, SESSION_SECONDS - elapsedSeconds);
+  const currentRound = Math.min(6, Math.floor(elapsedSeconds / 30) + 1);
+  const elapsedLabel = `${Math.floor(elapsedSeconds / 60)}:${String(elapsedSeconds % 60).padStart(2, "0")}`;
+  const remainingLabel = `${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, "0")}`;
 
   // 60 FPS Reanimated Circle Props (UI Thread smooth stroke)
   const animatedCircleProps = useAnimatedProps(() => {
@@ -329,13 +350,13 @@ export default function Breathe() {
           icon={<RotateCcw size={19} color="#271900" />}
           iconBg={C.gold}
           label="CURRENT LAP"
-          value="Round 3 of 6"
+          value={`Round ${currentRound} of 6`}
         />
         <Metric
           icon={<Timer size={19} color="#00210A" />}
           iconBg={C.greenLight}
           label="PRANA TIME"
-          value="2:30 / 5:00"
+          value={`${elapsedLabel} / 3:00`}
         />
       </View>
 
@@ -403,8 +424,9 @@ export default function Breathe() {
       {/* 3D Action Row Buttons */}
       <View style={s.actionRow}>
         <Pressable
+          disabled={complete}
           onPress={() => setPaused((value) => !value)}
-          style={({ pressed }) => [s.pauseButton, pressed && s.pressed]}
+          style={({ pressed }) => [s.pauseButton, complete && { opacity: 0.55 }, pressed && !complete && s.pressed]}
         >
           {paused ? (
             <Play size={18} color={C.ink} fill={C.ink} />
@@ -414,12 +436,13 @@ export default function Breathe() {
           <TextR style={s.pauseText}>{paused ? "Resume" : "Pause"}</TextR>
         </Pressable>
         <Pressable
-          onPress={() => setComplete((value) => !value)}
-          style={({ pressed }) => [s.completeButton, pressed && s.pressed]}
+          disabled={!complete}
+          onPress={() => returnTo === "gita" ? router.replace("/gita") : undefined}
+          style={({ pressed }) => [s.completeButton, !complete && { opacity: 0.62 }, pressed && complete && s.pressed]}
         >
           <CheckCircle2 size={19} color={C.white} />
           <TextR style={s.completeText}>
-            {complete ? "Session Complete" : "Complete Session"}
+            {complete ? (returnTo === "gita" ? "Return to Gita" : "Session Complete") : `${remainingLabel} remaining`}
           </TextR>
         </Pressable>
       </View>

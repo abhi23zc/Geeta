@@ -1,28 +1,32 @@
 import { router } from "expo-router";
 import {
-  AlarmClock,
   BellRing,
   Leaf,
   Music,
-  Pause,
-  Play,
   SlidersVertical,
   Sparkles,
   Sun,
   Sunrise,
 } from "lucide-react-native";
-import { useMemo, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
-import Animated from "react-native-reanimated";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, BackHandler, Pressable, StyleSheet, View } from "react-native";
 
 import { AruMascot } from "@/components/aru-mascot";
 import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
 import { Interactive3DCard } from "@/components/interactive-3d-card";
 import { Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
+import {
+  addAlarmStoppedListener,
+  addAlarmTriggeredListener,
+  dismissAlarmAndScheduleNext,
+  getAlarmPlaybackState,
+  getNativeAlarmConfig,
+  notifyWakeScreenReady,
+  type AlarmPlaybackState,
+  type NativeAlarmConfig,
+} from "@/services/alarm";
 import { useRitual } from "@/state/ritual-store";
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function formatAlarm(value: string) {
   const [h = "06", m = "30"] = value.split(":");
@@ -37,11 +41,45 @@ function formatAlarm(value: string) {
 
 export default function Wake() {
   const { alarmTime, alarmTone } = useRitual();
-  const [playing, setPlaying] = useState(true);
   const [started, setStarted] = useState(false);
-  const [snoozed, setSnoozed] = useState(false);
+  const reportedReady = useRef(false);
+  const [nativeConfig, setNativeConfig] = useState<NativeAlarmConfig | null>(null);
+  const [playback, setPlayback] = useState<AlarmPlaybackState>({
+    ringing: true,
+    triggeredAt: 0,
+    scheduledAt: 0,
+    volumeProgress: 0,
+  });
 
-  const formatted = useMemo(() => formatAlarm(alarmTime), [alarmTime]);
+  useEffect(() => {
+    getNativeAlarmConfig().then(setNativeConfig).catch(() => undefined);
+    const refresh = () => getAlarmPlaybackState().then(setPlayback).catch(() => undefined);
+    refresh();
+    const timer = setInterval(refresh, 1_000);
+    const triggered = addAlarmTriggeredListener(setPlayback);
+    const stopped = addAlarmStoppedListener(() =>
+      setPlayback((state) => ({ ...state, ringing: false })),
+    );
+    const back = BackHandler.addEventListener("hardwareBackPress", () => true);
+    return () => {
+      clearInterval(timer);
+      triggered?.remove();
+      stopped?.remove();
+      back.remove();
+    };
+  }, []);
+
+  const formatted = useMemo(() => {
+    if (playback.scheduledAt > 0) {
+      const date = new Date(playback.scheduledAt);
+      return formatAlarm(`${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`);
+    }
+    return formatAlarm(alarmTime);
+  }, [alarmTime, playback.scheduledAt]);
+  const playing = playback.ringing;
+  const gradualProgress = nativeConfig?.gradualVolume
+    ? Math.round(playback.volumeProgress * 100)
+    : 100;
   const ragaTitle =
     alarmTone === "Raag Bhairav & Sacred Flute"
       ? "Shiva / Gita Morning Raga"
@@ -49,7 +87,14 @@ export default function Wake() {
 
   return (
     <Screen night={false}>
-      <View style={s.page}>
+      <View
+        style={s.page}
+        onLayout={() => {
+          if (reportedReady.current) return;
+          reportedReady.current = true;
+          requestAnimationFrame(() => notifyWakeScreenReady().catch(() => undefined));
+        }}
+      >
         {/* Header Pill & Sacred Time */}
         <View style={s.topContainer}>
           <View style={s.sunriseChip}>
@@ -117,49 +162,48 @@ export default function Wake() {
               </View>
             </View>
 
-            <Pressable
-              accessibilityLabel={playing ? "Pause audio" : "Play audio"}
-              onPress={() => setPlaying((value) => !value)}
-              style={({ pressed }) => [
-                s.audioButton,
-                pressed && s.audioButtonPressed,
-              ]}
-            >
-              {playing ? (
-                <Pause size={20} color="#2C1E16" fill="#2C1E16" />
-              ) : (
-                <Play
-                  size={20}
-                  color="#2C1E16"
-                  fill="#2C1E16"
-                  style={{ marginLeft: 2 }}
-                />
-              )}
-            </Pressable>
+            <View style={s.audioButton} accessibilityLabel={playing ? "Alarm is ringing" : "Alarm stopped"}>
+              <BellRing size={20} color="#2C1E16" />
+            </View>
           </View>
 
           <View style={s.progressMeta}>
             <BellRing size={16} color="#6B574B" strokeWidth={2} />
-            <TextR style={s.progressLabel}>Harmonic crescendo (68%)</TextR>
+            <TextR style={s.progressLabel}>
+              {playing ? `Harmonic crescendo (${gradualProgress}%)` : "Alarm stopped"}
+            </TextR>
             <Music size={16} color={C.saffron} strokeWidth={2.2} />
           </View>
 
           <View style={s.progressTrack}>
-            <View style={s.progressFill} />
-            <View style={s.progressKnob} />
+            <View style={[s.progressFill, { width: `${gradualProgress}%` }]} />
+            <View style={[s.progressKnob, { left: `${Math.max(0, gradualProgress - 1)}%` }]} />
           </View>
 
           <TextR style={s.audioNote}>
-            Volume gradually rose over 3 minutes with tranquil ambient birdsong
+            {nativeConfig?.gradualVolume
+              ? "Volume rises gently over five minutes while the alarm continues"
+              : "Alarm is playing at the system alarm volume"}
           </TextR>
         </Interactive3DCard>
 
         {/* 3D Action Buttons */}
         <View style={s.actions}>
           <Pressable
-            onPress={() => {
+            accessibilityHint="Keep holding for 1.5 seconds"
+            delayLongPress={1500}
+            onLongPress={async () => {
               setStarted(true);
-              router.replace("/");
+              try {
+                await dismissAlarmAndScheduleNext();
+                router.replace("/gita");
+              } catch (error) {
+                setStarted(false);
+                Alert.alert(
+                  "Could not stop alarm",
+                  error instanceof Error ? error.message : "Please try again.",
+                );
+              }
             }}
             style={({ pressed }) => [
               s.primaryButton,
@@ -168,26 +212,13 @@ export default function Wake() {
           >
             <Sun size={23} color={C.white} strokeWidth={2.2} />
             <TextR style={s.primaryText}>
-              {started ? "Peaceful Morning Begins..." : "Start my day"}
+              {started ? "Peaceful Morning Begins..." : "Hold to start my day"}
             </TextR>
           </Pressable>
 
-          <Pressable
-            onPress={() => {
-              setSnoozed(true);
-              router.back();
-            }}
-            style={({ pressed }) => [
-              s.snoozeButton,
-              snoozed && s.snoozeActive,
-              pressed && s.pressedScale,
-            ]}
-          >
-            <AlarmClock size={20} color="#524035" strokeWidth={2.2} />
-            <TextR style={s.snoozeText}>
-              {snoozed ? "Gentle bell in 5 minutes" : "Snooze 5 min"}
-            </TextR>
-          </Pressable>
+          <TextR style={s.strictNote}>
+            Keep holding for 1.5 seconds. Releasing early resets the action.
+          </TextR>
         </View>
 
         {/* Footer Note */}
@@ -435,27 +466,12 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 5 },
     elevation: 4,
   },
-  snoozeButton: {
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "rgba(254, 236, 220, 0.92)",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 9,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.95)",
-    borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(180, 125, 95, 0.25)",
-    borderBottomWidth: 2,
-    shadowColor: "#8C4010",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  snoozeActive: {
-    backgroundColor: "#F8E5D6",
+  strictNote: {
+    marginTop: 10,
+    color: "#8C7467",
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: "center",
   },
   pressedScale: {
     opacity: 0.9,
@@ -466,12 +482,6 @@ const s = StyleSheet.create({
     fontSize: 16.5,
     fontWeight: "800",
     letterSpacing: 0.3,
-  },
-  snoozeText: {
-    color: "#2C1E16",
-    fontSize: 15.5,
-    fontWeight: "800",
-    letterSpacing: 0.2,
   },
   footer: {
     marginTop: 16,

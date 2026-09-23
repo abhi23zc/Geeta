@@ -9,7 +9,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import Svg, { Circle, Path, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { Sparkles, CheckCircle2, X } from 'lucide-react-native';
 import { TextR } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
@@ -62,7 +62,7 @@ function FloatingPetal({ index }: { index: number }) {
       delay,
       withTiming(index % 2 === 0 ? 360 : -360, { duration })
     );
-  }, []);
+  }, [index, opacity, rotate, scale, startX, translateX, translateY]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -107,7 +107,7 @@ export function MindsetCelebrationModal({
       cardScale.value = withTiming(0.7, { duration: 200 });
       cardOpacity.value = withTiming(0, { duration: 200 });
     }
-  }, [visible]);
+  }, [cardOpacity, cardScale, visible]);
 
   const animatedCardStyle = useAnimatedStyle(() => ({
     transform: [{ scale: cardScale.value }],
@@ -119,13 +119,13 @@ export function MindsetCelebrationModal({
       <View style={styles.backdrop}>
         {/* Burst of Floating Lotus Petals */}
         {visible &&
-          Array.from({ length: 12 }).map((_, i) => (
+          Array.from({ length: 8 }).map((_, i) => (
             <FloatingPetal key={i} index={i} />
           ))}
 
         {/* Celebration Dialog Plaque */}
         <Animated.View style={[styles.celebrationCard, animatedCardStyle]}>
-          <Pressable style={styles.closeBtn} onPress={onClose}>
+          <Pressable accessibilityLabel="Close completion message" style={styles.closeBtn} onPress={onClose}>
             <X size={20} color={C.inkSoft} />
           </Pressable>
 
@@ -133,21 +133,21 @@ export function MindsetCelebrationModal({
             <CheckCircle2 size={42} color={C.white} fill={C.green} />
           </View>
 
-          <TextR style={styles.title}>Sankalpa Completed!</TextR>
+          <TextR style={styles.title}>Reflection Complete</TextR>
           <TextR style={styles.subtitle}>
-            You have embraced Detached Excellence & Inner Peace for today.
+            Your thought is saved. Carry today’s Gita teaching gently into your day.
           </TextR>
 
           <View style={styles.clarityBadge}>
             <Sparkles size={18} color={C.goldDark} />
-            <TextR style={styles.clarityText}>+100 Daily Spiritual Clarity</TextR>
+            <TextR style={styles.clarityText}>Today’s practice is complete</TextR>
           </View>
 
           <Pressable
             style={styles.doneBtn}
             onPress={onClose}
           >
-            <TextR style={styles.doneBtnText}>Continue Morning Ritual</TextR>
+            <TextR style={styles.doneBtnText}>Continue my morning</TextR>
           </Pressable>
         </Animated.View>
       </View>

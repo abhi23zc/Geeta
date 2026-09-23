@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   AlarmClockPlus,
   ArrowLeft,
@@ -16,13 +17,27 @@ import {
   Vibrate,
   Wind,
 } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
-import { Image, Pressable, StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, AppState, Image, Linking, Pressable, StyleSheet, View } from "react-native";
 
 import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
 import { Interactive3DCard } from "@/components/interactive-3d-card";
 import { MORNING_RITUAL_LOGO, Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
+import {
+  ALARM_DAYS,
+  AlarmDayId,
+  AlarmCapabilityStatus,
+  getNativeAlarmConfig,
+  getAlarmCapabilityStatus,
+  openAutoStartSettings,
+  openBatterySettings,
+  openExactAlarmSettings,
+  openFullScreenIntentSettings,
+  openNotificationChannelSettings,
+  openOemPermissionSettings,
+  scheduleRecurringAlarm,
+} from "@/services/alarm";
 import { useRitual } from "@/state/ritual-store";
 
 const PUJA_IMAGE_URL =
@@ -33,14 +48,14 @@ const DHYAN_IMAGE_URL =
 
 type ModeKey = "gita" | "shankh" | "pranayama";
 
-const modes: Array<{
+const modes: {
   key: ModeKey;
   title: string;
   description: string;
   Icon: typeof Flame;
   iconColor: string;
   tone: string;
-}> = [
+}[] = [
   {
     key: "gita",
     title: "Gita Awakening",
@@ -69,15 +84,8 @@ const modes: Array<{
   },
 ];
 
-const weekSeed = [
-  { id: "mon", label: "M", selected: true },
-  { id: "tue", label: "T", selected: true },
-  { id: "wed", label: "W", selected: true },
-  { id: "thu", label: "T", selected: true },
-  { id: "fri", label: "F", selected: true },
-  { id: "sat", label: "S", selected: true },
-  { id: "sun", label: "S", selected: false },
-];
+const OEM_GUIDANCE_KEY = "morning-ritual:oem-reliability-guidance-seen";
+const OEM_CONFIRMED_KEY = "morning-ritual:oem-reliability-confirmed";
 
 function parseAlarm(value: string) {
   const [h = "06", m = "30"] = value.split(":");
@@ -97,31 +105,96 @@ function toStoreTime(hour: number, minute: number, meridiem: "AM" | "PM") {
   return `${String(h).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
+function ReadinessRow({
+  label,
+  ready,
+  onPress,
+}: {
+  label: string;
+  ready: boolean;
+  onPress: () => void | Promise<void>;
+}) {
+  return (
+    <View style={s.readinessRow}>
+      <View style={[s.readinessStatus, ready && s.readinessStatusReady]}>
+        {ready ? <Check size={14} color={C.white} strokeWidth={3} /> : null}
+      </View>
+      <TextR style={s.readinessLabel}>{label}</TextR>
+      <Pressable onPress={onPress} style={({ pressed }) => [s.settingsButton, pressed && s.pressed]}>
+        <TextR style={s.settingsButtonText}>{ready ? "Review" : "Open settings"}</TextR>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function Setup() {
-  const { alarmTime, setAlarmTime, alarmTone, setAlarmTone } = useRitual();
+  const { alarmReady } = useRitual();
+  if (!alarmReady) {
+    return (
+      <Screen>
+        <View style={s.loadingState}>
+          <TextR style={s.caption}>Loading your alarm…</TextR>
+        </View>
+      </Screen>
+    );
+  }
+  return <SetupContent />;
+}
+
+function SetupContent() {
+  const {
+    alarmTime,
+    setAlarmTime,
+    alarmTone,
+    setAlarmTone,
+    alarmDays,
+    setAlarmDays,
+    setAlarmEnabled,
+  } = useRitual();
   const parsed = useMemo(() => parseAlarm(alarmTime), [alarmTime]);
   const [hour, setHour] = useState(parsed.hour);
   const [minute, setMinute] = useState(parsed.minute);
   const [meridiem, setMeridiem] = useState<"AM" | "PM">(
     parsed.meridiem as "AM" | "PM",
   );
-  const [days, setDays] = useState(weekSeed);
+  const [days, setDays] = useState(
+    ALARM_DAYS.map((day) => ({
+      ...day,
+      selected: alarmDays.includes(day.id),
+    })),
+  );
   const [mode, setMode] = useState<ModeKey>(
     modes.find((item) => item.tone === alarmTone)?.key ?? "gita",
   );
   const [previewing, setPreviewing] = useState(false);
   const [gradual, setGradual] = useState(true);
   const [haptics, setHaptics] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [capabilities, setCapabilities] = useState<AlarmCapabilityStatus | null>(null);
+  const [oemConfirmed, setOemConfirmed] = useState(false);
+  const [readinessMessage, setReadinessMessage] = useState("");
+
+  const refreshCapabilities = useCallback(() => {
+    getAlarmCapabilityStatus().then(setCapabilities).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    getNativeAlarmConfig()
+      .then((config) => {
+        if (!config) return;
+        setGradual(config.gradualVolume);
+        setHaptics(config.vibration);
+      })
+      .catch(() => undefined);
+    refreshCapabilities();
+    AsyncStorage.getItem(OEM_CONFIRMED_KEY).then((value) => setOemConfirmed(value === "1"));
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") refreshCapabilities();
+    });
+    return () => subscription.remove();
+  }, [refreshCapabilities]);
 
   const selectedMode = modes.find((item) => item.key === mode) ?? modes[0];
-
-  const commitTime = (
-    nextHour = hour,
-    nextMinute = minute,
-    nextMeridiem = meridiem,
-  ) => {
-    setAlarmTime(toStoreTime(nextHour, nextMinute, nextMeridiem));
-  };
 
   const updateHour = (direction: 1 | -1) => {
     const next =
@@ -133,24 +206,68 @@ export default function Setup() {
           ? 12
           : hour - 1;
     setHour(next);
-    commitTime(next, minute, meridiem);
   };
 
   const updateMinute = (direction: 1 | -1) => {
-    const next = (minute + direction * 5 + 60) % 60;
+    // The native exact-alarm scheduler accepts every minute (0–59), so the
+    // picker must not artificially limit people to five-minute intervals.
+    const next = (minute + direction + 60) % 60;
     setMinute(next);
-    commitTime(hour, next, meridiem);
   };
 
   const updateMeridiem = (next: "AM" | "PM") => {
     setMeridiem(next);
-    commitTime(hour, minute, next);
   };
 
-  const save = () => {
+  const save = async () => {
+    if (saving) return;
+    const selectedDayIds = days
+      .filter((day) => day.selected)
+      .map((day) => day.id as AlarmDayId);
+    if (!selectedDayIds.length) {
+      Alert.alert("Choose alarm days", "Select at least one day of the week.");
+      return;
+    }
+
+    const time = toStoreTime(hour, minute, meridiem);
+    setSaving(true);
     setAlarmTone(selectedMode.tone);
-    setAlarmTime(toStoreTime(hour, minute, meridiem));
-    router.replace("/alarm/wake");
+    setAlarmTime(time);
+    setAlarmDays(selectedDayIds);
+    setAlarmEnabled(false);
+    try {
+      const result = await scheduleRecurringAlarm({
+        time,
+        tone: selectedMode.tone,
+        days: selectedDayIds,
+        gradualVolume: gradual,
+        vibration: haptics,
+      });
+      setAlarmEnabled(true);
+      setCapabilities(result.capabilities);
+      const coreReady = result.scheduled && result.capabilities.notifications &&
+        result.capabilities.exactAlarm && result.capabilities.fullScreenIntent &&
+        result.capabilities.notificationChannelReady;
+      if (!coreReady) {
+        setReadinessMessage("Your choices are saved. Complete the required items below, then tap Save again.");
+        return;
+      }
+      if (result.capabilities.oemGuidance && !await AsyncStorage.getItem(OEM_GUIDANCE_KEY)) {
+        await AsyncStorage.setItem(OEM_GUIDANCE_KEY, "1");
+        setReadinessMessage("For Xiaomi reliability, enable Auto-start and choose Unrestricted battery use below.");
+        return;
+      }
+      setReadinessMessage("");
+      Alert.alert("Alarm scheduled", `${recurrenceLabel} at ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${meridiem}`);
+      router.replace("/");
+    } catch (error) {
+      Alert.alert(
+        "Alarm not scheduled",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const selectedDays = days.filter((day) => day.selected);
@@ -193,8 +310,39 @@ export default function Setup() {
           onPress={save}
           style={({ pressed }) => [s.saveChip, pressed && s.pressed]}
         >
-          <TextR style={s.saveText}>Save</TextR>
+          <TextR style={s.saveText}>{saving ? "Saving…" : "Save"}</TextR>
         </Pressable>
+      </View>
+      <View style={s.readinessCard}>
+        <TextR style={s.readinessTitle}>Alarm readiness</TextR>
+        <TextR style={s.readinessIntro}>
+          Complete these once so Android can wake the screen and show your morning ritual.
+        </TextR>
+        {readinessMessage ? <TextR style={s.readinessWarning}>{readinessMessage}</TextR> : null}
+        <ReadinessRow label="Alarm notifications" ready={capabilities?.notifications ?? false} onPress={() => Linking.openSettings()} />
+        <ReadinessRow label="Alarms & reminders" ready={capabilities?.exactAlarm ?? false} onPress={openExactAlarmSettings} />
+        <ReadinessRow label="Full-screen alarms" ready={capabilities?.fullScreenIntent ?? false} onPress={openFullScreenIntentSettings} />
+        <ReadinessRow label="High-priority alarm channel" ready={capabilities?.notificationChannelReady ?? false} onPress={openNotificationChannelSettings} />
+        {capabilities?.oemGuidance ? (
+          <>
+            <ReadinessRow label="MIUI Auto-start" ready={oemConfirmed} onPress={openAutoStartSettings} />
+            <ReadinessRow label="MIUI unrestricted battery" ready={oemConfirmed && !capabilities.batteryRestricted} onPress={openBatterySettings} />
+            <ReadinessRow label="MIUI lock-screen pop-ups" ready={oemConfirmed} onPress={openOemPermissionSettings} />
+            <Pressable
+              onPress={async () => {
+                const next = !oemConfirmed;
+                setOemConfirmed(next);
+                await AsyncStorage.setItem(OEM_CONFIRMED_KEY, next ? "1" : "0");
+              }}
+              style={({ pressed }) => [s.confirmOem, pressed && s.pressed]}
+            >
+              <TextR style={s.confirmOemText}>{oemConfirmed ? "✓ MIUI settings confirmed" : "I enabled all three MIUI settings"}</TextR>
+            </Pressable>
+          </>
+        ) : null}
+        <TextR style={s.readinessFootnote}>
+          Force-stopped apps and powered-off phones cannot ring. If full-screen access is denied, Android will show a persistent alarm notification instead.
+        </TextR>
       </View>
 
       <Interactive3DCard maxTiltDeg={6} style={s.timeCard}>
@@ -299,7 +447,6 @@ export default function Setup() {
             item={item}
             onPress={() => {
               setMode(item.key);
-              setAlarmTone(item.tone);
             }}
           />
         ))}
@@ -364,7 +511,9 @@ export default function Setup() {
         style={({ pressed }) => [s.primaryButton, pressed && s.primaryPressed]}
       >
         <Sun size={23} color={C.white} />
-        <TextR style={s.primaryText}>Save Alarm & Morning Ritual</TextR>
+        <TextR style={s.primaryText}>
+          {saving ? "Scheduling Alarm…" : "Save Alarm & Morning Ritual"}
+        </TextR>
       </Pressable>
     </Screen>
   );
@@ -520,6 +669,31 @@ function CompanionCard({
 }
 
 const s = StyleSheet.create({
+  readinessCard: {
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,249,242,0.96)",
+    borderWidth: 1,
+    borderColor: "#F0DCCB",
+  },
+  readinessTitle: { color: C.ink, fontSize: 18, fontWeight: "800" },
+  readinessIntro: { color: "#6B574B", fontSize: 12, lineHeight: 18, marginTop: 4, marginBottom: 10 },
+  readinessWarning: { color: "#A64B16", fontSize: 12, lineHeight: 17, fontWeight: "700", marginBottom: 8 },
+  readinessRow: { minHeight: 48, flexDirection: "row", alignItems: "center", borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#E8D6C8" },
+  readinessStatus: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: "#B99E8D", alignItems: "center", justifyContent: "center" },
+  readinessStatusReady: { backgroundColor: C.greenDark, borderColor: C.greenDark },
+  readinessLabel: { flex: 1, color: C.ink, fontSize: 13, fontWeight: "700", marginLeft: 9 },
+  settingsButton: { paddingHorizontal: 8, paddingVertical: 8 },
+  settingsButtonText: { color: C.saffron, fontSize: 11, fontWeight: "800" },
+  confirmOem: { alignSelf: "flex-start", marginTop: 8, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 12, backgroundColor: "#FDE8D8" },
+  confirmOemText: { color: "#7C4B2C", fontSize: 12, fontWeight: "800" },
+  readinessFootnote: { color: "#7C675B", fontSize: 10.5, lineHeight: 15, marginTop: 10 },
+  loadingState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   header: {
     height: 64,
     marginHorizontal: -4,
