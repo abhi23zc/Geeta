@@ -50,7 +50,6 @@ function AppChrome() {
       <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="gita" />
-        <Stack.Screen name="gita/deep-read" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="breathe" />
         <Stack.Screen name="today" />
         <Stack.Screen name="night" />

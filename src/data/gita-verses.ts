@@ -3,6 +3,21 @@ export type GitaWord = {
   meaning: string;
 };
 
+export type GitaNarrationSegment = {
+  /** The content area that should react while this phrase is spoken. */
+  kind: "intro" | "sanskrit" | "meaning";
+  text: string;
+  startMs: number;
+  endMs: number;
+};
+
+export type GitaNarration = {
+  audioSource: number;
+  /** The last reviewed spoken phrase. Playback stops here to avoid unreviewed file tails. */
+  completionMs: number;
+  segments: readonly GitaNarrationSegment[];
+};
+
 export type GitaVerse = {
   id: string;
   chapter: number;
@@ -15,9 +30,8 @@ export type GitaVerse = {
   reflectionPrompt: string;
   context: string;
   words: GitaWord[];
-  /** Add a reviewed, distributable local recording with require(...) here. */
-  audioSource?: number;
-  audioTimings?: { endMs: number; text: string }[];
+  /** Add a reviewed, distributable local recording and matching timings here. */
+  narration?: GitaNarration;
 };
 
 export const GITA_VERSES: readonly GitaVerse[] = [
@@ -154,6 +168,68 @@ export const GITA_VERSES: readonly GitaVerse[] = [
   },
 ] as const;
 
+/**
+ * Temporary guided sample. Keep the regular collection above intact while
+ * reviewed recordings are produced for the daily rotation.
+ */
+export const TEMPORARY_NARRATED_VERSE: GitaVerse = {
+  id: "10-20",
+  chapter: 10,
+  verse: "20",
+  theme: "The Divine presence within every being",
+  sanskrit: "अहमात्मा गुडाकेश सर्वभूताशयस्थितः।\nअहमादिश्च मध्यं च भूतानामन्त एव च॥",
+  transliteration: "aham ātmā guḍākeśa sarva-bhūtāśaya-sthitaḥ |\naham ādiś ca madhyaṁ ca bhūtānām anta eva ca ||",
+  meaning: "हे अर्जुन, मैं सभी प्राणियों के हृदय में स्थित आत्मा हूँ। मैं ही सभी प्राणियों का आदि, मध्य और अंत हूँ।",
+  takeaway: "हर प्राणी में उसी दिव्य उपस्थिति को देखने का अभ्यास करें।",
+  reflectionPrompt: "आज आप किस व्यक्ति में अधिक करुणा और सम्मान के साथ उस दिव्य उपस्थिति को देख सकते हैं?",
+  context: "कृष्ण अर्जुन को याद दिलाते हैं कि दिव्यता किसी दूर की वस्तु नहीं है; वह हर जीव के भीतर उपस्थित है।",
+  words: [
+    { sanskrit: "अहमात्मा", meaning: "मैं आत्मा हूँ" },
+    { sanskrit: "गुडाकेश", meaning: "हे अर्जुन" },
+    { sanskrit: "सर्वभूत", meaning: "सभी प्राणी" },
+    { sanskrit: "आदि", meaning: "आरंभ" },
+    { sanskrit: "अन्त", meaning: "समापन" },
+  ],
+  narration: {
+    audioSource: require("@/assets/audio/gita/geeta-10-20-hi.mp3"),
+    completionMs: 52_000,
+    segments: [
+      { kind: "intro", text: "श्रीमद्भगवद्गीता · अध्याय दस · श्लोक बीस", startMs: 12_000, endMs: 20_000 },
+      { kind: "sanskrit", text: "अहमात्मा", startMs: 21_000, endMs: 23_150 },
+      { kind: "sanskrit", text: "गुडाकेश", startMs: 23_200, endMs: 24_900 },
+      { kind: "sanskrit", text: "सर्वभूताशयस्थितः।", startMs: 25_000, endMs: 28_000 },
+      { kind: "sanskrit", text: "अहमादिश्च", startMs: 29_000, endMs: 31_000 },
+      { kind: "sanskrit", text: "मध्यं", startMs: 31_050, endMs: 32_100 },
+      { kind: "sanskrit", text: "च", startMs: 32_150, endMs: 32_500 },
+      { kind: "sanskrit", text: "भूतानामन्त", startMs: 32_550, endMs: 34_200 },
+      { kind: "sanskrit", text: "एव", startMs: 34_250, endMs: 34_600 },
+      { kind: "sanskrit", text: "च॥", startMs: 34_650, endMs: 35_000 },
+      { kind: "intro", text: "इसका मतलब है।", startMs: 36_000, endMs: 38_000 },
+      { kind: "meaning", text: "हे", startMs: 40_000, endMs: 40_350 },
+      { kind: "meaning", text: "अर्जुन,", startMs: 40_380, endMs: 41_050 },
+      { kind: "meaning", text: "मैं", startMs: 41_100, endMs: 41_450 },
+      { kind: "meaning", text: "सभी", startMs: 41_500, endMs: 42_000 },
+      { kind: "meaning", text: "प्राणियों", startMs: 42_050, endMs: 42_700 },
+      { kind: "meaning", text: "के", startMs: 42_750, endMs: 43_000 },
+      { kind: "meaning", text: "हृदय", startMs: 43_050, endMs: 43_600 },
+      { kind: "meaning", text: "में", startMs: 43_650, endMs: 44_000 },
+      { kind: "meaning", text: "स्थित", startMs: 44_050, endMs: 44_600 },
+      { kind: "meaning", text: "आत्मा", startMs: 44_650, endMs: 45_200 },
+      { kind: "meaning", text: "हूँ।", startMs: 45_250, endMs: 46_000 },
+      { kind: "meaning", text: "मैं", startMs: 47_000, endMs: 47_350 },
+      { kind: "meaning", text: "ही", startMs: 47_400, endMs: 47_600 },
+      { kind: "meaning", text: "सभी", startMs: 47_650, endMs: 48_200 },
+      { kind: "meaning", text: "प्राणियों", startMs: 48_250, endMs: 48_900 },
+      { kind: "meaning", text: "का", startMs: 48_950, endMs: 49_200 },
+      { kind: "meaning", text: "आदि,", startMs: 49_250, endMs: 49_650 },
+      { kind: "meaning", text: "मध्य", startMs: 49_700, endMs: 50_150 },
+      { kind: "meaning", text: "और", startMs: 50_200, endMs: 50_450 },
+      { kind: "meaning", text: "अंत", startMs: 50_500, endMs: 50_850 },
+      { kind: "meaning", text: "हूँ।", startMs: 50_900, endMs: 52_000 },
+    ],
+  },
+};
+
 export function localDateKey(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -162,6 +238,10 @@ export function localDateKey(date = new Date()) {
 }
 
 export function getDailyGitaVerse(date = new Date()) {
+  // This is intentionally temporary while only one reviewed narration exists.
+  // Restore the rotation below after each daily verse has reviewed audio.
+  if (TEMPORARY_NARRATED_VERSE.narration) return TEMPORARY_NARRATED_VERSE;
+
   const localDayNumber = Math.floor(
     Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000,
   );
@@ -169,5 +249,6 @@ export function getDailyGitaVerse(date = new Date()) {
 }
 
 export function getGitaVerse(id: string | undefined) {
+  if (id === TEMPORARY_NARRATED_VERSE.id) return TEMPORARY_NARRATED_VERSE;
   return GITA_VERSES.find((verse) => verse.id === id);
 }
