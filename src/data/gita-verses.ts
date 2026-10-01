@@ -178,7 +178,7 @@ export const TEMPORARY_NARRATED_VERSE: GitaVerse = {
   verse: "20",
   theme: "The Divine presence within every being",
   sanskrit: "अहमात्मा गुडाकेश सर्वभूताशयस्थितः।\nअहमादिश्च मध्यं च भूतानामन्त एव च॥",
-  transliteration: "aham ātmā guḍākeśa sarva-bhūtāśaya-sthitaḥ |\naham ādiś ca madhyaṁ ca bhūtānām anta eva ca ||",
+  transliteration: "Aham aatmaa gudaakesha sarva-bhootaashaya-sthitah |\nAham aadish cha madhyam cha bhootaanaam anta eva cha",
   meaning: "हे अर्जुन, मैं सभी प्राणियों के हृदय में स्थित आत्मा हूँ। मैं ही सभी प्राणियों का आदि, मध्य और अंत हूँ।",
   takeaway: "हर प्राणी में उसी दिव्य उपस्थिति को देखने का अभ्यास करें।",
   reflectionPrompt: "आज आप किस व्यक्ति में अधिक करुणा और सम्मान के साथ उस दिव्य उपस्थिति को देख सकते हैं?",

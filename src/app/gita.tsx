@@ -58,7 +58,6 @@ import Svg, {
 
 import { AruMascot } from "@/components/aru-mascot";
 import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
-import { Interactive3DCard } from "@/components/interactive-3d-card";
 import { MindsetCelebrationModal } from "@/components/mindset-celebration-modal";
 import { MovingChakra } from "@/components/moving-chakra";
 import { Screen, TextR } from "@/components/ritual-ui";
@@ -82,6 +81,37 @@ function formatTime(seconds: number) {
   return (
     String(Math.floor(whole / 60)) + ":" + String(whole % 60).padStart(2, "0")
   );
+}
+
+/**
+ * Converts academic Sanskrit IAST diacritics to clean, simple,
+ * intuitive spoken English phonetics that anyone can pronounce easily.
+ */
+function toSimpleEnglish(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/ā/g, "aa")
+    .replace(/Ā/g, "Aa")
+    .replace(/ī/g, "ee")
+    .replace(/Ī/g, "Ee")
+    .replace(/ū/g, "oo")
+    .replace(/Ū/g, "Oo")
+    .replace(/ṛ/g, "ri")
+    .replace(/Ṛ/g, "Ri")
+    .replace(/[śṣ]/g, "sh")
+    .replace(/[ŚṢ]/g, "Sh")
+    .replace(/ñ/g, "n")
+    .replace(/ṅ/g, "n")
+    .replace(/ṇ/g, "n")
+    .replace(/ḍ/g, "d")
+    .replace(/ṭ/g, "t")
+    .replace(/ḥ/g, "h")
+    .replace(/ṁ/g, "m")
+    .replace(/’/g, "")
+    .replace(/\bca\b/gi, "cha")
+    .replace(/\bCa\b/g, "Cha")
+    .replace(/\s*\|\s*/g, " · ")
+    .trim();
 }
 
 // ─── 3D Tactile Round Button ──────────────────────────────────────────────────
@@ -435,23 +465,6 @@ function KrishnaInvitation({
   visible: boolean;
   onContinue: () => void;
 }) {
-  const glow = useSharedValue(0.45);
-  useEffect(() => {
-    if (!visible) return;
-    glow.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 2300, easing: Easing.inOut(Easing.quad) }),
-        withTiming(0.45, { duration: 2300, easing: Easing.inOut(Easing.quad) }),
-      ),
-      -1,
-      false,
-    );
-  }, [glow, visible]);
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: glow.value,
-    transform: [{ scale: 0.92 + glow.value * 0.16 }],
-  }));
-
   return (
     <Modal
       animationType="none"
@@ -467,8 +480,6 @@ function KrishnaInvitation({
           style={s.overlaySurface}
         >
           <View style={s.lightField}>
-            <Animated.View style={[s.halo, glowStyle]} />
-            <View style={s.haloInner} />
             <View style={[s.orb, s.orbOne]} />
             <View style={[s.orb, s.orbTwo]} />
             <View style={[s.orb, s.orbThree]} />
@@ -480,10 +491,10 @@ function KrishnaInvitation({
             <View style={s.overlayMascot}>
               <AruMascot
                 clip="teaching_guidance"
-                size={180}
+                size={220}
                 loop
                 muted
-                glow="day"
+                glow={false}
                 interactive={false}
               />
             </View>
@@ -791,15 +802,9 @@ function GitaContent({ today }: { today: string }) {
             </View>
           </View>
 
-          {/* ─── 3. Interactive 3D Sacred Parchment Shloka Card ────────────── */}
+          {/* ─── 3. 3D Sacred Parchment Shloka Card ────────────── */}
           <View style={s.shlokaCardWrapper}>
-            <Interactive3DCard maxTiltDeg={7} style={s.shlokaCard3D}>
-              {/* Sacred Corner Filigree Accents */}
-              <View style={[s.cornerAccent, s.cornerTopLeft]} />
-              <View style={[s.cornerAccent, s.cornerTopRight]} />
-              <View style={[s.cornerAccent, s.cornerBottomLeft]} />
-              <View style={[s.cornerAccent, s.cornerBottomRight]} />
-
+            <View style={s.shlokaCard3D}>
               {/* View Switcher Tabs inside the 3D card */}
               <View style={s.cardTabRow}>
                 <Pressable
@@ -880,17 +885,17 @@ function GitaContent({ today }: { today: string }) {
                 )}
               </View>
 
-              {/* Transliteration Sub-Card */}
+              {/* Transliteration Sub-Card with simple, easy-to-read spoken English */}
               {viewTab !== "padartha" && (
                 <View style={s.transliterationBox}>
                   <TextR serif style={s.transliterationText}>
                     {viewTab === "meaning"
-                      ? "“अर्थ को अपने भीतर उतरने दें — Let the meaning settle into your heart.”"
-                      : `“${verse.transliteration}”`}
+                      ? "“Let the sacred meaning settle into your heart.”"
+                      : `“${toSimpleEnglish(verse.transliteration)}”`}
                   </TextR>
                 </View>
               )}
-            </Interactive3DCard>
+            </View>
           </View>
 
           {/* ─── 4. Floating 3D Tactile Audio Sanctuary Dock ────────────────── */}
@@ -968,14 +973,14 @@ function GitaContent({ today }: { today: string }) {
         /* ─── 5. Completed Contemplation & Reflection State ────────────────── */
         <Animated.View entering={FadeIn.duration(320)} style={s.completedScreen}>
           {/* 3D Wisdom Card */}
-          <Interactive3DCard maxTiltDeg={6} style={s.completedVerseCard}>
+          <View style={s.completedVerseCard}>
             <View style={s.completedMascot}>
               <AruMascot
                 clip="gita_reading"
                 size={110}
                 loop
                 muted
-                glow="day"
+                glow={false}
                 interactive={false}
               />
             </View>
@@ -986,7 +991,7 @@ function GitaContent({ today }: { today: string }) {
 
             <View style={s.completedTranslitBox}>
               <TextR serif style={s.completedTranslation}>
-                “{verse.transliteration}”
+                “{toSimpleEnglish(verse.transliteration)}”
               </TextR>
             </View>
 
@@ -1000,7 +1005,7 @@ function GitaContent({ today }: { today: string }) {
               <Sparkles size={17} color="#FFF6DF" />
               <TextR style={s.takeawayText}>{verse.takeaway}</TextR>
             </View>
-          </Interactive3DCard>
+          </View>
 
           {/* Interactive Word Meanings in Completed State */}
           <View style={s.completedPadarthaWrap}>
@@ -1305,40 +1310,6 @@ const s = StyleSheet.create({
     elevation: 6,
     position: "relative",
     overflow: "hidden",
-  },
-  cornerAccent: {
-    position: "absolute",
-    width: 14,
-    height: 14,
-    borderColor: "rgba(229, 107, 39, 0.35)",
-  },
-  cornerTopLeft: {
-    top: 8,
-    left: 8,
-    borderTopWidth: 2,
-    borderLeftWidth: 2,
-    borderTopLeftRadius: 4,
-  },
-  cornerTopRight: {
-    top: 8,
-    right: 8,
-    borderTopWidth: 2,
-    borderRightWidth: 2,
-    borderTopRightRadius: 4,
-  },
-  cornerBottomLeft: {
-    bottom: 8,
-    left: 8,
-    borderBottomWidth: 2,
-    borderLeftWidth: 2,
-    borderBottomLeftRadius: 4,
-  },
-  cornerBottomRight: {
-    bottom: 8,
-    right: 8,
-    borderBottomWidth: 2,
-    borderRightWidth: 2,
-    borderBottomRightRadius: 4,
   },
 
   // ─── Card Tab Switcher ─────────────────────────────────────────────────────
@@ -1905,25 +1876,7 @@ const s = StyleSheet.create({
   lightField: {
     ...StyleSheet.absoluteFill,
     overflow: "hidden",
-    backgroundColor: "#FFF0DD",
-  },
-  halo: {
-    position: "absolute",
-    top: -45,
-    alignSelf: "center",
-    width: 330,
-    height: 330,
-    borderRadius: 165,
-    backgroundColor: "rgba(244,185,66,0.38)",
-  },
-  haloInner: {
-    position: "absolute",
-    top: 15,
-    alignSelf: "center",
-    width: 230,
-    height: 230,
-    borderRadius: 115,
-    backgroundColor: "rgba(255,255,255,0.65)",
+    backgroundColor: "#FFF8EE",
   },
   orb: {
     position: "absolute",
@@ -1956,8 +1909,10 @@ const s = StyleSheet.create({
     paddingBottom: 38,
   },
   overlayMascot: {
-    height: 168,
-    marginBottom: -10,
+    height: 215,
+    marginBottom: 4,
+    alignItems: "center",
+    justifyContent: "center",
   },
   overlayPill: {
     flexDirection: "row",
