@@ -50,7 +50,7 @@ import { AruMascot } from "@/components/aru-mascot";
 import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
 import { MindsetCelebrationModal } from "@/components/mindset-celebration-modal";
 import { MovingChakra } from "@/components/moving-chakra";
-import { DiyaGraphic, Screen, TextR } from "@/components/ritual-ui";
+import { Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
 import {
   GitaNarrationSegment,
@@ -559,7 +559,6 @@ function GitaContent({ today }: { today: string }) {
   const [viewTab, setViewTab] = useState<"shloka" | "meaning" | "padartha">(
     "shloka",
   );
-  const [completedTab, setCompletedTab] = useState<"wisdom" | "journal">("wisdom");
   const [selectedWord, setSelectedWord] = useState<GitaWord | null>(null);
   const [blessingMessage, setBlessingMessage] = useState<string | null>(null);
 
@@ -603,7 +602,6 @@ function GitaContent({ today }: { today: string }) {
 
   const continueQuietly = useCallback(() => {
     setPromptDismissed(true);
-    setCompletedTab("journal");
     setReflectionExpanded(true);
   }, []);
 
@@ -698,7 +696,7 @@ function GitaContent({ today }: { today: string }) {
   };
 
   return (
-    <Screen contentContainerStyle={[s.screenContent, isCompact && { paddingBottom: 70 }]}>
+    <Screen contentContainerStyle={[s.screenContent, isCompact && { paddingBottom: 110 }]}>
       {/* ─── 0. Morning Alarm Awakening Pill ─────────────────────────────────── */}
       <View style={s.topAlarmRow}>
         <View style={s.topAlarmPill}>
@@ -900,232 +898,136 @@ function GitaContent({ today }: { today: string }) {
       ) : (
         /* ─── 5. Completed Contemplation & Daily Morning Sankalpa Altar ───── */
         <Animated.View entering={FadeIn.duration(320)} style={s.completedScreen}>
-          {/* Sacred Segmented Switcher */}
-          <View style={s.completedSegmentWrapper}>
-            <View style={s.completedSegmentControl}>
-              <Pressable
-                onPress={() => setCompletedTab("wisdom")}
-                style={[
-                  s.completedSegmentTab,
-                  completedTab === "wisdom" && s.completedSegmentTabActive,
-                ]}
-              >
-                <TextR
-                  style={[
-                    s.completedSegmentText,
-                    completedTab === "wisdom" && s.completedSegmentTextActive,
-                  ]}
-                >
-                  📖 आज का ज्ञान · WISDOM
-                </TextR>
-              </Pressable>
+          {/* Meditative Hero Mascot Stage */}
+          <MascotStage
+            onMascotPress={handleMascotTap}
+            blessingMessage={blessingMessage}
+            isCompact={isCompact}
+          />
 
-              <Pressable
-                onPress={() => setCompletedTab("journal")}
-                style={[
-                  s.completedSegmentTab,
-                  completedTab === "journal" && s.completedSegmentTabActive,
-                ]}
-              >
-                <TextR
-                  style={[
-                    s.completedSegmentText,
-                    completedTab === "journal" && s.completedSegmentTextActive,
-                  ]}
-                >
-                  ✍️ दैनिक संकल्प · JOURNAL {reflectionComplete ? "✓" : ""}
-                </TextR>
-              </Pressable>
+          {/* Full Shloka Wisdom Parchment */}
+          <View style={s.completedVerseCard}>
+            <TextR serif style={s.completedSanskrit}>
+              {verse.sanskrit}
+            </TextR>
+
+            <View style={s.completedTranslitBox}>
+              <TextR serif style={s.completedTranslation}>
+                “{toSimpleEnglish(verse.transliteration)}”
+              </TextR>
+            </View>
+
+            <View style={s.goldDivider} />
+
+            <TextR style={s.completedMeaning}>{verse.meaning}</TextR>
+
+            {/* Daily Morning Sankalpa / Action Plaque in Warm Golden Amber */}
+            <View style={s.takeaway3D}>
+              <View style={s.takeawayGloss} />
+              <Sparkles size={18} color="#FFF6DF" />
+              <View style={{ flex: 1 }}>
+                <TextR style={s.takeawayKicker}>TODAY’S SANKALPA · ACTION</TextR>
+                <TextR style={s.takeawayText}>{verse.takeaway}</TextR>
+              </View>
             </View>
           </View>
 
-          {completedTab === "wisdom" ? (
-            <Animated.View entering={FadeIn.duration(240)}>
-              {/* Meditative Hero Mascot Stage */}
-              <MascotStage
-                onMascotPress={handleMascotTap}
-                blessingMessage={blessingMessage}
-                isCompact={isCompact}
-              />
+          {/* Focused Morning Reflection Journal Card */}
+          <View style={s.journalCard3D}>
+            <View style={s.reflectionTopBevel} />
 
-              {/* Full Shloka Wisdom Parchment */}
-              <View style={s.completedVerseCard}>
-                <TextR serif style={s.completedSanskrit}>
-                  {verse.sanskrit}
-                </TextR>
+            <View style={s.reflectionKickerRow}>
+              <View style={s.reflectionKickerDot} />
+              <TextR style={s.reflectionKicker}>MORNING INTENTION JOURNAL</TextR>
+            </View>
+            <TextR serif style={s.reflectionPrompt}>
+              {verse.reflectionPrompt}
+            </TextR>
 
-                <View style={s.completedTranslitBox}>
-                  <TextR serif style={s.completedTranslation}>
-                    “{toSimpleEnglish(verse.transliteration)}”
+            {/* 1-Tap Morning Intention Chips */}
+            <View style={s.quickChipsRow}>
+              {[
+                "आज मैं कर्म पर पूरा ध्यान दूंगा।",
+                "परिस्थितियों में शांत और संतुलित रहूंगा।",
+                "हर प्राणी में दिव्यता का सम्मान करूंगा।",
+                "चिंता छोड़कर वर्तमान में कर्म करूंगा।",
+              ].map((chip, idx) => (
+                <Pressable
+                  key={idx}
+                  onPress={() => {
+                    setReflection(chip);
+                    progressStore.saveReflection(today, verse.id, chip);
+                  }}
+                  style={({ pressed }) => [
+                    s.quickChip,
+                    reflection === chip && s.quickChipActive,
+                    pressed && { opacity: 0.8 },
+                  ]}
+                >
+                  <Sparkles
+                    size={11}
+                    color={reflection === chip ? C.saffron : "#9A7C6B"}
+                  />
+                  <TextR
+                    style={[
+                      s.quickChipText,
+                      reflection === chip && s.quickChipTextActive,
+                    ]}
+                  >
+                    {chip}
                   </TextR>
-                </View>
+                </Pressable>
+              ))}
+            </View>
 
-                <View style={s.goldDivider} />
+            <TextInput
+              accessibilityLabel="Your reflection"
+              value={reflection}
+              onChangeText={setReflection}
+              onBlur={() =>
+                progressStore.saveReflection(today, verse.id, reflection)
+              }
+              placeholder="Write one honest thought or commitment for today…"
+              placeholderTextColor="#9A8173"
+              multiline
+              textAlignVertical="top"
+              maxLength={600}
+              style={s.reflectionInput}
+            />
 
-                <TextR style={s.completedMeaning}>{verse.meaning}</TextR>
-
-                {/* Daily Morning Sankalpa / Action Plaque in Warm Golden Amber */}
-                <View style={s.takeaway3D}>
-                  <View style={s.takeawayGloss} />
-                  <Sparkles size={18} color="#FFF6DF" />
-                  <View style={{ flex: 1 }}>
-                    <TextR style={s.takeawayKicker}>TODAY’S SANKALPA · ACTION</TextR>
-                    <TextR style={s.takeawayText}>{verse.takeaway}</TextR>
-                  </View>
-                </View>
-              </View>
-
-              {/* Word Meanings in Completed State */}
-              <View style={s.completedPadarthaWrap}>
-                <WordMeaningsTray
-                  words={verse.words}
-                  onSelectWord={(w) => setSelectedWord(w)}
-                  selectedWord={selectedWord}
-                />
-              </View>
-
-              {/* Primary CTA: Move to Journal */}
+            <View style={s.reflectionFooter}>
+              <TextR style={s.savedHint}>
+                {reflection.length}/600 · Saved securely on device
+              </TextR>
               <Pressable
                 accessibilityRole="button"
-                onPress={() => setCompletedTab("journal")}
+                onPress={finishReflection}
                 style={({ pressed }) => [
-                  s.primaryActionBtn,
+                  s.completeButton3D,
+                  reflectionComplete && s.completeButtonDone3D,
                   pressed && s.pressed,
                 ]}
               >
                 <View style={s.btnGlossHighlight} />
-                <Sparkles size={18} color={C.white} />
-                <TextR style={s.primaryActionText}>
+                <Check size={18} color={C.white} strokeWidth={3} />
+                <TextR style={s.completeText}>
                   {reflectionComplete
-                    ? "View Morning Intention & Action"
-                    : "Set Morning Intention & Action"}
+                    ? "Reflection Completed ✓"
+                    : "Complete morning reflection"}
                 </TextR>
-                <ChevronRight size={18} color={C.white} />
                 <View style={s.btnBottomBevel} />
               </Pressable>
+            </View>
+          </View>
 
-              {/* Re-listen Trigger */}
-              <Pressable
-                onPress={playFromStart}
-                style={({ pressed }) => [s.relistenBtn, pressed && s.pressed]}
-              >
-                <RotateCcw size={15} color={C.saffron} />
-                <TextR style={s.relistenText}>Listen to recitation again</TextR>
-              </Pressable>
-            </Animated.View>
-          ) : (
-            <Animated.View entering={FadeIn.duration(240)}>
-              {/* Sacred Diya Altar of Consistency */}
-              <View style={s.altarBanner}>
-                <DiyaGraphic size={36} showAura />
-                <View style={s.altarCopy}>
-                  <TextR style={s.altarTitle}>
-                    {currentStreak > 0
-                      ? `${currentStreak}-Day Morning Sadhana`
-                      : "Today’s Awakening Sacred Contemplation"}
-                  </TextR>
-                  <TextR style={s.altarSub}>Light your inner flame for the day ahead</TextR>
-                </View>
-              </View>
-
-              {/* Focused Morning Reflection Journal Card */}
-              <View style={s.journalCard3D}>
-                <View style={s.reflectionTopBevel} />
-
-                <View style={s.reflectionKickerRow}>
-                  <View style={s.reflectionKickerDot} />
-                  <TextR style={s.reflectionKicker}>MORNING INTENTION JOURNAL</TextR>
-                </View>
-                <TextR serif style={s.reflectionPrompt}>
-                  {verse.reflectionPrompt}
-                </TextR>
-
-                {/* 1-Tap Morning Intention Chips */}
-                <View style={s.quickChipsRow}>
-                  {[
-                    "आज मैं कर्म पर पूरा ध्यान दूंगा।",
-                    "परिस्थितियों में शांत और संतुलित रहूंगा।",
-                    "हर प्राणी में दिव्यता का सम्मान करूंगा।",
-                    "चिंता छोड़कर वर्तमान में कर्म करूंगा।",
-                  ].map((chip, idx) => (
-                    <Pressable
-                      key={idx}
-                      onPress={() => {
-                        setReflection(chip);
-                        progressStore.saveReflection(today, verse.id, chip);
-                      }}
-                      style={({ pressed }) => [
-                        s.quickChip,
-                        reflection === chip && s.quickChipActive,
-                        pressed && { opacity: 0.8 },
-                      ]}
-                    >
-                      <Sparkles
-                        size={11}
-                        color={reflection === chip ? C.saffron : "#9A7C6B"}
-                      />
-                      <TextR
-                        style={[
-                          s.quickChipText,
-                          reflection === chip && s.quickChipTextActive,
-                        ]}
-                      >
-                        {chip}
-                      </TextR>
-                    </Pressable>
-                  ))}
-                </View>
-
-                <TextInput
-                  accessibilityLabel="Your reflection"
-                  value={reflection}
-                  onChangeText={setReflection}
-                  onBlur={() =>
-                    progressStore.saveReflection(today, verse.id, reflection)
-                  }
-                  placeholder="Write one honest thought or commitment for today…"
-                  placeholderTextColor="#9A8173"
-                  multiline
-                  textAlignVertical="top"
-                  maxLength={600}
-                  style={s.reflectionInput}
-                />
-
-                <View style={s.reflectionFooter}>
-                  <TextR style={s.savedHint}>
-                    {reflection.length}/600 · Saved securely on device
-                  </TextR>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={finishReflection}
-                    style={({ pressed }) => [
-                      s.completeButton3D,
-                      reflectionComplete && s.completeButtonDone3D,
-                      pressed && s.pressed,
-                    ]}
-                  >
-                    <View style={s.btnGlossHighlight} />
-                    <Check size={18} color={C.white} strokeWidth={3} />
-                    <TextR style={s.completeText}>
-                      {reflectionComplete
-                        ? "Reflection Completed ✓"
-                        : "Complete morning reflection"}
-                    </TextR>
-                    <View style={s.btnBottomBevel} />
-                  </Pressable>
-                </View>
-              </View>
-
-              {/* Back to Wisdom View */}
-              <Pressable
-                onPress={() => setCompletedTab("wisdom")}
-                style={({ pressed }) => [s.relistenBtn, pressed && s.pressed]}
-              >
-                <ChevronLeft size={16} color={C.saffron} />
-                <TextR style={s.relistenText}>Back to Today’s Wisdom</TextR>
-              </Pressable>
-            </Animated.View>
-          )}
+          {/* Re-listen Trigger */}
+          <Pressable
+            onPress={playFromStart}
+            style={({ pressed }) => [s.relistenBtn, pressed && s.pressed]}
+          >
+            <RotateCcw size={15} color={C.saffron} />
+            <TextR style={s.relistenText}>Listen to recitation again</TextR>
+          </Pressable>
         </Animated.View>
       )}
 
@@ -1144,7 +1046,7 @@ function GitaContent({ today }: { today: string }) {
 // ─── Stylesheet ───────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   screenContent: {
-    paddingBottom: 90,
+    paddingBottom: 130,
   },
   loading: {
     minHeight: 500,
@@ -1670,81 +1572,6 @@ const s = StyleSheet.create({
   completedScreen: {
     paddingTop: 2,
   },
-  completedSegmentWrapper: {
-    alignItems: "center",
-    marginBottom: 10,
-    marginTop: 2,
-  },
-  completedSegmentControl: {
-    flexDirection: "row",
-    backgroundColor: "rgba(254, 236, 220, 0.75)",
-    borderRadius: 999,
-    padding: 3.5,
-    borderWidth: 1.2,
-    borderColor: "rgba(255, 255, 255, 0.95)",
-    shadowColor: C.saffron,
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-  },
-  completedSegmentTab: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  completedSegmentTabActive: {
-    backgroundColor: C.saffron,
-    shadowColor: C.saffron,
-    shadowOpacity: 0.28,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-  },
-  completedSegmentText: {
-    fontSize: 11.5,
-    fontWeight: "700",
-    color: "#7D5845",
-  },
-  completedSegmentTextActive: {
-    color: C.white,
-    fontWeight: "800",
-  },
-  altarBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: "rgba(255, 248, 238, 0.95)",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 14,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.9)",
-    borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(216, 144, 64, 0.35)",
-    borderBottomWidth: 2.5,
-    shadowColor: C.saffron,
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  altarCopy: {
-    flex: 1,
-  },
-  altarTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#8C4A10",
-    letterSpacing: 0.2,
-  },
-  altarSub: {
-    fontSize: 11.5,
-    color: "#7A6455",
-    marginTop: 1,
-    fontWeight: "500",
-  },
   completedVerseCard: {
     backgroundColor: "rgba(255, 252, 248, 0.98)",
     borderRadius: 24,
@@ -1841,39 +1668,7 @@ const s = StyleSheet.create({
     lineHeight: 19,
     fontWeight: "700",
   },
-  completedPadarthaWrap: {
-    marginBottom: 14,
-  },
-  primaryActionBtn: {
-    minHeight: 52,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 20,
-    borderRadius: 18,
-    backgroundColor: C.saffron,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.75)",
-    borderTopColor: "#FFFFFF",
-    borderBottomColor: "#A8470C",
-    borderBottomWidth: 3.5,
-    shadowColor: C.saffron,
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-    position: "relative",
-    overflow: "hidden",
-    marginTop: 4,
-    marginBottom: 6,
-  },
-  primaryActionText: {
-    color: C.white,
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: 0.2,
-  },
+
   journalCard3D: {
     padding: 18,
     borderRadius: 24,
