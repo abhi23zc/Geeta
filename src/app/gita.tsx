@@ -3,7 +3,6 @@ import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-au
 import { useRouter, useFocusEffect } from "expo-router";
 import {
   Bookmark,
-  Check,
   ChevronLeft,
   ChevronRight,
   Flame,
@@ -22,7 +21,6 @@ import {
   Pressable,
   Share,
   StyleSheet,
-  TextInput,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -48,7 +46,6 @@ import Svg, {
 
 import { AruMascot } from "@/components/aru-mascot";
 import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
-import { MindsetCelebrationModal } from "@/components/mindset-celebration-modal";
 import { MovingChakra } from "@/components/moving-chakra";
 import { Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
@@ -549,11 +546,6 @@ function GitaContent({ today }: { today: string }) {
   const status = useAudioPlayerStatus(player);
   const progressStore = useGitaProgress();
 
-  const [reflection, setReflection] = useState(
-    progressStore.getReflection(today)?.text ?? "",
-  );
-  const [reflectionExpanded, setReflectionExpanded] = useState(false);
-  const [showCelebration, setShowCelebration] = useState(false);
   const [narrationSkipped, setNarrationSkipped] = useState(false);
   const [promptDismissed, setPromptDismissed] = useState(false);
   const [viewTab, setViewTab] = useState<"shloka" | "meaning" | "padartha">(
@@ -576,7 +568,6 @@ function GitaContent({ today }: { today: string }) {
 
   const sanskrit = segments.filter((item) => item.kind === "sanskrit");
   const hindi = segments.filter((item) => item.kind === "meaning");
-  const reflectionComplete = progressStore.completedDates.has(today);
   const isBookmarked = progressStore.bookmarks.has(verse.id);
   const currentStreak = progressStore.streak;
 
@@ -602,8 +593,14 @@ function GitaContent({ today }: { today: string }) {
 
   const continueQuietly = useCallback(() => {
     setPromptDismissed(true);
-    setReflectionExpanded(true);
   }, []);
+
+  const { completeReflection } = progressStore;
+  useEffect(() => {
+    if (complete) {
+      completeReflection(today, verse.id, verse.takeaway);
+    }
+  }, [complete, completeReflection, today, verse.id, verse.takeaway]);
 
   useEffect(() => {
     setAudioModeAsync({
@@ -656,8 +653,6 @@ function GitaContent({ today }: { today: string }) {
     }
   }, [completionMs, currentMs, narration, player, status.playing]);
 
-
-
   const shareVerse = async () => {
     await Share.share({
       title: "Today’s Gita · " + verse.chapter + "." + verse.verse,
@@ -671,23 +666,11 @@ function GitaContent({ today }: { today: string }) {
     }).catch(() => undefined);
   };
 
-  const finishReflection = () => {
-    if (!progressStore.completeReflection(today, verse.id, reflection)) {
-      Alert.alert(
-        "एक विचार लिखें",
-        "आज की reflection पूरी करने के लिए एक छोटा सा वाक्य भी पर्याप्त है।",
-      );
-      return;
-    }
-    setShowCelebration(true);
-    setReflectionExpanded(false);
-  };
-
   const handleMascotTap = () => {
     const blessings = [
-      "अहमात्मा गुडाकेश · The Divine resides within you",
+      "The Divine resides as the eternal Self within you",
       "Awaken with clear intent & calm mind",
-      "सर्वभूताशयस्थितः · See the sacred in all beings",
+      "See the sacred in all beings today",
       "Act with whole heart, free from anxiety",
     ];
     const pick = blessings[Math.floor(Math.random() * blessings.length)];
@@ -696,7 +679,7 @@ function GitaContent({ today }: { today: string }) {
   };
 
   return (
-    <Screen contentContainerStyle={[s.screenContent, isCompact && { paddingBottom: 110 }]}>
+    <Screen contentContainerStyle={[s.screenContent, isCompact && { paddingBottom: 40 }]}>
       {/* ─── 0. Morning Alarm Awakening Pill ─────────────────────────────────── */}
       <View style={s.topAlarmRow}>
         <View style={s.topAlarmPill}>
@@ -875,25 +858,6 @@ function GitaContent({ today }: { today: string }) {
               </View>
             </View>
           </View>
-
-          {/* ─── 4. Clear Focused Morning Intention Action ───────────────── */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Set today's sankalpa and morning intention"
-            onPress={skip}
-            style={({ pressed }) => [
-              s.morningActionBtn,
-              pressed && s.pressed,
-            ]}
-          >
-            <View style={s.btnGlossHighlight} />
-            <Sparkles size={18} color={C.white} />
-            <TextR style={s.morningActionText}>
-              Set Today’s Intention & Sankalpa
-            </TextR>
-            <ChevronRight size={18} color={C.white} />
-            <View style={s.btnBottomBevel} />
-          </Pressable>
         </Animated.View>
       ) : (
         /* ─── 5. Completed Contemplation & Daily Morning Sankalpa Altar ───── */
@@ -921,102 +885,17 @@ function GitaContent({ today }: { today: string }) {
 
             <TextR style={s.completedMeaning}>{verse.meaning}</TextR>
 
-            {/* Daily Morning Sankalpa / Action Plaque in Warm Golden Amber */}
-            <View style={s.takeaway3D}>
-              <View style={s.takeawayGloss} />
-              <Sparkles size={18} color="#FFF6DF" />
-              <View style={{ flex: 1 }}>
-                <TextR style={s.takeawayKicker}>TODAY’S SANKALPA · ACTION</TextR>
+            {/* Daily Morning Sankalpa / Sacred Action Ray */}
+            <View style={s.takeawayCard}>
+              <View style={s.takeawayIconWrap}>
+                <Sparkles size={16} color="#D97706" />
+              </View>
+              <View style={s.takeawayContent}>
+                <View style={s.takeawayKickerRow}>
+                  <TextR style={s.takeawayKicker}>TODAY’S SANKALPA · ACTION</TextR>
+                </View>
                 <TextR style={s.takeawayText}>{verse.takeaway}</TextR>
               </View>
-            </View>
-          </View>
-
-          {/* Focused Morning Reflection Journal Card */}
-          <View style={s.journalCard3D}>
-            <View style={s.reflectionTopBevel} />
-
-            <View style={s.reflectionKickerRow}>
-              <View style={s.reflectionKickerDot} />
-              <TextR style={s.reflectionKicker}>MORNING INTENTION JOURNAL</TextR>
-            </View>
-            <TextR serif style={s.reflectionPrompt}>
-              {verse.reflectionPrompt}
-            </TextR>
-
-            {/* 1-Tap Morning Intention Chips */}
-            <View style={s.quickChipsRow}>
-              {[
-                "आज मैं कर्म पर पूरा ध्यान दूंगा।",
-                "परिस्थितियों में शांत और संतुलित रहूंगा।",
-                "हर प्राणी में दिव्यता का सम्मान करूंगा।",
-                "चिंता छोड़कर वर्तमान में कर्म करूंगा।",
-              ].map((chip, idx) => (
-                <Pressable
-                  key={idx}
-                  onPress={() => {
-                    setReflection(chip);
-                    progressStore.saveReflection(today, verse.id, chip);
-                  }}
-                  style={({ pressed }) => [
-                    s.quickChip,
-                    reflection === chip && s.quickChipActive,
-                    pressed && { opacity: 0.8 },
-                  ]}
-                >
-                  <Sparkles
-                    size={11}
-                    color={reflection === chip ? C.saffron : "#9A7C6B"}
-                  />
-                  <TextR
-                    style={[
-                      s.quickChipText,
-                      reflection === chip && s.quickChipTextActive,
-                    ]}
-                  >
-                    {chip}
-                  </TextR>
-                </Pressable>
-              ))}
-            </View>
-
-            <TextInput
-              accessibilityLabel="Your reflection"
-              value={reflection}
-              onChangeText={setReflection}
-              onBlur={() =>
-                progressStore.saveReflection(today, verse.id, reflection)
-              }
-              placeholder="Write one honest thought or commitment for today…"
-              placeholderTextColor="#9A8173"
-              multiline
-              textAlignVertical="top"
-              maxLength={600}
-              style={s.reflectionInput}
-            />
-
-            <View style={s.reflectionFooter}>
-              <TextR style={s.savedHint}>
-                {reflection.length}/600 · Saved securely on device
-              </TextR>
-              <Pressable
-                accessibilityRole="button"
-                onPress={finishReflection}
-                style={({ pressed }) => [
-                  s.completeButton3D,
-                  reflectionComplete && s.completeButtonDone3D,
-                  pressed && s.pressed,
-                ]}
-              >
-                <View style={s.btnGlossHighlight} />
-                <Check size={18} color={C.white} strokeWidth={3} />
-                <TextR style={s.completeText}>
-                  {reflectionComplete
-                    ? "Reflection Completed ✓"
-                    : "Complete morning reflection"}
-                </TextR>
-                <View style={s.btnBottomBevel} />
-              </Pressable>
             </View>
           </View>
 
@@ -1035,10 +914,6 @@ function GitaContent({ today }: { today: string }) {
         visible={isPromptVisible}
         onContinue={continueQuietly}
       />
-      <MindsetCelebrationModal
-        visible={showCelebration}
-        onClose={() => setShowCelebration(false)}
-      />
     </Screen>
   );
 }
@@ -1046,7 +921,7 @@ function GitaContent({ today }: { today: string }) {
 // ─── Stylesheet ───────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   screenContent: {
-    paddingBottom: 130,
+    paddingBottom: 60,
   },
   loading: {
     minHeight: 500,
@@ -1537,36 +1412,6 @@ const s = StyleSheet.create({
     fontStyle: "italic",
   },
 
-  // ─── Morning Intention Action Button ───────────────────────────────────────
-  morningActionBtn: {
-    minHeight: 52,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 9,
-    paddingHorizontal: 20,
-    borderRadius: 18,
-    backgroundColor: C.saffron,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.75)",
-    borderTopColor: "#FFFFFF",
-    borderBottomColor: "#A8470C",
-    borderBottomWidth: 3.5,
-    shadowColor: C.saffron,
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-    position: "relative",
-    overflow: "hidden",
-    marginTop: 4,
-  },
-  morningActionText: {
-    color: C.white,
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: 0.3,
-  },
 
   // ─── Completed Screen Styles ───────────────────────────────────────────────
   completedScreen: {
@@ -1622,191 +1467,59 @@ const s = StyleSheet.create({
     lineHeight: 24,
     textAlign: "center",
   },
-  takeaway3D: {
+  takeawayCard: {
     width: "100%",
-    minHeight: 52,
+    minHeight: 56,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 11,
+    gap: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderRadius: 18,
-    backgroundColor: "#A84C12",
+    backgroundColor: "rgba(255, 247, 237, 0.96)",
+    borderWidth: 1.2,
+    borderColor: "rgba(251, 146, 60, 0.35)",
+    borderTopColor: "rgba(255, 255, 255, 0.95)",
+    borderBottomColor: "rgba(234, 88, 12, 0.25)",
+    borderBottomWidth: 2,
+    shadowColor: "#EA580C",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
     marginTop: 16,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.7)",
-    borderTopColor: "#FDBA74",
-    borderBottomColor: "#6B2B05",
-    borderBottomWidth: 3,
-    shadowColor: "#8C4010",
-    shadowOpacity: 0.28,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 4,
-    position: "relative",
-    overflow: "hidden",
   },
-  takeawayGloss: {
-    position: "absolute",
-    top: 0,
-    left: 8,
-    right: 8,
-    height: 14,
+  takeawayIconWrap: {
+    width: 32,
+    height: 32,
     borderRadius: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.22)",
+    backgroundColor: "rgba(254, 240, 226, 0.95)",
+    borderWidth: 1,
+    borderColor: "rgba(249, 115, 22, 0.22)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  takeawayContent: {
+    flex: 1,
+  },
+  takeawayKickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 3,
   },
   takeawayKicker: {
     fontSize: 9.5,
     fontWeight: "800",
-    color: "#FED7AA",
-    letterSpacing: 1.1,
-    marginBottom: 2,
+    color: "#C2410C",
+    letterSpacing: 1.2,
   },
   takeawayText: {
-    color: C.white,
-    fontSize: 13.5,
-    lineHeight: 19,
+    color: "#431407",
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: "700",
   },
 
-  journalCard3D: {
-    padding: 18,
-    borderRadius: 24,
-    backgroundColor: "rgba(255, 252, 248, 0.98)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.95)",
-    borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(216, 144, 64, 0.4)",
-    borderBottomWidth: 3.5,
-    shadowColor: "#8C4010",
-    shadowOpacity: 0.16,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
-    marginBottom: 14,
-    position: "relative",
-    overflow: "hidden",
-  },
-
-  reflectionTopBevel: {
-    position: "absolute",
-    top: 0,
-    left: 16,
-    right: 16,
-    height: 1.5,
-    backgroundColor: "#FFFFFF",
-  },
-  reflectionKickerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 4,
-  },
-  reflectionKickerDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: C.saffron,
-  },
-  reflectionKicker: {
-    color: C.goldDark,
-    fontSize: 10.5,
-    fontWeight: "800",
-    letterSpacing: 1.1,
-  },
-  reflectionPrompt: {
-    color: C.ink,
-    fontSize: 16,
-    lineHeight: 23,
-    marginTop: 3,
-    marginBottom: 8,
-    fontWeight: "600",
-  },
-  quickChipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  quickChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5.5,
-    borderRadius: 999,
-    backgroundColor: "rgba(254, 236, 220, 0.6)",
-    borderWidth: 1,
-    borderColor: "rgba(229, 107, 39, 0.2)",
-  },
-  quickChipActive: {
-    backgroundColor: "#FFEDE0",
-    borderColor: C.saffron,
-  },
-  quickChipText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#7D5845",
-  },
-  quickChipTextActive: {
-    color: "#9A3C08",
-    fontWeight: "700",
-  },
-  reflectionInput: {
-    minHeight: 90,
-    marginTop: 10,
-    borderRadius: 16,
-    borderWidth: 1.2,
-    borderColor: "#EAD8CA",
-    borderTopColor: "#E0C8B8",
-    borderBottomColor: "#FFFFFF",
-    backgroundColor: "#FFF9F4",
-    padding: 13,
-    color: C.ink,
-    fontSize: 14.5,
-    lineHeight: 21,
-  },
-  reflectionFooter: {
-    marginTop: 10,
-    gap: 10,
-  },
-  savedHint: {
-    color: C.muted,
-    fontSize: 11,
-  },
-  completeButton3D: {
-    minHeight: 48,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 18,
-    borderRadius: 16,
-    backgroundColor: C.saffron,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.7)",
-    borderTopColor: "#FFFFFF",
-    borderBottomColor: "#A8470C",
-    borderBottomWidth: 3.5,
-    shadowColor: C.saffron,
-    shadowOpacity: 0.32,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-    position: "relative",
-    overflow: "hidden",
-  },
-  completeButtonDone3D: {
-    backgroundColor: C.green,
-    borderBottomColor: "#1B4D24",
-    shadowColor: C.greenDark,
-  },
-  completeText: {
-    color: C.white,
-    fontSize: 14.5,
-    fontWeight: "800",
-  },
   relistenBtn: {
     flexDirection: "row",
     alignItems: "center",
