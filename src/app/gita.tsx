@@ -8,14 +8,10 @@ import {
   ChevronRight,
   Flame,
   Flower2,
-  Info,
-  Music,
-  Pause,
-  Play,
   RotateCcw,
   Share2,
   Sparkles,
-  Volume2,
+  Sunrise,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -26,8 +22,8 @@ import {
   Pressable,
   Share,
   StyleSheet,
-  Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import Animated, {
@@ -36,8 +32,6 @@ import Animated, {
   FadeInDown,
   FadeInUp,
   FadeOut,
-  interpolate,
-  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -46,11 +40,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import Svg, {
-  Circle,
   Defs,
-  G,
-  LinearGradient,
-  Path,
   RadialGradient,
   Rect,
   Stop,
@@ -60,7 +50,7 @@ import { AruMascot } from "@/components/aru-mascot";
 import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
 import { MindsetCelebrationModal } from "@/components/mindset-celebration-modal";
 import { MovingChakra } from "@/components/moving-chakra";
-import { Screen, TextR } from "@/components/ritual-ui";
+import { DiyaGraphic, Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
 import {
   GitaNarrationSegment,
@@ -70,22 +60,14 @@ import {
 import { useLocalDateKey } from "@/hooks/use-local-date-key";
 import { getAlarmPlaybackState } from "@/services/alarm";
 import { useGitaProgress } from "@/state/gita-store";
+import { useRitual } from "@/state/ritual-store";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const EMPTY_SEGMENTS: readonly GitaNarrationSegment[] = [];
 
-function formatTime(seconds: number) {
-  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
-  const whole = Math.floor(seconds);
-  return (
-    String(Math.floor(whole / 60)) + ":" + String(whole % 60).padStart(2, "0")
-  );
-}
-
 /**
- * Converts academic Sanskrit IAST diacritics to clean, simple,
- * intuitive spoken English phonetics that anyone can pronounce easily.
+ * Converts academic Sanskrit IAST diacritics to clean, spoken phonetics.
  */
 function toSimpleEnglish(text: string): string {
   if (!text) return "";
@@ -183,170 +165,149 @@ function TactileRoundButton({
   );
 }
 
-// ─── Master 3D Play/Pause Button ──────────────────────────────────────────────
-function MasterPlayButton({
+// ─── Flowing Sacred Shloka Line (Fluid Golden Chanting Typography) ───────────
+function SacredShlokaLine({
+  segment,
+  currentMs,
   isPlaying,
-  onPress,
+  transliteration,
 }: {
+  segment: GitaNarrationSegment;
+  currentMs: number;
   isPlaying: boolean;
-  onPress: () => void;
+  transliteration?: string;
 }) {
-  const pressed = useSharedValue(0);
-  const auraPulse = useSharedValue(1);
+  const active = isPlaying && currentMs >= segment.startMs && currentMs < segment.endMs;
+  const complete = currentMs >= segment.endMs;
+  const focus = useSharedValue(0);
 
   useEffect(() => {
-    if (isPlaying) {
-      auraPulse.value = withRepeat(
-        withSequence(
-          withTiming(1.22, { duration: 1300, easing: Easing.inOut(Easing.ease) }),
-          withTiming(1.0, { duration: 1300, easing: Easing.inOut(Easing.ease) }),
-        ),
-        -1,
-        true,
-      );
-    } else {
-      auraPulse.value = withTiming(1, { duration: 300 });
-    }
-  }, [isPlaying, auraPulse]);
+    focus.value = withTiming(active ? 1 : complete ? 0.75 : 0, {
+      duration: active ? 280 : 200,
+      easing: Easing.out(Easing.cubic),
+    });
+  }, [active, complete, focus]);
 
-  const auraStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: auraPulse.value }],
-    opacity: isPlaying ? 0.45 : 0,
-  }));
-
-  const buttonStyle = useAnimatedStyle(() => ({
+  const animStyle = useAnimatedStyle(() => ({
+    // In resting/paused state, keep full 100% crisp visibility.
+    // When chanting, active line is 1.0, inactive dims gently to 0.52 for lyrical focus.
+    opacity: isPlaying
+      ? withTiming(active ? 1 : complete ? 0.85 : 0.52, { duration: 240 })
+      : withTiming(1, { duration: 200 }),
     transform: [
       {
-        translateY: withSpring(pressed.value ? 4 : 0, {
-          damping: 14,
-          stiffness: 240,
-        }),
-      },
-      {
-        scale: withSpring(pressed.value ? 0.94 : 1, {
-          damping: 14,
-          stiffness: 240,
+        scale: withSpring(active ? 1.045 : 1, {
+          damping: 16,
+          stiffness: 220,
         }),
       },
     ],
   }));
 
   return (
-    <View style={s.masterPlayWrapper}>
-      {/* Dynamic Saffron Aura Ring */}
-      <Animated.View style={[s.masterPlayAura, auraStyle]} />
-
-      <AnimatedPressable
-        accessibilityRole="button"
-        accessibilityLabel={isPlaying ? "Pause narration" : "Play narration"}
-        onPress={onPress}
-        onPressIn={() => {
-          pressed.value = 1;
-        }}
-        onPressOut={() => {
-          pressed.value = 0;
-        }}
-        style={[s.masterPlayBtn, buttonStyle]}
+    <Animated.View
+      accessibilityState={{ selected: active }}
+      style={[s.sacredLineWrap, animStyle]}
+    >
+      {/* Sacred Devanagari Verse Text */}
+      <TextR
+        serif
+        style={[
+          s.sacredLineSanskrit,
+          !isPlaying && s.sacredLineSanskritResting,
+          complete && s.sacredLineSanskritComplete,
+          active && s.sacredLineSanskritActive,
+        ]}
       >
-        {/* 3D Gold Specular Top Rim */}
-        <View style={s.masterPlayTopSpecular} />
+        {segment.text}
+      </TextR>
 
-        {/* Gloss Arc Reflection */}
-        <View style={s.masterPlayGlossArc} />
-
-        {isPlaying ? (
-          <Pause size={28} color={C.white} fill={C.white} />
-        ) : (
-          <Play size={28} color={C.white} fill={C.white} style={{ marginLeft: 3 }} />
-        )}
-
-        {/* 3D Bottom Cast Bevel Lip */}
-        <View style={s.masterPlayBottomLip} />
-      </AnimatedPressable>
-    </View>
+      {/* Phonetic Transliteration */}
+      {transliteration ? (
+        <TextR
+          serif
+          style={[
+            s.sacredLinePhonetic,
+            !isPlaying && s.sacredLinePhoneticResting,
+            complete && s.sacredLinePhoneticComplete,
+            active && s.sacredLinePhoneticActive,
+          ]}
+        >
+          {transliteration}
+        </TextR>
+      ) : null}
+    </Animated.View>
   );
 }
 
-// ─── Word Karaoke Highlighter ─────────────────────────────────────────────────
-function Word({
+// ─── Meaning Sentence Row ───────────────────────────────────────────────────
+function MeaningSentenceRow({
   segment,
   currentMs,
-  last,
+  isPlaying,
 }: {
   segment: GitaNarrationSegment;
   currentMs: number;
-  last: boolean;
+  isPlaying: boolean;
 }) {
-  const active = currentMs >= segment.startMs && currentMs < segment.endMs;
+  const active = isPlaying && currentMs >= segment.startMs && currentMs < segment.endMs;
   const complete = currentMs >= segment.endMs;
-  const intensity = useSharedValue(0);
+  const focus = useSharedValue(0);
 
   useEffect(() => {
-    intensity.value = withTiming(active ? 1 : complete ? 0.38 : 0, {
-      duration: 180,
+    focus.value = withTiming(active ? 1 : complete ? 0.75 : 0, {
+      duration: active ? 260 : 180,
+      easing: Easing.out(Easing.cubic),
     });
-  }, [active, complete, intensity]);
+  }, [active, complete, focus]);
 
-  const style = useAnimatedStyle(() => ({
-    color: interpolateColor(
-      intensity.value,
-      [0, 0.38, 1],
-      ["#8A766B", "#38241A", "#CA5A18"],
-    ),
-    textShadowColor: "rgba(229,107,39,0.35)",
-    textShadowRadius: intensity.value * 12,
-    transform: [{ scale: 1 + intensity.value * 0.045 }],
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: isPlaying
+      ? withTiming(active ? 1 : complete ? 0.85 : 0.52, { duration: 240 })
+      : withTiming(1, { duration: 200 }),
+    transform: [
+      {
+        scale: withSpring(active ? 1.035 : 1, {
+          damping: 16,
+          stiffness: 220,
+        }),
+      },
+    ],
   }));
 
   return (
-    <Animated.Text
-      accessibilityState={{ selected: active }}
-      style={[s.word, style]}
-    >
-      {segment.text}
-      {last ? "" : " "}
-    </Animated.Text>
+    <Animated.View style={[s.meaningRow, animStyle]}>
+      <TextR
+        style={[
+          s.meaningSentenceText,
+          !isPlaying && s.meaningSentenceResting,
+          complete && s.meaningSentenceComplete,
+          active && s.meaningSentenceActive,
+        ]}
+      >
+        {segment.text}
+      </TextR>
+    </Animated.View>
   );
 }
 
-function WordLine({
-  words,
-  currentMs,
-  meaning = false,
-}: {
-  words: readonly GitaNarrationSegment[];
-  currentMs: number;
-  meaning?: boolean;
-}) {
-  return (
-    <Text style={[s.wordLine, meaning && s.meaningLine]}>
-      {words.map((word, index) => (
-        <Word
-          key={String(word.startMs) + word.text}
-          segment={word}
-          currentMs={currentMs}
-          last={index === words.length - 1}
-        />
-      ))}
-    </Text>
-  );
-}
-
-// ─── Clean Soft Orangish Ambient Aura for Mascot ──────────────────────────────
+// ─── Hero Meditative Dais & Ambient Sunrise Aura ─────────────────────────────
 function MascotStage({
   onMascotPress,
   blessingMessage,
+  isCompact = false,
 }: {
   onMascotPress: () => void;
   blessingMessage: string | null;
+  isCompact?: boolean;
 }) {
   const auraGlow = useSharedValue(0.55);
 
   useEffect(() => {
     auraGlow.value = withRepeat(
       withSequence(
-        withTiming(0.82, { duration: 2800, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.42, { duration: 2800, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.92, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.46, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
       true,
@@ -355,19 +316,21 @@ function MascotStage({
 
   const auraAnimStyle = useAnimatedStyle(() => ({
     opacity: auraGlow.value,
-    transform: [{ scale: 0.94 + auraGlow.value * 0.1 }],
+    transform: [{ scale: 0.95 + auraGlow.value * 0.1 }],
   }));
 
+  const mascotSize = isCompact ? 165 : 205;
+
   return (
-    <View style={s.daisContainer}>
-      {/* Soft Orangish Ambient Light Glow (No shapes or harsh borders) */}
+    <View style={[s.daisContainer, isCompact && { height: 165, marginTop: 0, marginBottom: 2 }]}>
+      {/* Soft Orangish Dawn Light Halo */}
       <Animated.View style={[s.daisAuraHalo, auraAnimStyle]} pointerEvents="none">
-        <Svg width={320} height={190} viewBox="0 0 320 190">
+        <Svg width={360} height={230} viewBox="0 0 360 230">
           <Defs>
             <RadialGradient id="softOrangeAura" cx="50%" cy="50%" rx="50%" ry="50%">
-              <Stop offset="0%" stopColor="#FDBA74" stopOpacity="0.45" />
-              <Stop offset="30%" stopColor="#FB923C" stopOpacity="0.22" />
-              <Stop offset="65%" stopColor="#F97316" stopOpacity="0.06" />
+              <Stop offset="0%" stopColor="#FDBA74" stopOpacity="0.55" />
+              <Stop offset="30%" stopColor="#FB923C" stopOpacity="0.28" />
+              <Stop offset="65%" stopColor="#F97316" stopOpacity="0.09" />
               <Stop offset="100%" stopColor="#FFF9F5" stopOpacity="0" />
             </RadialGradient>
           </Defs>
@@ -375,11 +338,11 @@ function MascotStage({
         </Svg>
       </Animated.View>
 
-      {/* Interactive Mascot with pure transparent background */}
+      {/* Interactive Meditative Mascot */}
       <Pressable onPress={onMascotPress} style={s.mascotTouch}>
         <AruMascot
           clip="gita_reading"
-          size={142}
+          size={mascotSize}
           loop
           muted
           glow={false}
@@ -387,14 +350,14 @@ function MascotStage({
         />
       </Pressable>
 
-      {/* Ephemeral Blessing Speech Bubble */}
+      {/* Sacred Blessing Speech Bubble */}
       {blessingMessage && (
         <Animated.View
           entering={FadeInUp.duration(280)}
           exiting={FadeOut.duration(200)}
           style={s.blessingBubble}
         >
-          <Sparkles size={13} color="#D97706" />
+          <Sparkles size={14} color="#D97706" />
           <TextR style={s.blessingText}>{blessingMessage}</TextR>
         </Animated.View>
       )}
@@ -402,7 +365,7 @@ function MascotStage({
   );
 }
 
-// ─── Word Meanings (Padartha) Interactive Tray ────────────────────────────────
+// ─── Word Meanings (Padartha) Tray ───────────────────────────────────────────
 function WordMeaningsTray({
   words,
   onSelectWord,
@@ -415,8 +378,11 @@ function WordMeaningsTray({
   return (
     <View style={s.padarthaContainer}>
       <View style={s.padarthaHeaderRow}>
-        <TextR style={s.padarthaKicker}>PADARTHA · WORD-BY-WORD MEANINGS</TextR>
-        <TextR style={s.padarthaSubtext}>Tap to reveal</TextR>
+        <View style={s.padarthaBadge}>
+          <Sparkles size={12} color="#9A3C08" />
+          <TextR style={s.padarthaKicker}>PADARTHA · SACRED ROOTS</TextR>
+        </View>
+        <TextR style={s.padarthaSubtext}>Tap to reveal depth</TextR>
       </View>
 
       <View style={s.padarthaChipsRow}>
@@ -453,6 +419,15 @@ function WordMeaningsTray({
           );
         })}
       </View>
+
+      {selectedWord && (
+        <Animated.View entering={FadeInDown.duration(200)} style={s.padarthaDetailCard}>
+          <View style={s.padarthaDetailGlow} />
+          <TextR serif style={s.padarthaDetailWord}>{selectedWord.sanskrit}</TextR>
+          <TextR style={s.padarthaDetailMeaning}>“{selectedWord.meaning}”</TextR>
+          <TextR style={s.padarthaDetailHint}>Reflect on how this applies to your actions today.</TextR>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -506,7 +481,7 @@ function KrishnaInvitation({
               Would you like to{"\n"}speak with Krishna?
             </TextR>
             <TextR style={s.overlayBody}>
-              Bring one honest question from your heart.
+              Bring one honest question from your heart for your day ahead.
             </TextR>
             <Pressable
               accessibilityRole="button"
@@ -561,6 +536,10 @@ export default function Gita() {
 
 function GitaContent({ today }: { today: string }) {
   const router = useRouter();
+  const { alarmTime } = useRitual();
+  const { height } = useWindowDimensions();
+  const isCompact = height < 750;
+
   const [year, month, day] = today.split("-").map(Number);
   const verse = getDailyGitaVerse(new Date(year, month - 1, day));
   const narration = verse.narration;
@@ -580,6 +559,7 @@ function GitaContent({ today }: { today: string }) {
   const [viewTab, setViewTab] = useState<"shloka" | "meaning" | "padartha">(
     "shloka",
   );
+  const [completedTab, setCompletedTab] = useState<"wisdom" | "journal">("wisdom");
   const [selectedWord, setSelectedWord] = useState<GitaWord | null>(null);
   const [blessingMessage, setBlessingMessage] = useState<string | null>(null);
 
@@ -590,30 +570,20 @@ function GitaContent({ today }: { today: string }) {
   const complete =
     narrationSkipped || Boolean(narration && currentMs >= completionMs);
   const meaningPhase = currentMs >= 36_000 && !complete;
+  const displayTab =
+    viewTab === "padartha" ? "padartha" : meaningPhase ? "meaning" : "shloka";
   const isPlaying = Boolean(narration && status.playing);
   const isPromptVisible = complete && !promptDismissed;
-  const timedProgress =
-    completionMs > startMs
-      ? Math.max(0, Math.min(1, (currentMs - startMs) / (completionMs - startMs)))
-      : 0;
 
   const sanskrit = segments.filter((item) => item.kind === "sanskrit");
   const hindi = segments.filter((item) => item.kind === "meaning");
-  const sanskritLineOne = sanskrit.filter((item) => item.startMs < 29_000);
-  const sanskritLineTwo = sanskrit.filter((item) => item.startMs >= 29_000);
-  const hindiLineOne = hindi.filter((item) => item.startMs < 47_000);
-  const hindiLineTwo = hindi.filter((item) => item.startMs >= 47_000);
   const reflectionComplete = progressStore.completedDates.has(today);
   const isBookmarked = progressStore.bookmarks.has(verse.id);
+  const currentStreak = progressStore.streak;
 
-  // Sync tab mode with auto-narration phase if user hasn't explicitly switched
-  useEffect(() => {
-    if (meaningPhase && viewTab === "shloka") {
-      setViewTab("meaning");
-    } else if (!meaningPhase && !complete && viewTab === "meaning") {
-      setViewTab("shloka");
-    }
-  }, [complete, meaningPhase, viewTab]);
+  const transliterationLines = verse.transliteration
+    ? verse.transliteration.split("\n").map(toSimpleEnglish)
+    : [];
 
   const pause = useCallback(() => player.pause(), [player]);
   const playFromStart = useCallback(() => {
@@ -633,6 +603,7 @@ function GitaContent({ today }: { today: string }) {
 
   const continueQuietly = useCallback(() => {
     setPromptDismissed(true);
+    setCompletedTab("journal");
     setReflectionExpanded(true);
   }, []);
 
@@ -687,12 +658,7 @@ function GitaContent({ today }: { today: string }) {
     }
   }, [completionMs, currentMs, narration, player, status.playing]);
 
-  const togglePlay = () => {
-    if (!narration) return;
-    if (complete || status.didJustFinish) playFromStart();
-    else if (status.playing) pause();
-    else player.play();
-  };
+
 
   const shareVerse = async () => {
     await Share.share({
@@ -722,27 +688,38 @@ function GitaContent({ today }: { today: string }) {
   const handleMascotTap = () => {
     const blessings = [
       "अहमात्मा गुडाकेश · The Divine resides within you",
-      "Listen with pure presence & inner peace",
-      "सर्वभूताशयस्थितः · Seeing the sacred in every being",
+      "Awaken with clear intent & calm mind",
+      "सर्वभूताशयस्थितः · See the sacred in all beings",
+      "Act with whole heart, free from anxiety",
     ];
     const pick = blessings[Math.floor(Math.random() * blessings.length)];
     setBlessingMessage(pick);
-    setTimeout(() => setBlessingMessage(null), 3500);
+    setTimeout(() => setBlessingMessage(null), 3800);
   };
 
   return (
-    <Screen contentContainerStyle={s.screenContent}>
-      {/* ─── 1. Ethereal 3D Sacred Header ───────────────────────────────────── */}
+    <Screen contentContainerStyle={[s.screenContent, isCompact && { paddingBottom: 70 }]}>
+      {/* ─── 0. Morning Alarm Awakening Pill ─────────────────────────────────── */}
+      <View style={s.topAlarmRow}>
+        <View style={s.topAlarmPill}>
+          <Sunrise size={13} color="#8A5D18" strokeWidth={2.3} />
+          <TextR style={s.topAlarmText}>
+            BRAHMA MUHURTA AWAKENING · {alarmTime || "06:30 AM"}
+          </TextR>
+        </View>
+      </View>
+
+      {/* ─── 1. Sacred Header with Diya Streak Altar ────────────────────────── */}
       <View style={s.headerRow}>
         <TactileRoundButton
           onPress={() => router.back()}
           accessibilityLabel="Back"
-          size={42}
+          size={isCompact ? 38 : 40}
         >
-          <ChevronLeft size={22} color={C.ink} />
+          <ChevronLeft size={20} color={C.ink} />
         </TactileRoundButton>
 
-        {/* 3D Sacred Chapter Pill */}
+        {/* Sacred Chapter Pill with Morning Sadhana Streak */}
         <View style={s.chapterPill}>
           <View style={s.chapterDotGlow}>
             <View style={s.chapterDot} />
@@ -750,17 +727,23 @@ function GitaContent({ today }: { today: string }) {
           <TextR style={s.chapterText}>
             CHAPTER {verse.chapter} · SHLOKA {verse.verse}
           </TextR>
+          {currentStreak > 0 && (
+            <View style={s.streakBadge}>
+              <Flame size={12} color="#D97706" fill="#F59E0B" />
+              <TextR style={s.streakBadgeText}>{currentStreak}d</TextR>
+            </View>
+          )}
         </View>
 
-        {/* Top 3D Action Cluster */}
+        {/* Top Tactile Action Cluster */}
         <View style={s.headerActions}>
           <TactileRoundButton
             onPress={() => progressStore.toggleBookmark(verse.id)}
             accessibilityLabel="Bookmark verse"
-            size={42}
+            size={isCompact ? 38 : 40}
           >
             <Bookmark
-              size={18}
+              size={17}
               color={isBookmarked ? C.saffron : C.ink}
               fill={isBookmarked ? C.gold : "transparent"}
             />
@@ -769,52 +752,55 @@ function GitaContent({ today }: { today: string }) {
           <TactileRoundButton
             onPress={shareVerse}
             accessibilityLabel="Share verse"
-            size={42}
+            size={isCompact ? 38 : 40}
           >
-            <Share2 size={17} color={C.ink} />
+            <Share2 size={16} color={C.ink} />
           </TactileRoundButton>
         </View>
       </View>
 
       {!complete ? (
         <Animated.View entering={FadeIn.duration(260)} style={s.listeningScreen}>
-          {/* ─── 2. Sacred Sanctum Dais & Mascot ────────────────────────────── */}
+          {/* ─── 2. Sacred Sanctum Dais & Meditative Mascot ─────────────────── */}
           <MascotStage
             onMascotPress={handleMascotTap}
             blessingMessage={blessingMessage}
+            isCompact={isCompact}
           />
 
           {/* Mode Pill Indicator */}
-          <View style={s.modePillRow}>
+          <View style={[s.modePillRow, isCompact && { marginBottom: 6 }]}>
             <View style={s.modePill}>
               {isPlaying ? (
-                <AudioSpectrumVisualizer isPlaying={true} barCount={6} height={14} />
+                <AudioSpectrumVisualizer isPlaying={true} barCount={6} height={13} />
               ) : (
                 <Flower2 size={13} color={C.saffron} />
               )}
               <TextR style={s.modePillText}>
-                {viewTab === "meaning"
-                  ? "THE SACRED MEANING"
-                  : viewTab === "padartha"
+                {displayTab === "meaning"
+                  ? "SACRED BHAVARTHA"
+                  : displayTab === "padartha"
                   ? "WORD-BY-WORD PADARTHA"
+                  : isPlaying
+                  ? "SACRED AWAKENING RECITATION"
                   : "SACRED RECITATION"}
               </TextR>
             </View>
           </View>
 
-          {/* ─── 3. 3D Sacred Parchment Shloka Card ────────────── */}
-          <View style={s.shlokaCardWrapper}>
-            <View style={s.shlokaCard3D}>
-              {/* View Switcher Tabs inside the 3D card */}
-              <View style={s.cardTabRow}>
+          {/* ─── 3. Unified Sacred Shloka Sanctum ───────────────────────────── */}
+          <View style={[s.shlokaCardWrapper, isCompact && { marginBottom: 10 }]}>
+            <View style={[s.shlokaCard3D, isCompact && { paddingVertical: 14, paddingHorizontal: 12 }]}>
+              {/* Tab Switcher */}
+              <View style={[s.cardTabRow, isCompact && { marginBottom: 10 }]}>
                 <Pressable
                   onPress={() => setViewTab("shloka")}
-                  style={[s.cardTab, viewTab === "shloka" && s.cardTabActive]}
+                  style={[s.cardTab, displayTab === "shloka" && s.cardTabActive]}
                 >
                   <TextR
                     style={[
                       s.cardTabText,
-                      viewTab === "shloka" && s.cardTabTextActive,
+                      displayTab === "shloka" && s.cardTabTextActive,
                     ]}
                   >
                     श्लोक
@@ -823,12 +809,12 @@ function GitaContent({ today }: { today: string }) {
 
                 <Pressable
                   onPress={() => setViewTab("meaning")}
-                  style={[s.cardTab, viewTab === "meaning" && s.cardTabActive]}
+                  style={[s.cardTab, displayTab === "meaning" && s.cardTabActive]}
                 >
                   <TextR
                     style={[
                       s.cardTabText,
-                      viewTab === "meaning" && s.cardTabTextActive,
+                      displayTab === "meaning" && s.cardTabTextActive,
                     ]}
                   >
                     भावार्थ
@@ -837,12 +823,12 @@ function GitaContent({ today }: { today: string }) {
 
                 <Pressable
                   onPress={() => setViewTab("padartha")}
-                  style={[s.cardTab, viewTab === "padartha" && s.cardTabActive]}
+                  style={[s.cardTab, displayTab === "padartha" && s.cardTabActive]}
                 >
                   <TextR
                     style={[
                       s.cardTabText,
-                      viewTab === "padartha" && s.cardTabTextActive,
+                      displayTab === "padartha" && s.cardTabTextActive,
                     ]}
                   >
                     पदार्थ
@@ -850,31 +836,36 @@ function GitaContent({ today }: { today: string }) {
                 </Pressable>
               </View>
 
-              {/* Central Karaoke Stage */}
-              <View style={s.wordStage}>
-                {viewTab === "shloka" && (
-                  <Animated.View entering={FadeIn.duration(240)}>
-                    <WordLine words={sanskritLineOne} currentMs={currentMs} />
-                    <WordLine words={sanskritLineTwo} currentMs={currentMs} />
+              {/* Central Dynamic Verse Stage */}
+              <View style={[s.wordStage, isCompact && { minHeight: 130, paddingVertical: 4 }]}>
+                {displayTab === "shloka" && (
+                  <Animated.View entering={FadeIn.duration(240)} style={s.sanskritList}>
+                    {sanskrit.map((segment, idx) => (
+                      <SacredShlokaLine
+                        key={String(segment.startMs) + segment.text}
+                        segment={segment}
+                        currentMs={currentMs}
+                        isPlaying={isPlaying}
+                        transliteration={transliterationLines[idx]}
+                      />
+                    ))}
                   </Animated.View>
                 )}
 
-                {viewTab === "meaning" && (
-                  <Animated.View entering={FadeIn.duration(240)}>
-                    <WordLine
-                      words={hindiLineOne}
-                      currentMs={currentMs}
-                      meaning
-                    />
-                    <WordLine
-                      words={hindiLineTwo}
-                      currentMs={currentMs}
-                      meaning
-                    />
+                {displayTab === "meaning" && (
+                  <Animated.View entering={FadeIn.duration(240)} style={s.meaningList}>
+                    {hindi.map((segment) => (
+                      <MeaningSentenceRow
+                        key={String(segment.startMs) + segment.text}
+                        segment={segment}
+                        currentMs={currentMs}
+                        isPlaying={isPlaying}
+                      />
+                    ))}
                   </Animated.View>
                 )}
 
-                {viewTab === "padartha" && (
+                {displayTab === "padartha" && (
                   <Animated.View entering={FadeIn.duration(240)}>
                     <WordMeaningsTray
                       words={verse.words}
@@ -884,172 +875,207 @@ function GitaContent({ today }: { today: string }) {
                   </Animated.View>
                 )}
               </View>
-
-              {/* Transliteration Sub-Card with simple, easy-to-read spoken English */}
-              {viewTab !== "padartha" && (
-                <View style={s.transliterationBox}>
-                  <TextR serif style={s.transliterationText}>
-                    {viewTab === "meaning"
-                      ? "“Let the sacred meaning settle into your heart.”"
-                      : `“${toSimpleEnglish(verse.transliteration)}”`}
-                  </TextR>
-                </View>
-              )}
             </View>
           </View>
 
-          {/* ─── 4. Floating 3D Tactile Audio Sanctuary Dock ────────────────── */}
-          <View style={s.audioDock}>
-            {/* 3D Top Bevel Line */}
-            <View style={s.dockTopBevel} />
-
-            {/* Interactive Progress Bar */}
-            <View style={s.progressSection}>
-              <View style={s.progressRail}>
-                <View
-                  style={[
-                    s.progressFill,
-                    { width: `${Math.round(timedProgress * 100)}%` as any },
-                  ]}
-                />
-                {/* 3D Glowing Head Bead */}
-                <View
-                  style={[
-                    s.progressBead,
-                    { left: `${Math.max(0, Math.min(100, timedProgress * 100))}%` as any },
-                  ]}
-                />
-              </View>
-
-              {/* Time Indicators */}
-              <View style={s.timeRow}>
-                <TextR style={s.timeText}>
-                  {formatTime(Math.max(0, status.currentTime - startMs / 1000))}
-                </TextR>
-                <TextR style={s.timeText}>
-                  {formatTime(Math.max(0, (completionMs - startMs) / 1000))}
-                </TextR>
-              </View>
-            </View>
-
-            {/* 3D Master Control Row */}
-            <View style={s.controlRow}>
-              <TactileRoundButton
-                onPress={playFromStart}
-                accessibilityLabel="Replay narration"
-                size={48}
-              >
-                <RotateCcw size={20} color="#7D5845" />
-              </TactileRoundButton>
-
-              <MasterPlayButton isPlaying={isPlaying} onPress={togglePlay} />
-
-              <TactileRoundButton
-                onPress={skip}
-                accessibilityLabel="Skip narration"
-                size={48}
-              >
-                <ChevronRight size={23} color="#7D5845" />
-              </TactileRoundButton>
-            </View>
-
-            {/* Playback Status Caption & Spectrum */}
-            <View style={s.playbackCaption}>
-              <Volume2 size={15} color={C.saffron} />
-              <TextR style={s.playbackCaptionText}>
-                {isPlaying ? "Listening with presence" : "Narration paused"}
-              </TextR>
-              <View style={s.captionSpectrum}>
-                <AudioSpectrumVisualizer
-                  isPlaying={isPlaying}
-                  barCount={8}
-                  height={13}
-                />
-              </View>
-            </View>
-          </View>
+          {/* ─── 4. Clear Focused Morning Intention Action ───────────────── */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Set today's sankalpa and morning intention"
+            onPress={skip}
+            style={({ pressed }) => [
+              s.morningActionBtn,
+              pressed && s.pressed,
+            ]}
+          >
+            <View style={s.btnGlossHighlight} />
+            <Sparkles size={18} color={C.white} />
+            <TextR style={s.morningActionText}>
+              Set Today’s Intention & Sankalpa
+            </TextR>
+            <ChevronRight size={18} color={C.white} />
+            <View style={s.btnBottomBevel} />
+          </Pressable>
         </Animated.View>
       ) : (
-        /* ─── 5. Completed Contemplation & Reflection State ────────────────── */
+        /* ─── 5. Completed Contemplation & Daily Morning Sankalpa Altar ───── */
         <Animated.View entering={FadeIn.duration(320)} style={s.completedScreen}>
-          {/* 3D Wisdom Card */}
-          <View style={s.completedVerseCard}>
-            <View style={s.completedMascot}>
-              <AruMascot
-                clip="gita_reading"
-                size={110}
-                loop
-                muted
-                glow={false}
-                interactive={false}
+          {/* Sacred Segmented Switcher */}
+          <View style={s.completedSegmentWrapper}>
+            <View style={s.completedSegmentControl}>
+              <Pressable
+                onPress={() => setCompletedTab("wisdom")}
+                style={[
+                  s.completedSegmentTab,
+                  completedTab === "wisdom" && s.completedSegmentTabActive,
+                ]}
+              >
+                <TextR
+                  style={[
+                    s.completedSegmentText,
+                    completedTab === "wisdom" && s.completedSegmentTextActive,
+                  ]}
+                >
+                  📖 आज का ज्ञान · WISDOM
+                </TextR>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setCompletedTab("journal")}
+                style={[
+                  s.completedSegmentTab,
+                  completedTab === "journal" && s.completedSegmentTabActive,
+                ]}
+              >
+                <TextR
+                  style={[
+                    s.completedSegmentText,
+                    completedTab === "journal" && s.completedSegmentTextActive,
+                  ]}
+                >
+                  ✍️ दैनिक संकल्प · JOURNAL {reflectionComplete ? "✓" : ""}
+                </TextR>
+              </Pressable>
+            </View>
+          </View>
+
+          {completedTab === "wisdom" ? (
+            <Animated.View entering={FadeIn.duration(240)}>
+              {/* Meditative Hero Mascot Stage */}
+              <MascotStage
+                onMascotPress={handleMascotTap}
+                blessingMessage={blessingMessage}
+                isCompact={isCompact}
               />
-            </View>
 
-            <TextR serif style={s.completedSanskrit}>
-              {verse.sanskrit}
-            </TextR>
+              {/* Full Shloka Wisdom Parchment */}
+              <View style={s.completedVerseCard}>
+                <TextR serif style={s.completedSanskrit}>
+                  {verse.sanskrit}
+                </TextR>
 
-            <View style={s.completedTranslitBox}>
-              <TextR serif style={s.completedTranslation}>
-                “{toSimpleEnglish(verse.transliteration)}”
-              </TextR>
-            </View>
+                <View style={s.completedTranslitBox}>
+                  <TextR serif style={s.completedTranslation}>
+                    “{toSimpleEnglish(verse.transliteration)}”
+                  </TextR>
+                </View>
 
-            <View style={s.goldDivider} />
+                <View style={s.goldDivider} />
 
-            <TextR style={s.completedMeaning}>{verse.meaning}</TextR>
+                <TextR style={s.completedMeaning}>{verse.meaning}</TextR>
 
-            {/* 3D Emerald Glass Key Takeaway Plaque */}
-            <View style={s.takeaway3D}>
-              <View style={s.takeawayGloss} />
-              <Sparkles size={17} color="#FFF6DF" />
-              <TextR style={s.takeawayText}>{verse.takeaway}</TextR>
-            </View>
-          </View>
+                {/* Daily Morning Sankalpa / Action Plaque in Warm Golden Amber */}
+                <View style={s.takeaway3D}>
+                  <View style={s.takeawayGloss} />
+                  <Sparkles size={18} color="#FFF6DF" />
+                  <View style={{ flex: 1 }}>
+                    <TextR style={s.takeawayKicker}>TODAY’S SANKALPA · ACTION</TextR>
+                    <TextR style={s.takeawayText}>{verse.takeaway}</TextR>
+                  </View>
+                </View>
+              </View>
 
-          {/* Interactive Word Meanings in Completed State */}
-          <View style={s.completedPadarthaWrap}>
-            <WordMeaningsTray
-              words={verse.words}
-              onSelectWord={(w) => setSelectedWord(w)}
-              selectedWord={selectedWord}
-            />
-          </View>
+              {/* Word Meanings in Completed State */}
+              <View style={s.completedPadarthaWrap}>
+                <WordMeaningsTray
+                  words={verse.words}
+                  onSelectWord={(w) => setSelectedWord(w)}
+                  selectedWord={selectedWord}
+                />
+              </View>
 
-          {/* 3D Interactive Reflection Journal */}
-          <View style={s.reflectionCard3D}>
-            <View style={s.reflectionTopBevel} />
+              {/* Primary CTA: Move to Journal */}
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setCompletedTab("journal")}
+                style={({ pressed }) => [
+                  s.primaryActionBtn,
+                  pressed && s.pressed,
+                ]}
+              >
+                <View style={s.btnGlossHighlight} />
+                <Sparkles size={18} color={C.white} />
+                <TextR style={s.primaryActionText}>
+                  {reflectionComplete
+                    ? "View Morning Intention & Action"
+                    : "Set Morning Intention & Action"}
+                </TextR>
+                <ChevronRight size={18} color={C.white} />
+                <View style={s.btnBottomBevel} />
+              </Pressable>
 
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setReflectionExpanded((open) => !open)}
-              style={({ pressed }) => [
-                s.reflectionToggle,
-                pressed && s.pressed,
-              ]}
-            >
-              <View style={s.reflectionCopy}>
+              {/* Re-listen Trigger */}
+              <Pressable
+                onPress={playFromStart}
+                style={({ pressed }) => [s.relistenBtn, pressed && s.pressed]}
+              >
+                <RotateCcw size={15} color={C.saffron} />
+                <TextR style={s.relistenText}>Listen to recitation again</TextR>
+              </Pressable>
+            </Animated.View>
+          ) : (
+            <Animated.View entering={FadeIn.duration(240)}>
+              {/* Sacred Diya Altar of Consistency */}
+              <View style={s.altarBanner}>
+                <DiyaGraphic size={36} showAura />
+                <View style={s.altarCopy}>
+                  <TextR style={s.altarTitle}>
+                    {currentStreak > 0
+                      ? `${currentStreak}-Day Morning Sadhana`
+                      : "Today’s Awakening Sacred Contemplation"}
+                  </TextR>
+                  <TextR style={s.altarSub}>Light your inner flame for the day ahead</TextR>
+                </View>
+              </View>
+
+              {/* Focused Morning Reflection Journal Card */}
+              <View style={s.journalCard3D}>
+                <View style={s.reflectionTopBevel} />
+
                 <View style={s.reflectionKickerRow}>
                   <View style={s.reflectionKickerDot} />
-                  <TextR style={s.reflectionKicker}>TODAY’S REFLECTION</TextR>
+                  <TextR style={s.reflectionKicker}>MORNING INTENTION JOURNAL</TextR>
                 </View>
                 <TextR serif style={s.reflectionPrompt}>
                   {verse.reflectionPrompt}
                 </TextR>
-              </View>
-              <View style={s.reflectionChevronWrap}>
-                <ChevronRight
-                  size={20}
-                  color={C.saffron}
-                  style={{
-                    transform: [{ rotate: reflectionExpanded ? "90deg" : "0deg" }],
-                  }}
-                />
-              </View>
-            </Pressable>
 
-            {reflectionExpanded && (
-              <Animated.View entering={FadeInDown.duration(240)}>
+                {/* 1-Tap Morning Intention Chips */}
+                <View style={s.quickChipsRow}>
+                  {[
+                    "आज मैं कर्म पर पूरा ध्यान दूंगा।",
+                    "परिस्थितियों में शांत और संतुलित रहूंगा।",
+                    "हर प्राणी में दिव्यता का सम्मान करूंगा।",
+                    "चिंता छोड़कर वर्तमान में कर्म करूंगा।",
+                  ].map((chip, idx) => (
+                    <Pressable
+                      key={idx}
+                      onPress={() => {
+                        setReflection(chip);
+                        progressStore.saveReflection(today, verse.id, chip);
+                      }}
+                      style={({ pressed }) => [
+                        s.quickChip,
+                        reflection === chip && s.quickChipActive,
+                        pressed && { opacity: 0.8 },
+                      ]}
+                    >
+                      <Sparkles
+                        size={11}
+                        color={reflection === chip ? C.saffron : "#9A7C6B"}
+                      />
+                      <TextR
+                        style={[
+                          s.quickChipText,
+                          reflection === chip && s.quickChipTextActive,
+                        ]}
+                      >
+                        {chip}
+                      </TextR>
+                    </Pressable>
+                  ))}
+                </View>
+
                 <TextInput
                   accessibilityLabel="Your reflection"
                   value={reflection}
@@ -1057,16 +1083,17 @@ function GitaContent({ today }: { today: string }) {
                   onBlur={() =>
                     progressStore.saveReflection(today, verse.id, reflection)
                   }
-                  placeholder="Write one honest thought from your heart…"
+                  placeholder="Write one honest thought or commitment for today…"
                   placeholderTextColor="#9A8173"
                   multiline
                   textAlignVertical="top"
                   maxLength={600}
                   style={s.reflectionInput}
                 />
+
                 <View style={s.reflectionFooter}>
                   <TextR style={s.savedHint}>
-                    {reflection.length}/600 · Saved locally
+                    {reflection.length}/600 · Saved securely on device
                   </TextR>
                   <Pressable
                     accessibilityRole="button"
@@ -1081,24 +1108,24 @@ function GitaContent({ today }: { today: string }) {
                     <Check size={18} color={C.white} strokeWidth={3} />
                     <TextR style={s.completeText}>
                       {reflectionComplete
-                        ? "Reflection Completed"
-                        : "Complete reflection"}
+                        ? "Reflection Completed ✓"
+                        : "Complete morning reflection"}
                     </TextR>
                     <View style={s.btnBottomBevel} />
                   </Pressable>
                 </View>
-              </Animated.View>
-            )}
-          </View>
+              </View>
 
-          {/* Re-listen Option */}
-          <Pressable
-            onPress={playFromStart}
-            style={({ pressed }) => [s.relistenBtn, pressed && s.pressed]}
-          >
-            <RotateCcw size={16} color={C.saffron} />
-            <TextR style={s.relistenText}>Listen to recitation again</TextR>
-          </Pressable>
+              {/* Back to Wisdom View */}
+              <Pressable
+                onPress={() => setCompletedTab("wisdom")}
+                style={({ pressed }) => [s.relistenBtn, pressed && s.pressed]}
+              >
+                <ChevronLeft size={16} color={C.saffron} />
+                <TextR style={s.relistenText}>Back to Today’s Wisdom</TextR>
+              </Pressable>
+            </Animated.View>
+          )}
         </Animated.View>
       )}
 
@@ -1117,7 +1144,7 @@ function GitaContent({ today }: { today: string }) {
 // ─── Stylesheet ───────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   screenContent: {
-    paddingBottom: 140,
+    paddingBottom: 90,
   },
   loading: {
     minHeight: 500,
@@ -1130,20 +1157,49 @@ const s = StyleSheet.create({
     fontSize: 15,
   },
 
+  // ─── Morning Alarm Awakening Header ───────────────────────────────────────
+  topAlarmRow: {
+    alignItems: "center",
+    marginBottom: 6,
+    marginTop: 2,
+  },
+  topAlarmPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: "rgba(254, 240, 226, 0.95)",
+    borderWidth: 1,
+    borderColor: "rgba(229, 107, 39, 0.28)",
+    shadowColor: "#8C4010",
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  topAlarmText: {
+    color: "#8A5D18",
+    fontSize: 10.5,
+    fontWeight: "800",
+    letterSpacing: 1.3,
+  },
+
   // ─── Header ────────────────────────────────────────────────────────────────
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: 6,
     paddingHorizontal: 2,
   },
   chapterPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
+    gap: 7,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
     borderRadius: 999,
     backgroundColor: "rgba(255, 248, 240, 0.95)",
     borderWidth: 1.5,
@@ -1152,34 +1208,49 @@ const s = StyleSheet.create({
     borderBottomColor: "rgba(216, 144, 64, 0.35)",
     borderBottomWidth: 2,
     shadowColor: C.saffron,
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
     elevation: 3,
   },
   chapterDotGlow: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: "rgba(229, 107, 39, 0.16)",
     alignItems: "center",
     justifyContent: "center",
   },
   chapterDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: C.saffron,
   },
   chapterText: {
     color: "#9A3C08",
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: "800",
     letterSpacing: 1.1,
   },
+  streakBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(254, 236, 220, 0.9)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    marginLeft: 3,
+  },
+  streakBadgeText: {
+    color: "#9A3C08",
+    fontSize: 10,
+    fontWeight: "800",
+  },
   headerActions: {
     flexDirection: "row",
-    gap: 8,
+    gap: 7,
   },
 
   // ─── Tactile Button Base ───────────────────────────────────────────────────
@@ -1205,7 +1276,7 @@ const s = StyleSheet.create({
     top: 0,
     left: 4,
     right: 4,
-    height: 12,
+    height: 11,
     borderRadius: 8,
     backgroundColor: "rgba(255, 255, 255, 0.55)",
   },
@@ -1226,15 +1297,15 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
-    marginTop: 4,
-    marginBottom: 6,
-    height: 156,
+    marginTop: 2,
+    marginBottom: 4,
+    height: 210,
   },
   daisAuraHalo: {
     position: "absolute",
     alignSelf: "center",
-    width: 320,
-    height: 190,
+    width: 360,
+    height: 230,
   },
   mascotTouch: {
     zIndex: 10,
@@ -1245,7 +1316,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 14,
+    paddingHorizontal: 13,
     paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: "rgba(255, 253, 248, 0.98)",
@@ -1268,7 +1339,7 @@ const s = StyleSheet.create({
   // ─── Mode Pill ─────────────────────────────────────────────────────────────
   modePillRow: {
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   modePill: {
     flexDirection: "row",
@@ -1284,14 +1355,14 @@ const s = StyleSheet.create({
   modePillText: {
     color: "#A2521E",
     fontSize: 10.5,
-    letterSpacing: 1.4,
+    letterSpacing: 1.3,
     fontWeight: "800",
   },
 
-  // ─── 3D Shloka Parchment Card ──────────────────────────────────────────────
+  // ─── Unified Sacred Shloka Card ────────────────────────────────────────────
   shlokaCardWrapper: {
     marginHorizontal: 0,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   shlokaCard3D: {
     backgroundColor: "rgba(255, 252, 248, 0.98)",
@@ -1318,14 +1389,14 @@ const s = StyleSheet.create({
     alignSelf: "center",
     backgroundColor: "rgba(254, 236, 220, 0.7)",
     borderRadius: 999,
-    padding: 3,
-    marginBottom: 14,
+    padding: 3.5,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.9)",
   },
   cardTab: {
-    paddingHorizontal: 14,
-    paddingVertical: 4.5,
+    paddingHorizontal: 15,
+    paddingVertical: 5,
     borderRadius: 999,
   },
   cardTabActive: {
@@ -1337,7 +1408,7 @@ const s = StyleSheet.create({
     elevation: 3,
   },
   cardTabText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: "700",
     color: "#7D5845",
   },
@@ -1346,58 +1417,128 @@ const s = StyleSheet.create({
     fontWeight: "800",
   },
 
-  // ─── Karaoke Word Stage ────────────────────────────────────────────────────
+  // ─── Sacred Chanting Stage ─────────────────────────────────────────────────
   wordStage: {
-    minHeight: 120,
+    minHeight: 150,
     justifyContent: "center",
+    paddingVertical: 8,
+  },
+  sanskritList: {
+    gap: 18,
+    paddingVertical: 4,
+    alignItems: "center",
+  },
+  sacredLineWrap: {
+    paddingVertical: 4,
     paddingHorizontal: 6,
+    alignItems: "center",
   },
-  wordLine: {
-    color: "#8A766B",
-    fontFamily: "Georgia",
+  sacredLineSanskrit: {
     fontSize: 24,
-    fontWeight: "600",
-    lineHeight: 42,
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  meaningLine: {
-    fontSize: 21,
     lineHeight: 36,
-  },
-  word: {
-    fontFamily: "Georgia",
     fontWeight: "600",
+    color: "#7E6759",
+    textAlign: "center",
+    letterSpacing: 0.3,
+  },
+  sacredLineSanskritResting: {
+    color: "#2E180D",
+    fontWeight: "700",
+    fontSize: 25.5,
+    lineHeight: 39,
+  },
+  sacredLineSanskritComplete: {
+    fontSize: 25,
+    lineHeight: 38,
+    color: "#3F2618",
+    fontWeight: "700",
+  },
+  sacredLineSanskritActive: {
+    fontSize: 27.5,
+    lineHeight: 41,
+    color: "#842A04",
+    fontWeight: "800",
+    textShadowColor: "rgba(235, 110, 30, 0.2)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
+  sacredLinePhonetic: {
+    fontSize: 15,
+    color: "#9E877A",
+    fontStyle: "italic",
+    textAlign: "center",
+    marginTop: 6,
+    lineHeight: 21,
+  },
+  sacredLinePhoneticResting: {
+    color: "#5C4335",
+    fontSize: 15.5,
+    fontStyle: "italic",
+    lineHeight: 22.5,
+  },
+  sacredLinePhoneticComplete: {
+    fontSize: 15.5,
+    color: "#52372A",
+    lineHeight: 22.5,
+  },
+  sacredLinePhoneticActive: {
+    fontSize: 16.5,
+    color: "#6D3212",
+    fontWeight: "600",
+    lineHeight: 23.5,
   },
 
-  // ─── Transliteration Sub-Card ──────────────────────────────────────────────
-  transliterationBox: {
-    marginTop: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 14,
-    backgroundColor: "rgba(254, 244, 234, 0.8)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.85)",
+  // ─── Bhavartha Meaning Stage ───────────────────────────────────────────────
+  meaningList: {
+    gap: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
   },
-  transliterationText: {
-    color: "#785848",
-    fontSize: 12.5,
-    fontStyle: "italic",
-    lineHeight: 19,
+  meaningRow: {
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  meaningSentenceText: {
+    fontSize: 17.5,
+    lineHeight: 27,
+    color: "#7E6759",
+    fontWeight: "500",
     textAlign: "center",
+  },
+  meaningSentenceResting: {
+    color: "#2E180D",
+    fontWeight: "600",
+    fontSize: 18,
+    lineHeight: 28,
+  },
+  meaningSentenceComplete: {
+    fontSize: 18,
+    lineHeight: 28,
+    color: "#3F2618",
+    fontWeight: "600",
+  },
+  meaningSentenceActive: {
+    fontSize: 19.5,
+    lineHeight: 30,
+    color: "#842A04",
+    fontWeight: "800",
   },
 
   // ─── Padartha Tray ─────────────────────────────────────────────────────────
   padarthaContainer: {
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   padarthaHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 10,
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
+  },
+  padarthaBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
   },
   padarthaKicker: {
     fontSize: 10.5,
@@ -1413,14 +1554,14 @@ const s = StyleSheet.create({
   padarthaChipsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 7,
     justifyContent: "center",
   },
   padarthaChip: {
     backgroundColor: "rgba(255, 248, 242, 0.95)",
     borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
     borderWidth: 1.2,
     borderColor: "rgba(255, 255, 255, 0.95)",
     borderTopColor: "#FFFFFF",
@@ -1439,7 +1580,7 @@ const s = StyleSheet.create({
     borderBottomColor: "#C25010",
   },
   padarthaChipSanskrit: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "700",
     color: "#351000",
   },
@@ -1448,7 +1589,7 @@ const s = StyleSheet.create({
     fontWeight: "800",
   },
   padarthaChipMeaning: {
-    fontSize: 11,
+    fontSize: 11.5,
     color: C.muted,
     marginTop: 2,
     fontWeight: "600",
@@ -1457,173 +1598,157 @@ const s = StyleSheet.create({
     color: "#6D3010",
     fontWeight: "700",
   },
-
-  // ─── 3D Floating Audio Dock ────────────────────────────────────────────────
-  audioDock: {
-    backgroundColor: "rgba(255, 250, 245, 0.96)",
-    borderRadius: 26,
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.95)",
-    borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(216, 144, 64, 0.35)",
-    borderBottomWidth: 3,
-    shadowColor: "#8C4010",
-    shadowOpacity: 0.16,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
+  padarthaDetailCard: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: "rgba(254, 244, 234, 0.9)",
+    borderWidth: 1,
+    borderColor: "rgba(229, 107, 39, 0.2)",
+    alignItems: "center",
     position: "relative",
     overflow: "hidden",
   },
-  dockTopBevel: {
+  padarthaDetailGlow: {
     position: "absolute",
     top: 0,
-    left: 20,
-    right: 20,
-    height: 1.5,
-    backgroundColor: "#FFFFFF",
-  },
-  progressSection: {
-    marginBottom: 16,
-  },
-  progressRail: {
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "#EAD5C5",
-    overflow: "visible",
-    position: "relative",
-    justifyContent: "center",
-  },
-  progressFill: {
-    height: "100%",
-    borderRadius: 3,
+    left: 0,
+    right: 0,
+    height: 2,
     backgroundColor: C.saffron,
   },
-  progressBead: {
-    position: "absolute",
-    top: -4.5,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: "#FFE082",
-    borderWidth: 2,
-    borderColor: C.saffron,
-    shadowColor: C.saffron,
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
-    transform: [{ translateX: -7 }],
-  },
-  timeRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 7,
-  },
-  timeText: {
-    fontSize: 11,
+  padarthaDetailWord: {
+    fontSize: 16,
     fontWeight: "700",
-    color: "#8C6A58",
+    color: "#351000",
   },
-  controlRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 28,
+  padarthaDetailMeaning: {
+    fontSize: 13,
+    color: "#8C4A10",
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  padarthaDetailHint: {
+    fontSize: 11,
+    color: "#8A6D5D",
+    marginTop: 4,
+    fontStyle: "italic",
   },
 
-  // ─── Master 3D Play Button ─────────────────────────────────────────────────
-  masterPlayWrapper: {
-    width: 82,
-    height: 82,
+  // ─── Morning Intention Action Button ───────────────────────────────────────
+  morningActionBtn: {
+    minHeight: 52,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    position: "relative",
-  },
-  masterPlayAura: {
-    position: "absolute",
-    width: 82,
-    height: 82,
-    borderRadius: 41,
+    gap: 9,
+    paddingHorizontal: 20,
+    borderRadius: 18,
     backgroundColor: C.saffron,
-    shadowColor: C.saffron,
-    shadowRadius: 18,
-    shadowOpacity: 0.8,
-    elevation: 6,
-  },
-  masterPlayBtn: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: C.saffron,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-    overflow: "hidden",
     borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.85)",
+    borderColor: "rgba(255, 255, 255, 0.75)",
     borderTopColor: "#FFFFFF",
     borderBottomColor: "#A8470C",
     borderBottomWidth: 3.5,
     shadowColor: C.saffron,
-    shadowOpacity: 0.38,
+    shadowOpacity: 0.35,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
+    elevation: 5,
+    position: "relative",
+    overflow: "hidden",
+    marginTop: 4,
   },
-  masterPlayTopSpecular: {
-    position: "absolute",
-    top: 0,
-    left: 8,
-    right: 8,
-    height: 2,
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-  },
-  masterPlayGlossArc: {
-    position: "absolute",
-    top: 2,
-    left: 6,
-    right: 6,
-    height: 22,
-    borderRadius: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.28)",
-  },
-  masterPlayBottomLip: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: "rgba(0, 0, 0, 0.12)",
-  },
-
-  // ─── Playback Caption ──────────────────────────────────────────────────────
-  playbackCaption: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-    marginTop: 14,
-  },
-  playbackCaptionText: {
-    color: "#8C604B",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  captionSpectrum: {
-    marginLeft: 4,
+  morningActionText: {
+    color: C.white,
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.3,
   },
 
   // ─── Completed Screen Styles ───────────────────────────────────────────────
   completedScreen: {
-    paddingTop: 4,
+    paddingTop: 2,
+  },
+  completedSegmentWrapper: {
+    alignItems: "center",
+    marginBottom: 10,
+    marginTop: 2,
+  },
+  completedSegmentControl: {
+    flexDirection: "row",
+    backgroundColor: "rgba(254, 236, 220, 0.75)",
+    borderRadius: 999,
+    padding: 3.5,
+    borderWidth: 1.2,
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    shadowColor: C.saffron,
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  completedSegmentTab: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  completedSegmentTabActive: {
+    backgroundColor: C.saffron,
+    shadowColor: C.saffron,
+    shadowOpacity: 0.28,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  completedSegmentText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: "#7D5845",
+  },
+  completedSegmentTextActive: {
+    color: C.white,
+    fontWeight: "800",
+  },
+  altarBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "rgba(255, 248, 238, 0.95)",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 14,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(216, 144, 64, 0.35)",
+    borderBottomWidth: 2.5,
+    shadowColor: C.saffron,
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  altarCopy: {
+    flex: 1,
+  },
+  altarTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#8C4A10",
+    letterSpacing: 0.2,
+  },
+  altarSub: {
+    fontSize: 11.5,
+    color: "#7A6455",
+    marginTop: 1,
+    fontWeight: "500",
   },
   completedVerseCard: {
     backgroundColor: "rgba(255, 252, 248, 0.98)",
-    borderRadius: 26,
-    padding: 20,
+    borderRadius: 24,
+    padding: 18,
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.95)",
     borderTopColor: "#FFFFFF",
@@ -1635,62 +1760,58 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
     alignItems: "center",
-    marginBottom: 16,
-  },
-  completedMascot: {
-    marginBottom: -4,
+    marginBottom: 14,
   },
   completedSanskrit: {
     color: "#332016",
-    fontSize: 21,
-    lineHeight: 34,
-    fontWeight: "600",
+    fontSize: 23,
+    lineHeight: 35,
+    fontWeight: "700",
     textAlign: "center",
-    marginTop: 2,
+    marginTop: 4,
   },
   completedTranslitBox: {
-    marginTop: 8,
-    paddingHorizontal: 12,
+    marginTop: 6,
+    paddingHorizontal: 10,
     paddingVertical: 4,
   },
   completedTranslation: {
     color: "#574236",
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 20,
     fontStyle: "italic",
     textAlign: "center",
   },
   goldDivider: {
-    width: 60,
-    height: 3,
+    width: 50,
+    height: 2.5,
     borderRadius: 1.5,
     backgroundColor: "rgba(244, 185, 66, 0.6)",
-    marginVertical: 14,
+    marginVertical: 12,
   },
   completedMeaning: {
     color: C.ink,
-    fontSize: 15.5,
+    fontSize: 16,
     lineHeight: 24,
     textAlign: "center",
   },
   takeaway3D: {
     width: "100%",
-    minHeight: 50,
+    minHeight: 52,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 9,
-    paddingHorizontal: 16,
+    gap: 10,
+    paddingHorizontal: 15,
     paddingVertical: 11,
     borderRadius: 18,
-    backgroundColor: C.green,
-    marginTop: 18,
+    backgroundColor: "#A84C12",
+    marginTop: 16,
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.7)",
-    borderTopColor: "#A7F3D0",
-    borderBottomColor: "#1B4D24",
+    borderTopColor: "#FDBA74",
+    borderBottomColor: "#6B2B05",
     borderBottomWidth: 3,
-    shadowColor: C.greenDark,
+    shadowColor: "#8C4010",
     shadowOpacity: 0.28,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 5 },
@@ -1707,37 +1828,71 @@ const s = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: "rgba(255, 255, 255, 0.22)",
   },
+  takeawayKicker: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    color: "#FED7AA",
+    letterSpacing: 1.1,
+    marginBottom: 2,
+  },
   takeawayText: {
-    flex: 1,
     color: C.white,
     fontSize: 13.5,
-    lineHeight: 20,
+    lineHeight: 19,
     fontWeight: "700",
-    textAlign: "center",
   },
   completedPadarthaWrap: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
-
-  // ─── 3D Reflection Journal Card ────────────────────────────────────────────
-  reflectionCard3D: {
+  primaryActionBtn: {
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 20,
+    borderRadius: 18,
+    backgroundColor: C.saffron,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.75)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "#A8470C",
+    borderBottomWidth: 3.5,
+    shadowColor: C.saffron,
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 5,
+    position: "relative",
+    overflow: "hidden",
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  primaryActionText: {
+    color: C.white,
+    fontSize: 15,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+  },
+  journalCard3D: {
     padding: 18,
     borderRadius: 24,
     backgroundColor: "rgba(255, 252, 248, 0.98)",
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.95)",
     borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(216, 144, 64, 0.35)",
-    borderBottomWidth: 3,
+    borderBottomColor: "rgba(216, 144, 64, 0.4)",
+    borderBottomWidth: 3.5,
     shadowColor: "#8C4010",
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 5,
-    marginBottom: 16,
+    shadowOpacity: 0.16,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+    marginBottom: 14,
     position: "relative",
     overflow: "hidden",
   },
+
   reflectionTopBevel: {
     position: "absolute",
     top: 0,
@@ -1746,77 +1901,93 @@ const s = StyleSheet.create({
     height: 1.5,
     backgroundColor: "#FFFFFF",
   },
-  reflectionToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 14,
-  },
-  reflectionCopy: {
-    flex: 1,
-  },
   reflectionKickerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
+    gap: 6,
+    marginBottom: 4,
   },
   reflectionKickerDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: C.saffron,
   },
   reflectionKicker: {
     color: C.goldDark,
-    fontSize: 11.5,
+    fontSize: 10.5,
     fontWeight: "800",
     letterSpacing: 1.1,
   },
   reflectionPrompt: {
     color: C.ink,
-    fontSize: 17,
-    lineHeight: 25,
-    marginTop: 6,
+    fontSize: 16,
+    lineHeight: 23,
+    marginTop: 3,
+    marginBottom: 8,
     fontWeight: "600",
   },
-  reflectionChevronWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(254, 236, 220, 0.6)",
+  quickChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  quickChip: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5.5,
+    borderRadius: 999,
+    backgroundColor: "rgba(254, 236, 220, 0.6)",
+    borderWidth: 1,
+    borderColor: "rgba(229, 107, 39, 0.2)",
+  },
+  quickChipActive: {
+    backgroundColor: "#FFEDE0",
+    borderColor: C.saffron,
+  },
+  quickChipText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#7D5845",
+  },
+  quickChipTextActive: {
+    color: "#9A3C08",
+    fontWeight: "700",
   },
   reflectionInput: {
-    minHeight: 115,
-    marginTop: 14,
-    borderRadius: 18,
+    minHeight: 90,
+    marginTop: 10,
+    borderRadius: 16,
     borderWidth: 1.2,
     borderColor: "#EAD8CA",
     borderTopColor: "#E0C8B8",
     borderBottomColor: "#FFFFFF",
     backgroundColor: "#FFF9F4",
-    padding: 14,
+    padding: 13,
     color: C.ink,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14.5,
+    lineHeight: 21,
   },
   reflectionFooter: {
-    marginTop: 12,
-    gap: 12,
+    marginTop: 10,
+    gap: 10,
   },
   savedHint: {
     color: C.muted,
-    fontSize: 11.5,
+    fontSize: 11,
   },
   completeButton3D: {
-    minHeight: 52,
+    minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    paddingHorizontal: 20,
-    borderRadius: 18,
+    paddingHorizontal: 18,
+    borderRadius: 16,
     backgroundColor: C.saffron,
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.7)",
@@ -1838,19 +2009,19 @@ const s = StyleSheet.create({
   },
   completeText: {
     color: C.white,
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: "800",
   },
   relistenBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingVertical: 12,
+    gap: 7,
+    paddingVertical: 10,
   },
   relistenText: {
     color: C.saffron,
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: "800",
   },
   pressed: {
@@ -1865,10 +2036,10 @@ const s = StyleSheet.create({
     justifyContent: "flex-end",
   },
   overlaySurface: {
-    minHeight: "79%",
+    minHeight: "78%",
     overflow: "hidden",
-    borderTopLeftRadius: 34,
-    borderTopRightRadius: 34,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
     backgroundColor: "#FFF7EE",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.85)",
@@ -1905,11 +2076,11 @@ const s = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "flex-end",
-    paddingHorizontal: 28,
-    paddingBottom: 38,
+    paddingHorizontal: 26,
+    paddingBottom: 36,
   },
   overlayMascot: {
-    height: 215,
+    height: 210,
     marginBottom: 4,
     alignItems: "center",
     justifyContent: "center",
@@ -1919,7 +2090,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingVertical: 6.5,
     borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.68)",
   },
@@ -1931,21 +2102,21 @@ const s = StyleSheet.create({
   },
   overlayTitle: {
     color: "#2F2119",
-    fontSize: 28,
-    lineHeight: 35,
+    fontSize: 26,
+    lineHeight: 33,
     textAlign: "center",
-    marginTop: 16,
+    marginTop: 14,
   },
   overlayBody: {
     color: "#805E4D",
-    fontSize: 14,
+    fontSize: 13.5,
     textAlign: "center",
-    marginTop: 8,
-    marginBottom: 24,
+    marginTop: 7,
+    marginBottom: 22,
   },
   overlayPrimary: {
     width: "100%",
-    minHeight: 55,
+    minHeight: 52,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1965,21 +2136,21 @@ const s = StyleSheet.create({
   },
   overlayPrimaryText: {
     color: C.white,
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: "800",
   },
   overlaySecondary: {
-    minHeight: 48,
+    minHeight: 46,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
-    paddingHorizontal: 18,
-    marginTop: 7,
+    paddingHorizontal: 16,
+    marginTop: 6,
   },
   overlaySecondaryText: {
     color: "#805E4D",
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: "800",
   },
 });
