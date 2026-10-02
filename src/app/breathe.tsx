@@ -1,25 +1,25 @@
+import { router } from "expo-router";
 import {
   CheckCircle2,
   Leaf,
-  Music,
   Pause,
   PauseCircle,
   Play,
   RotateCcw,
   Timer,
-  Volume2,
-  VolumeX,
   Wind,
 } from "lucide-react-native";
-import { router, useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { Image, Pressable, StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
+  FadeIn,
+  FadeOut,
   cancelAnimation,
   useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withRepeat,
   withSequence,
   withTiming,
@@ -28,22 +28,18 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 
 import { AruMascot } from "@/components/aru-mascot";
-import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
 import { Header, Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
-import { localDateKey } from "@/data/gita-verses";
 import { useGitaProgress } from "@/state/gita-store";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-const GHAT_IMAGE_URL =
-  "https://images.unsplash.com/photo-1561361513-2d000a50f0dc?q=80&w=800&auto=format&fit=crop";
-
+// ── Pranayama Configuration ───────────────────────────────────────
 const phases = [
   {
     key: "inhale",
     label: "Inhale",
-    seconds: 10,
+    seconds: 4,
     prompt:
       "Inhale deeply & gently through nostrils, filling abdomen and chest.",
     Icon: Wind,
@@ -52,7 +48,7 @@ const phases = [
   {
     key: "hold",
     label: "Hold",
-    seconds: 10,
+    seconds: 4,
     prompt:
       "Gently retain the breath at the crest, resting in absolute tranquility.",
     Icon: PauseCircle,
@@ -61,7 +57,7 @@ const phases = [
   {
     key: "exhale",
     label: "Exhale",
-    seconds: 10,
+    seconds: 4,
     prompt: "Slowly release breath through nose, relaxing mind and shoulders.",
     Icon: Leaf,
     accentColor: "#D96B43",
@@ -71,36 +67,42 @@ const phases = [
 // 190px Diameter Circle Settings
 const R_INNER = 76;
 const CIRCLE_PERIMETER = 2 * Math.PI * R_INNER; // 477.52
-const SESSION_SECONDS = 3 * 60;
+const TOTAL_ROUNDS = 5;
+const ROUND_DURATION_SEC = 12; // 4s + 4s + 4s
+const TOTAL_SESSION_SEC = TOTAL_ROUNDS * ROUND_DURATION_SEC; // 60s = 1 min
 
 export default function Breathe() {
-  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
-  const { completeBreathing } = useGitaProgress();
   const insets = useSafeAreaInsets();
+  const { completeBreathing } = useGitaProgress();
+
   const [phaseIndex, setPhaseIndex] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(10);
+  const [secondsLeft, setSecondsLeft] = useState(4);
   const [paused, setPaused] = useState(false);
-  const [muted, setMuted] = useState(false);
   const [complete, setComplete] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [elapsedTotalSeconds, setElapsedTotalSeconds] = useState(0);
+  const completionHandled = useRef(false);
 
   const phase = phases[phaseIndex];
+  const currentRound = Math.min(
+    TOTAL_ROUNDS,
+    Math.floor(elapsedTotalSeconds / ROUND_DURATION_SEC) + 1,
+  );
 
-  // 60 FPS Reanimated Shared Values for Butter-Smooth 60 FPS Sweep
+  // 60 FPS Reanimated Shared Values
   const orbScale = useSharedValue(1);
   const glowOpacity = useSharedValue(0.5);
   const progressVal = useSharedValue(0);
+  const celebrateScale = useSharedValue(0.7);
 
-  // Butter-Smooth 60 FPS Continuous Ring Sweep & Orb Movement
+  // Smooth Ring Sweep & Orb Expansion
   useEffect(() => {
-    if (paused) {
+    if (paused || complete) {
       cancelAnimation(progressVal);
       cancelAnimation(orbScale);
       cancelAnimation(glowOpacity);
       return;
     }
 
-    // Reset & Animate Progress Value smoothly over phase duration (10,000ms)
     progressVal.value = 0;
     progressVal.value = withTiming(1, {
       duration: phase.seconds * 1000,
@@ -140,41 +142,49 @@ export default function Breathe() {
         duration: phase.seconds * 1000,
       });
     }
-  }, [glowOpacity, orbScale, paused, phase.key, phase.seconds, phaseIndex, progressVal]);
+  }, [phaseIndex, paused, complete]);
 
   // 1-Second Countdown Timer
   useEffect(() => {
     if (paused || complete) return;
 
     const id = setInterval(() => {
-      setElapsedSeconds((elapsed) => {
-        const next = Math.min(elapsed + 1, SESSION_SECONDS);
-        if (next === SESSION_SECONDS) {
+      setElapsedTotalSeconds((total) => {
+        const nextTotal = total + 1;
+        if (nextTotal >= TOTAL_SESSION_SEC) {
           setComplete(true);
-          setPaused(true);
-          completeBreathing(localDateKey());
         }
-        return next;
+        return nextTotal;
       });
+
       setSecondsLeft((current) => {
         if (current > 1) {
           return current - 1;
         }
 
         setPhaseIndex((next) => (next + 1) % phases.length);
-        return 10;
+        return phases[0].seconds; // reset to phase duration
       });
     }, 1000);
 
     return () => clearInterval(id);
-  }, [complete, completeBreathing, paused]);
+  }, [paused, complete]);
 
-  const remainingSeconds = Math.max(0, SESSION_SECONDS - elapsedSeconds);
-  const currentRound = Math.min(6, Math.floor(elapsedSeconds / 30) + 1);
-  const elapsedLabel = `${Math.floor(elapsedSeconds / 60)}:${String(elapsedSeconds % 60).padStart(2, "0")}`;
-  const remainingLabel = `${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, "0")}`;
+  // ── Completion handler (runs once when session completes) ──
+  useEffect(() => {
+    if (!complete || completionHandled.current) return;
+    completionHandled.current = true;
 
-  // 60 FPS Reanimated Circle Props (UI Thread smooth stroke)
+    completeBreathing();
+
+    // Celebrate animation
+    celebrateScale.value = withSequence(
+      withTiming(1.15, { duration: 400, easing: Easing.out(Easing.ease) }),
+      withTiming(1, { duration: 300, easing: Easing.inOut(Easing.ease) }),
+    );
+  }, [complete, completeBreathing, celebrateScale]);
+
+  // Animated circle dash offset
   const animatedCircleProps = useAnimatedProps(() => {
     const strokeDashoffset =
       CIRCLE_PERIMETER - CIRCLE_PERIMETER * progressVal.value;
@@ -183,9 +193,8 @@ export default function Breathe() {
     };
   });
 
-  // Smooth Roaming Gold Tip Orb along the 190px Circle Arc
+  // Roaming Gold Tip Orb
   const animatedRoamingOrbStyle = useAnimatedStyle(() => {
-    // Start angle: -90 deg (-PI/2), sweeps 360 deg (+2*PI)
     const angleRad = -Math.PI / 2 + progressVal.value * (2 * Math.PI);
     const cx = 95 + R_INNER * Math.cos(angleRad);
     const cy = 95 + R_INNER * Math.sin(angleRad);
@@ -203,6 +212,29 @@ export default function Breathe() {
     opacity: glowOpacity.value,
     transform: [{ scale: orbScale.value * 1.06 }],
   }));
+
+  const animatedCelebrateStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: celebrateScale.value }],
+  }));
+
+  const handleRestart = useCallback(() => {
+    setComplete(false);
+    setElapsedTotalSeconds(0);
+    setPhaseIndex(0);
+    setSecondsLeft(phases[0].seconds);
+    completionHandled.current = false;
+    celebrateScale.value = 0.7;
+  }, [celebrateScale]);
+
+  const handleContinueToGita = useCallback(() => {
+    router.replace("/gita");
+  }, []);
+
+  const formatMinSec = (totalSec: number) => {
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  };
 
   return (
     <Screen
@@ -268,7 +300,7 @@ export default function Breathe() {
             pointerEvents="none"
           />
 
-          {/* Aru meditating inside the ring — ring becomes his sacred halo */}
+          {/* Aru meditating inside the ring */}
           <View style={s.aruInOrb}>
             <AruMascot
               clip="breathing_loop"
@@ -282,11 +314,11 @@ export default function Breathe() {
         </Animated.View>
       </View>
 
-      {/* Phase + countdown badge — compact info below the ring */}
+      {/* Phase + countdown badge */}
       <View style={s.phaseBadge}>
         <View style={[s.phaseDot, { backgroundColor: phase.accentColor }]} />
         <TextR style={[s.phaseText, { color: phase.accentColor }]}>
-          {phase.label}
+          {phase.label.toUpperCase()}
         </TextR>
         <TextR style={s.phaseBadgeSep}>·</TextR>
         <TextR serif style={[s.phaseBadgeSec, { color: phase.accentColor }]}>
@@ -300,26 +332,21 @@ export default function Breathe() {
         <TextR style={s.promptText}>{phase.prompt}</TextR>
       </View>
 
-      {/* Breathing Cycle 3D Control Cards - 10 Sec Pattern */}
+      {/* Breathing Cycle 3D Control Card (with integrated stats) */}
       <View style={s.cycleCard}>
         <View style={s.cardTopRow}>
           <TextR style={s.sectionTitle}>BREATHING CYCLE</TextR>
-          <TextR style={s.pattern}>10 · 10 · 10 Pattern</TextR>
+          <TextR style={s.pattern}>4 · 4 · 4 Pattern</TextR>
         </View>
         <View style={s.phaseGrid}>
           {phases.map((item, index) => {
             const isActive = index === phaseIndex;
             return (
-              <Pressable
+              <View
                 key={item.key}
-                onPress={() => {
-                  setPhaseIndex(index);
-                  setSecondsLeft(item.seconds);
-                }}
-                style={({ pressed }) => [
+                style={[
                   s.phaseTile,
                   isActive ? s.phaseTileActive : s.phaseTileIdle,
-                  pressed && s.phaseTilePressed,
                 ]}
               >
                 <View style={s.phaseTileRow}>
@@ -336,144 +363,96 @@ export default function Breathe() {
                 <TextR
                   style={[s.phaseTileSub, isActive && s.phaseTileSubActive]}
                 >
-                  10 Sec
+                  {item.seconds} Sec
                 </TextR>
-              </Pressable>
+              </View>
             );
           })}
         </View>
-      </View>
 
-      {/* Statistics Grid */}
-      <View style={s.statsGrid}>
-        <Metric
-          icon={<RotateCcw size={19} color="#271900" />}
-          iconBg={C.gold}
-          label="CURRENT LAP"
-          value={`Round ${currentRound} of 6`}
-        />
-        <Metric
-          icon={<Timer size={19} color="#00210A" />}
-          iconBg={C.greenLight}
-          label="PRANA TIME"
-          value={`${elapsedLabel} / 3:00`}
-        />
-      </View>
-
-      {/* Sacred Resonance Audio Pod with Perfect Spectrum Visualizer & Controls */}
-      <View style={s.resonanceCard}>
-        <View style={s.resonanceLeft}>
-          <View style={[s.soundIcon, !muted && s.soundIconActive]}>
-            {!muted ? (
-              <AudioSpectrumVisualizer
-                isPlaying={!muted}
-                barCount={5}
-                height={16}
-              />
-            ) : (
-              <Music size={18} color={C.muted} />
-            )}
+        {/* Integrated Stats Row */}
+        <View style={s.inlineStatsRow}>
+          <View style={s.inlineStat}>
+            <RotateCcw size={14} color={C.primary} />
+            <TextR style={s.inlineStatLabel}>
+              Round {currentRound}/{TOTAL_ROUNDS}
+            </TextR>
           </View>
-          <View style={s.resonanceCopy}>
-            <TextR style={s.resonanceKicker}>SACRED RESONANCE</TextR>
-            <TextR style={s.resonanceTitle}>Tanpura & River Ganga</TextR>
-            <TextR style={s.resonanceSub}>432Hz Calm Vibrations</TextR>
+          <View style={s.inlineStatDivider} />
+          <View style={s.inlineStat}>
+            <Timer size={14} color={C.primary} />
+            <TextR style={s.inlineStatLabel}>
+              {formatMinSec(elapsedTotalSeconds)} /{" "}
+              {formatMinSec(TOTAL_SESSION_SEC)}
+            </TextR>
           </View>
-        </View>
-
-        {/* Live Audio Spectrum Bar & Toggle Control */}
-        <View style={s.audioControlsGroup}>
-          {!muted && (
-            <View style={s.spectrumContainer}>
-              <AudioSpectrumVisualizer
-                isPlaying={!muted}
-                barCount={6}
-                height={20}
-              />
-            </View>
-          )}
-          <Pressable
-            onPress={() => setMuted((value) => !value)}
-            style={({ pressed }) => [
-              s.volumeBtn,
-              !muted && s.volumeBtnActive,
-              pressed && { opacity: 0.85 },
-            ]}
-          >
-            {muted ? (
-              <VolumeX size={19} color={C.muted} />
-            ) : (
-              <Volume2 size={19} color={C.white} />
-            )}
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Sanctuary Image Banner */}
-      <View style={s.imageCard}>
-        <Image source={{ uri: GHAT_IMAGE_URL }} style={s.ghatImage} />
-        <View style={s.imageOverlay} />
-        <View style={s.imageText}>
-          <TextR style={s.imageKicker}>VARANASI DAWN SANCTUARY</TextR>
-          <TextR style={s.imageSub} numberOfLines={1}>
-            Synchronize your soul with sacred river ripples
-          </TextR>
         </View>
       </View>
 
       {/* 3D Action Row Buttons */}
-      <View style={s.actionRow}>
-        <Pressable
-          disabled={complete}
-          onPress={() => setPaused((value) => !value)}
-          style={({ pressed }) => [s.pauseButton, complete && { opacity: 0.55 }, pressed && !complete && s.pressed]}
+      {!complete && (
+        <View style={s.actionRow}>
+          <Pressable
+            onPress={() => setPaused((value) => !value)}
+            style={({ pressed }) => [s.pauseButton, pressed && s.pressed]}
+          >
+            {paused ? (
+              <Play size={18} color={C.ink} fill={C.ink} />
+            ) : (
+              <Pause size={18} color={C.ink} fill={C.ink} />
+            )}
+            <TextR style={s.pauseText}>{paused ? "Resume" : "Pause"}</TextR>
+          </Pressable>
+        </View>
+      )}
+
+      {/* ── Session Complete Celebration Overlay ── */}
+      {complete && (
+        <Animated.View
+          entering={FadeIn.duration(400)}
+          exiting={FadeOut.duration(200)}
+          style={s.celebrationCard}
         >
-          {paused ? (
-            <Play size={18} color={C.ink} fill={C.ink} />
-          ) : (
-            <Pause size={18} color={C.ink} fill={C.ink} />
-          )}
-          <TextR style={s.pauseText}>{paused ? "Resume" : "Pause"}</TextR>
-        </Pressable>
-        <Pressable
-          disabled={!complete}
-          onPress={() => returnTo === "gita" ? router.replace("/gita") : undefined}
-          style={({ pressed }) => [s.completeButton, !complete && { opacity: 0.62 }, pressed && complete && s.pressed]}
-        >
-          <CheckCircle2 size={19} color={C.white} />
-          <TextR style={s.completeText}>
-            {complete ? (returnTo === "gita" ? "Return to Gita" : "Session Complete") : `${remainingLabel} remaining`}
-          </TextR>
-        </Pressable>
-      </View>
+          <Animated.View style={[s.celebrationInner, animatedCelebrateStyle]}>
+            <View style={s.celebrationIconWrap}>
+              <CheckCircle2 size={36} color={C.white} strokeWidth={2.5} />
+            </View>
+            <TextR style={s.celebrationTitle}>Prana Awakened</TextR>
+            <TextR style={s.celebrationSub}>
+              {TOTAL_ROUNDS} rounds completed · {formatMinSec(TOTAL_SESSION_SEC)}{" "}
+              of mindful breathing
+            </TextR>
+
+            {/* Continue to Gita (primary action) */}
+            <Pressable
+              onPress={handleContinueToGita}
+              style={({ pressed }) => [
+                s.continueButton,
+                pressed && s.pressed,
+              ]}
+            >
+              <TextR style={s.continueText}>Continue to Gita</TextR>
+            </Pressable>
+
+            {/* Restart (secondary action) */}
+            <Pressable
+              onPress={handleRestart}
+              style={({ pressed }) => [
+                s.restartButton,
+                pressed && { opacity: 0.7 },
+              ]}
+            >
+              <RotateCcw size={15} color={C.inkSoft} />
+              <TextR style={s.restartText}>Breathe Again</TextR>
+            </Pressable>
+          </Animated.View>
+        </Animated.View>
+      )}
     </Screen>
   );
 }
 
-function Metric({
-  icon,
-  iconBg,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  iconBg: string;
-  label: string;
-  value: string;
-}) {
-  return (
-    <View style={s.metricCard}>
-      <View style={[s.metricIcon, { backgroundColor: iconBg }]}>{icon}</View>
-      <View style={{ flex: 1 }}>
-        <TextR style={s.metricLabel}>{label}</TextR>
-        <TextR style={s.metricValue} numberOfLines={1}>
-          {value}
-        </TextR>
-      </View>
-    </View>
-  );
-}
-
+// ── Styles ────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   hero: {
     alignItems: "center",
@@ -573,36 +552,20 @@ const s = StyleSheet.create({
     zIndex: 10,
   },
   aruInOrb: {
+    position: "absolute",
     alignItems: "center",
     justifyContent: "center",
-  },
-  phaseRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  phaseDot: {
-    width: 6.5,
-    height: 6.5,
-    borderRadius: 3.25,
-  },
-  phaseText: {
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 1.1,
-    textTransform: "uppercase",
   },
   phaseBadge: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    marginTop: -4,
-    marginBottom: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 7,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: C.surfaceLow,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.9)",
     borderTopColor: "#FFFFFF",
@@ -611,6 +574,16 @@ const s = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 6,
     elevation: 1,
+  },
+  phaseDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  phaseText: {
+    fontSize: 13,
+    fontWeight: "900",
+    letterSpacing: 1.4,
   },
   phaseBadgeSep: {
     fontSize: 14,
@@ -717,10 +690,6 @@ const s = StyleSheet.create({
     borderBottomColor: "rgba(216, 144, 64, 0.2)",
     borderBottomWidth: 2,
   },
-  phaseTilePressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.96 }],
-  },
   phaseTileRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -743,174 +712,33 @@ const s = StyleSheet.create({
     color: C.white,
     fontWeight: "700",
   },
-  statsGrid: {
+  // ── Integrated inline stats row inside the cycle card ──
+  inlineStatsRow: {
     flexDirection: "row",
-    gap: 10,
-    marginBottom: 14,
-  },
-  metricCard: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    minHeight: 74,
-    padding: 12,
-    borderRadius: 18,
-    backgroundColor: C.surfaceLow,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.95)",
-    borderTopColor: "#FFFFFF",
-    shadowColor: "#8C4010",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  metricIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: C.divider,
+    gap: 14,
   },
-  metricLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.3,
-    color: C.inkSoft,
+  inlineStat: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  metricValue: {
-    fontSize: 16.5,
-    lineHeight: 21,
-    color: C.ink,
-    marginTop: 1,
+  inlineStatLabel: {
+    fontSize: 13,
     fontWeight: "700",
-  },
-  resonanceCard: {
-    minHeight: 80,
-    borderRadius: 22,
-    backgroundColor: C.white,
-    padding: 14,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.95)",
-    borderTopColor: "#FFFFFF",
-    shadowColor: "#8C4010",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-    marginBottom: 14,
-  },
-  resonanceLeft: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  soundIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: C.surfaceContainer,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.85)",
-    overflow: "hidden",
-  },
-  soundIconActive: {
-    backgroundColor: "rgba(254, 236, 220, 0.95)",
-    borderColor: "rgba(229, 107, 39, 0.3)",
-  },
-  resonanceCopy: {
-    flex: 1,
-  },
-  resonanceKicker: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 1.7,
-    color: C.primary,
-  },
-  resonanceTitle: {
-    fontSize: 15,
-    lineHeight: 19,
-    fontWeight: "800",
-    color: C.ink,
-  },
-  resonanceSub: {
-    fontSize: 12,
     color: C.inkSoft,
   },
-  audioControlsGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
+  inlineStatDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: C.divider,
   },
-  spectrumContainer: {
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: "rgba(254, 236, 220, 0.6)",
-  },
-  volumeBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: C.surfaceContainer,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.85)",
-  },
-  volumeBtnActive: {
-    backgroundColor: C.saffron,
-    borderColor: "#FFFFFF",
-    shadowColor: C.saffron,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-  },
-  imageCard: {
-    height: 106,
-    borderRadius: 18,
-    overflow: "hidden",
-    marginBottom: 16,
-    backgroundColor: C.surfaceContainer,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.95)",
-    shadowColor: "#8C4010",
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  ghatImage: {
-    width: "100%",
-    height: "100%",
-  },
-  imageOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(35, 26, 17, 0.42)",
-  },
-  imageText: {
-    position: "absolute",
-    left: 15,
-    right: 15,
-    bottom: 15,
-  },
-  imageKicker: {
-    color: "#FFDEA7",
-    fontSize: 11.5,
-    fontWeight: "800",
-    letterSpacing: 1.5,
-  },
-  imageSub: {
-    color: C.white,
-    fontSize: 14,
-    marginTop: 2,
-    fontWeight: "600",
-  },
+  // ── Action row ──
   actionRow: {
     flexDirection: "row",
     gap: 12,
@@ -940,8 +768,67 @@ const s = StyleSheet.create({
     fontWeight: "800",
     color: C.ink,
   },
-  completeButton: {
-    flex: 1.62,
+  pressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.985 }],
+  },
+  // ── Celebration overlay ──
+  celebrationCard: {
+    backgroundColor: C.white,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(216, 144, 64, 0.25)",
+    borderBottomWidth: 3,
+    shadowColor: "#8C4010",
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+    marginBottom: 18,
+    overflow: "hidden",
+  },
+  celebrationInner: {
+    alignItems: "center",
+    paddingVertical: 28,
+    paddingHorizontal: 24,
+  },
+  celebrationIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: C.green,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.6)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: C.greenDark,
+    borderBottomWidth: 3,
+    shadowColor: C.green,
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 5,
+  },
+  celebrationTitle: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: "800",
+    color: C.ink,
+    marginBottom: 6,
+  },
+  celebrationSub: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: C.inkSoft,
+    textAlign: "center",
+    marginBottom: 22,
+  },
+  continueButton: {
+    width: "100%",
     height: 52,
     borderRadius: 999,
     backgroundColor: C.saffron,
@@ -959,14 +846,24 @@ const s = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 5 },
     elevation: 5,
+    marginBottom: 12,
   },
-  completeText: {
-    fontSize: 15.5,
+  continueText: {
+    fontSize: 16,
     fontWeight: "800",
     color: C.white,
   },
-  pressed: {
-    opacity: 0.88,
-    transform: [{ scale: 0.985 }],
+  restartButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  restartText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: C.inkSoft,
   },
 });

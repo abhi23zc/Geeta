@@ -196,7 +196,7 @@ export default function Wake() {
               setStarted(true);
               try {
                 await dismissAlarmAndScheduleNext();
-                router.replace("/gita");
+                router.replace("/breathe");
               } catch (error) {
                 setStarted(false);
                 Alert.alert(

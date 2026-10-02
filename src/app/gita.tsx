@@ -1164,16 +1164,16 @@ const s = StyleSheet.create({
   cardTabRow: {
     flexDirection: "row",
     alignSelf: "center",
-    backgroundColor: "rgba(254, 236, 220, 0.7)",
+    backgroundColor: "rgba(254, 236, 220, 0.75)",
     borderRadius: 999,
-    padding: 3.5,
-    marginBottom: 12,
+    padding: 4.5,
+    marginBottom: 14,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.9)",
   },
   cardTab: {
-    paddingHorizontal: 15,
-    paddingVertical: 5,
+    paddingHorizontal: 18,
+    paddingVertical: 7,
     borderRadius: 999,
   },
   cardTabActive: {
@@ -1185,7 +1185,7 @@ const s = StyleSheet.create({
     elevation: 3,
   },
   cardTabText: {
-    fontSize: 12.5,
+    fontSize: 15.5,
     fontWeight: "700",
     color: "#7D5845",
   },
