@@ -7,7 +7,7 @@
  */
 
 import { Image as ExpoImage } from "expo-image";
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { Animated, Easing, Pressable, StyleSheet, View } from "react-native";
 import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
 
@@ -47,6 +47,7 @@ export interface AruMascotProps {
   onEnd?: () => void;
   onPress?: () => void;
   interactive?: boolean;
+  animated?: boolean;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -56,15 +57,22 @@ export function AruMascot({
   glow = false,
   onPress,
   interactive = true,
+  animated = true,
 }: AruMascotProps) {
   const animationAsset = CLIP_ASSETS[clip];
 
-  const floatAnim = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0.6)).current;
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [floatAnim] = useState(() => new Animated.Value(0));
+  const [glowAnim] = useState(() => new Animated.Value(0.6));
+  const [scaleAnim] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
-    Animated.loop(
+    if (!animated) {
+      floatAnim.setValue(0);
+      glowAnim.setValue(0.6);
+      return;
+    }
+
+    const floatLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(floatAnim, {
           toValue: -10,
@@ -79,10 +87,12 @@ export function AruMascot({
           useNativeDriver: true,
         }),
       ]),
-    ).start();
+    );
+    floatLoop.start();
 
+    let glowLoop: Animated.CompositeAnimation | null = null;
     if (glow) {
-      Animated.loop(
+      glowLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(glowAnim, {
             toValue: 1,
@@ -97,9 +107,15 @@ export function AruMascot({
             useNativeDriver: true,
           }),
         ]),
-      ).start();
+      );
+      glowLoop.start();
     }
-  }, [floatAnim, glowAnim, glow]);
+
+    return () => {
+      floatLoop.stop();
+      glowLoop?.stop();
+    };
+  }, [animated, floatAnim, glowAnim, glow]);
 
   const handlePress = () => {
     Animated.sequence([
@@ -220,7 +236,7 @@ export function AruMascot({
                 source={animationAsset}
                 style={{ width: size, height: size }}
                 contentFit="contain"
-                autoplay
+                autoplay={animated}
               />
             </Pressable>
           ) : (
@@ -228,7 +244,7 @@ export function AruMascot({
               source={animationAsset}
               style={{ width: size, height: size }}
               contentFit="contain"
-              autoplay
+              autoplay={animated}
             />
           )
         ) : (

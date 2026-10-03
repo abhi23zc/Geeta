@@ -1,10 +1,10 @@
 /* eslint-disable react-hooks/preserve-manual-memoization */
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
 import {
   Bookmark,
+  CheckCircle2,
   ChevronLeft,
-  ChevronRight,
   Flame,
   Flower2,
   RotateCcw,
@@ -12,12 +12,9 @@ import {
   Sparkles,
   Sunrise,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
   AppState,
-  BackHandler,
-  Modal,
   Pressable,
   Share,
   StyleSheet,
@@ -30,6 +27,7 @@ import Animated, {
   FadeInDown,
   FadeInUp,
   FadeOut,
+  useReducedMotion,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -45,23 +43,40 @@ import Svg, {
 } from "react-native-svg";
 
 import { AruMascot } from "@/components/aru-mascot";
-import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
 import { MovingChakra } from "@/components/moving-chakra";
 import { Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
 import {
   GitaNarrationSegment,
   GitaWord,
-  getDailyGitaVerse,
 } from "@/data/gita-verses";
 import { useLocalDateKey } from "@/hooks/use-local-date-key";
+import { replaceAppRoute } from "@/navigation/route-actions";
 import { getAlarmPlaybackState } from "@/services/alarm";
 import { useGitaProgress } from "@/state/gita-store";
 import { useRitual } from "@/state/ritual-store";
+import { useContent } from "@/state/content-store";
+import { pinContent, saveTeaching } from "@/services/content-cache";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const EMPTY_SEGMENTS: readonly GitaNarrationSegment[] = [];
+
+/**
+ * `useAudioPlayer` owns and releases its native player when this screen
+ * unmounts. Focus and AppState cleanup can race that release on Android, so
+ * cleanup commands must be harmless if the native object has gone away.
+ */
+function runPlayerCommand(command: () => void | Promise<unknown>) {
+  try {
+    const result = command();
+    if (result && typeof (result as Promise<unknown>).catch === "function") {
+      void (result as Promise<unknown>).catch(() => undefined);
+    }
+  } catch {
+    // A released player is expected during navigation/HMR teardown.
+  }
+}
 
 /**
  * Converts academic Sanskrit IAST diacritics to clean, spoken phonetics.
@@ -91,6 +106,15 @@ function toSimpleEnglish(text: string): string {
     .replace(/\bCa\b/g, "Cha")
     .replace(/\s*\|\s*/g, " · ")
     .trim();
+}
+
+function formatAlarmTime(value: string) {
+  const [rawHour = "6", rawMinute = "30"] = value.split(":");
+  const hour24 = Number(rawHour);
+  const minute = Number(rawMinute);
+  if (!Number.isFinite(hour24) || !Number.isFinite(minute)) return "6:30 AM";
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${String(minute).padStart(2, "0")} ${hour24 >= 12 ? "PM" : "AM"}`;
 }
 
 // ─── 3D Tactile Round Button ──────────────────────────────────────────────────
@@ -189,7 +213,7 @@ function SacredShlokaLine({
     // In resting/paused state, keep full 100% crisp visibility.
     // When chanting, active line is 1.0, inactive dims gently to 0.52 for lyrical focus.
     opacity: isPlaying
-      ? withTiming(active ? 1 : complete ? 0.85 : 0.52, { duration: 240 })
+      ? withTiming(active ? 1 : complete ? 0.92 : 0.74, { duration: 240 })
       : withTiming(1, { duration: 200 }),
     transform: [
       {
@@ -260,7 +284,7 @@ function MeaningSentenceRow({
 
   const animStyle = useAnimatedStyle(() => ({
     opacity: isPlaying
-      ? withTiming(active ? 1 : complete ? 0.85 : 0.52, { duration: 240 })
+      ? withTiming(active ? 1 : complete ? 0.92 : 0.74, { duration: 240 })
       : withTiming(1, { duration: 200 }),
     transform: [
       {
@@ -293,14 +317,20 @@ function MascotStage({
   onMascotPress,
   blessingMessage,
   isCompact = false,
+  animated = true,
 }: {
   onMascotPress: () => void;
   blessingMessage: string | null;
   isCompact?: boolean;
+  animated?: boolean;
 }) {
   const auraGlow = useSharedValue(0.55);
 
   useEffect(() => {
+    if (!animated) {
+      auraGlow.value = 0.55;
+      return;
+    }
     auraGlow.value = withRepeat(
       withSequence(
         withTiming(0.92, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
@@ -309,7 +339,7 @@ function MascotStage({
       -1,
       true,
     );
-  }, [auraGlow]);
+  }, [animated, auraGlow]);
 
   const auraAnimStyle = useAnimatedStyle(() => ({
     opacity: auraGlow.value,
@@ -336,11 +366,17 @@ function MascotStage({
       </Animated.View>
 
       {/* Interactive Meditative Mascot */}
-      <Pressable onPress={onMascotPress} style={s.mascotTouch}>
+      <Pressable
+        accessibilityHint="Shows a short morning blessing"
+        accessibilityLabel="Aru reading the Gita"
+        accessibilityRole="button"
+        onPress={onMascotPress}
+        style={s.mascotTouch}
+      >
         <AruMascot
           clip="gita_reading"
           size={mascotSize}
-          loop
+          animated={animated}
           muted
           glow={false}
           interactive={false}
@@ -387,6 +423,9 @@ function WordMeaningsTray({
           const isSelected = selectedWord?.sanskrit === item.sanskrit;
           return (
             <Pressable
+              accessibilityLabel={`${item.sanskrit}: ${item.meaning}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
               key={i}
               onPress={() => onSelectWord(item)}
               style={({ pressed }) => [
@@ -429,96 +468,13 @@ function WordMeaningsTray({
   );
 }
 
-// ─── Krishna Invitation Modal ────────────────────────────────────────────────
-function KrishnaInvitation({
-  visible,
-  onContinue,
-}: {
-  visible: boolean;
-  onContinue: () => void;
-}) {
-  return (
-    <Modal
-      animationType="none"
-      transparent
-      visible={visible}
-      onRequestClose={onContinue}
-      statusBarTranslucent
-    >
-      <View style={s.overlay}>
-        <Animated.View
-          entering={FadeIn.duration(380)}
-          exiting={FadeOut.duration(180)}
-          style={s.overlaySurface}
-        >
-          <View style={s.lightField}>
-            <View style={[s.orb, s.orbOne]} />
-            <View style={[s.orb, s.orbTwo]} />
-            <View style={[s.orb, s.orbThree]} />
-          </View>
-          <Animated.View
-            entering={FadeInDown.delay(130).duration(480)}
-            style={s.overlayContent}
-          >
-            <View style={s.overlayMascot}>
-              <AruMascot
-                clip="teaching_guidance"
-                size={220}
-                loop
-                muted
-                glow={false}
-                interactive={false}
-              />
-            </View>
-            <View style={s.overlayPill}>
-              <Sparkles size={13} color="#F4B942" />
-              <TextR style={s.overlayPillText}>THE TEACHING HAS LANDED</TextR>
-            </View>
-            <TextR serif style={s.overlayTitle}>
-              Would you like to{"\n"}speak with Krishna?
-            </TextR>
-            <TextR style={s.overlayBody}>
-              Bring one honest question from your heart for your day ahead.
-            </TextR>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() =>
-                Alert.alert(
-                  "Coming soon",
-                  "Speak with Krishna will be available in a future update.",
-                )
-              }
-              style={({ pressed }) => [
-                s.overlayPrimary,
-                pressed && s.pressed,
-              ]}
-            >
-              <Sparkles size={18} color={C.white} />
-              <TextR style={s.overlayPrimaryText}>Speak with Krishna</TextR>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onContinue}
-              style={({ pressed }) => [
-                s.overlaySecondary,
-                pressed && s.pressed,
-              ]}
-            >
-              <TextR style={s.overlaySecondaryText}>Continue quietly</TextR>
-              <ChevronRight size={18} color="#805E4D" />
-            </Pressable>
-          </Animated.View>
-        </Animated.View>
-      </View>
-    </Modal>
-  );
-}
-
 // ─── Main Gita Screen ────────────────────────────────────────────────────────
 export default function Gita() {
   const { ready } = useGitaProgress();
-  const today = useLocalDateKey();
-  if (!ready) {
+  const { ready: contentReady } = useContent();
+  const currentDate = useLocalDateKey();
+  const [today] = useState(currentDate);
+  if (!ready || !contentReady) {
     return (
       <Screen>
         <View style={s.loading}>
@@ -532,13 +488,18 @@ export default function Gita() {
 }
 
 function GitaContent({ today }: { today: string }) {
-  const router = useRouter();
+  const navigation = useNavigation("/");
+  const { entry } = useLocalSearchParams<{ entry?: "alarm" | "manual" }>();
   const { alarmTime } = useRitual();
   const { height } = useWindowDimensions();
   const isCompact = height < 750;
+  const reduceMotion = useReducedMotion();
 
-  const [year, month, day] = today.split("-").map(Number);
-  const verse = getDailyGitaVerse(new Date(year, month - 1, day));
+  const content = useContent();
+  // Freeze this session's revision while the publisher or cache refreshes.
+  const [verse] = useState(() => content.practice);
+  const [fallback] = useState(() => content.fallback);
+  useEffect(() => verse.narration?.assetId ? pinContent(verse.narration.assetId) : undefined, [verse]);
   const narration = verse.narration;
   const player = useAudioPlayer(narration?.audioSource ?? null, {
     updateInterval: 80,
@@ -546,25 +507,30 @@ function GitaContent({ today }: { today: string }) {
   const status = useAudioPlayerStatus(player);
   const progressStore = useGitaProgress();
 
-  const [narrationSkipped, setNarrationSkipped] = useState(false);
-  const [promptDismissed, setPromptDismissed] = useState(false);
   const [viewTab, setViewTab] = useState<"shloka" | "meaning" | "padartha">(
     "shloka",
   );
   const [selectedWord, setSelectedWord] = useState<GitaWord | null>(null);
   const [blessingMessage, setBlessingMessage] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false);
+  const [sessionComplete, setSessionComplete] = useState(
+    progressStore.completedDates.has(today),
+  );
+  const autoStartAttempted = useRef(false);
+  const manualTabSelection = useRef(false);
+  const blessingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const segments = narration?.segments ?? EMPTY_SEGMENTS;
   const startMs = segments[0]?.startMs ?? 0;
   const completionMs = narration?.completionMs ?? 0;
   const currentMs = Math.round(status.currentTime * 1000);
-  const complete =
-    narrationSkipped || Boolean(narration && currentMs >= completionMs);
-  const meaningPhase = currentMs >= 36_000 && !complete;
-  const displayTab =
-    viewTab === "padartha" ? "padartha" : meaningPhase ? "meaning" : "shloka";
   const isPlaying = Boolean(narration && status.playing);
-  const isPromptVisible = complete && !promptDismissed;
+  const readerLabels = verse.readerLabels ?? {
+    primary: "श्लोक",
+    interpretation: "भावार्थ",
+    glossary: "पदार्थ",
+  };
+  const referenceLabel = verse.referenceLabel ?? `CHAPTER ${verse.chapter} · SHLOKA ${verse.verse}`;
 
   const sanskrit = segments.filter((item) => item.kind === "sanskrit");
   const hindi = segments.filter((item) => item.kind === "meaning");
@@ -575,32 +541,43 @@ function GitaContent({ today }: { today: string }) {
     ? verse.transliteration.split("\n").map(toSimpleEnglish)
     : [];
 
-  const pause = useCallback(() => player.pause(), [player]);
-  const playFromStart = useCallback(() => {
-    setNarrationSkipped(false);
-    setPromptDismissed(false);
-    player.seekTo(startMs / 1000).catch(() => undefined);
-    player.play();
-  }, [player, startMs]);
+  const pause = useCallback(() => {
+    runPlayerCommand(() => player.pause());
+  }, [player]);
 
-  const skip = useCallback(() => {
+  const startNarration = useCallback(() => {
     if (!narration) return;
-    player.pause();
-    player.seekTo(completionMs / 1000).catch(() => undefined);
-    setNarrationSkipped(true);
-    setPromptDismissed(false);
-  }, [completionMs, narration, player]);
+    runPlayerCommand(() => player.seekTo(startMs / 1000));
+    runPlayerCommand(() => player.play());
+  }, [narration, player, startMs]);
 
-  const continueQuietly = useCallback(() => {
-    setPromptDismissed(true);
+  const playFromStart = useCallback(() => {
+    if (!narration) return;
+    setSessionComplete(false);
+    manualTabSelection.current = false;
+    setViewTab("shloka");
+    startNarration();
+  }, [narration, startNarration]);
+
+  const selectTab = useCallback((tab: "shloka" | "meaning" | "padartha") => {
+    manualTabSelection.current = true;
+    setViewTab(tab);
   }, []);
 
-  const { completeReflection } = progressStore;
-  useEffect(() => {
-    if (complete) {
-      completeReflection(today, verse.id, verse.takeaway);
+  const completePractice = useCallback(() => {
+    pause();
+    progressStore.completeDailyPractice(today, verse.id);
+    setSessionComplete(true);
+  }, [pause, progressStore, today, verse.id]);
+
+  const exitToHome = useCallback(() => {
+    pause();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
     }
-  }, [complete, completeReflection, today, verse.id, verse.takeaway]);
+    replaceAppRoute(navigation, "/");
+  }, [navigation, pause]);
 
   useEffect(() => {
     setAudioModeAsync({
@@ -612,20 +589,30 @@ function GitaContent({ today }: { today: string }) {
 
   useFocusEffect(
     useCallback(() => {
-      let focused = true;
-      getAlarmPlaybackState()
-        .then((alarm) => {
-          if (focused && !alarm.ringing) playFromStart();
-        })
-        .catch(() => {
-          if (focused) playFromStart();
-        });
+      setFocused(true);
       return () => {
-        focused = false;
+        setFocused(false);
         pause();
       };
-    }, [pause, playFromStart]),
+    }, [pause]),
   );
+
+  useEffect(() => {
+    if (
+      !focused ||
+      entry !== "alarm" ||
+      !narration ||
+      !status.isLoaded ||
+      autoStartAttempted.current
+    ) return;
+
+    autoStartAttempted.current = true;
+    getAlarmPlaybackState()
+      .then((alarm) => {
+        if (!alarm.ringing) startNarration();
+      })
+      .catch(startNarration);
+  }, [entry, focused, narration, startNarration, status.isLoaded]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
@@ -635,23 +622,21 @@ function GitaContent({ today }: { today: string }) {
   }, [pause]);
 
   useEffect(() => {
-    if (!isPromptVisible) return;
-    const subscription = BackHandler.addEventListener(
-      "hardwareBackPress",
-      () => {
-        continueQuietly();
-        return true;
-      },
-    );
-    return () => subscription.remove();
-  }, [continueQuietly, isPromptVisible]);
+    if (narration && currentMs >= completionMs && status.playing) {
+      pause();
+      runPlayerCommand(() => player.seekTo(completionMs / 1000));
+    }
+  }, [completionMs, currentMs, narration, pause, player, status.playing]);
 
   useEffect(() => {
-    if (narration && currentMs >= completionMs && status.playing) {
-      player.pause();
-      player.seekTo(completionMs / 1000).catch(() => undefined);
-    }
-  }, [completionMs, currentMs, narration, player, status.playing]);
+    if (!narration || !isPlaying || manualTabSelection.current) return;
+    const meaningStart = narration.segments.find((segment) => segment.kind === "meaning")?.startMs;
+    setViewTab(meaningStart && currentMs >= meaningStart ? "meaning" : "shloka");
+  }, [currentMs, isPlaying, narration]);
+
+  useEffect(() => () => {
+    if (blessingTimer.current) clearTimeout(blessingTimer.current);
+  }, []);
 
   const shareVerse = async () => {
     await Share.share({
@@ -675,26 +660,29 @@ function GitaContent({ today }: { today: string }) {
     ];
     const pick = blessings[Math.floor(Math.random() * blessings.length)];
     setBlessingMessage(pick);
-    setTimeout(() => setBlessingMessage(null), 3800);
+    if (blessingTimer.current) clearTimeout(blessingTimer.current);
+    blessingTimer.current = setTimeout(() => setBlessingMessage(null), 3800);
   };
 
   return (
     <Screen contentContainerStyle={[s.screenContent, isCompact && { paddingBottom: 40 }]}>
-      {/* ─── 0. Morning Alarm Awakening Pill ─────────────────────────────────── */}
-      <View style={s.topAlarmRow}>
-        <View style={s.topAlarmPill}>
-          <Sunrise size={13} color="#8A5D18" strokeWidth={2.3} />
-          <TextR style={s.topAlarmText}>
-            BRAHMA MUHURTA AWAKENING · {alarmTime || "06:30 AM"}
-          </TextR>
+      {entry === "alarm" ? (
+        <View style={s.topAlarmRow}>
+          <View style={s.topAlarmPill}>
+            <Sunrise size={13} color="#8A5D18" strokeWidth={2.3} />
+            <TextR style={s.topAlarmText}>
+              MORNING ALARM RITUAL · {formatAlarmTime(alarmTime)}
+            </TextR>
+          </View>
         </View>
-      </View>
+      ) : null}
 
       {/* ─── 1. Sacred Header with Diya Streak Altar ────────────────────────── */}
+      {fallback ? <TextR>Offline practice — today’s download is unavailable.</TextR> : null}
       <View style={s.headerRow}>
         <TactileRoundButton
-          onPress={() => router.back()}
-          accessibilityLabel="Back"
+          onPress={exitToHome}
+          accessibilityLabel="Back to Home"
           size={isCompact ? 38 : 40}
         >
           <ChevronLeft size={20} color={C.ink} />
@@ -706,7 +694,7 @@ function GitaContent({ today }: { today: string }) {
             <View style={s.chapterDot} />
           </View>
           <TextR style={s.chapterText}>
-            CHAPTER {verse.chapter} · SHLOKA {verse.verse}
+            {referenceLabel}
           </TextR>
           {currentStreak > 0 && (
             <View style={s.streakBadge}>
@@ -719,8 +707,8 @@ function GitaContent({ today }: { today: string }) {
         {/* Top Tactile Action Cluster */}
         <View style={s.headerActions}>
           <TactileRoundButton
-            onPress={() => progressStore.toggleBookmark(verse.id)}
-            accessibilityLabel="Bookmark verse"
+            onPress={() => { if (!isBookmarked) void saveTeaching(verse).catch(() => undefined); progressStore.toggleBookmark(verse.id); }}
+            accessibilityLabel={isBookmarked ? "Remove verse bookmark" : "Bookmark verse"}
             size={isCompact ? 38 : 40}
           >
             <Bookmark
@@ -740,34 +728,41 @@ function GitaContent({ today }: { today: string }) {
         </View>
       </View>
 
-      {!complete ? (
+      {!sessionComplete ? (
         <Animated.View entering={FadeIn.duration(260)} style={s.listeningScreen}>
           {/* ─── 2. Sacred Sanctum Dais & Meditative Mascot ─────────────────── */}
           <MascotStage
             onMascotPress={handleMascotTap}
             blessingMessage={blessingMessage}
             isCompact={isCompact}
+            animated={focused && !reduceMotion}
           />
 
           {/* Mode Pill Indicator */}
           <View style={[s.modePillRow, isCompact && { marginBottom: 6 }]}>
             <View style={s.modePill}>
-              {isPlaying ? (
-                <AudioSpectrumVisualizer isPlaying={true} barCount={6} height={13} />
-              ) : (
-                <Flower2 size={13} color={C.saffron} />
-              )}
+              <Flower2 size={13} color={C.saffron} />
               <TextR style={s.modePillText}>
-                {displayTab === "meaning"
+                {viewTab === "meaning"
                   ? "SACRED BHAVARTHA"
-                  : displayTab === "padartha"
+                  : viewTab === "padartha"
                   ? "WORD-BY-WORD PADARTHA"
-                  : isPlaying
-                  ? "SACRED AWAKENING RECITATION"
-                  : "SACRED RECITATION"}
+                  : narration
+                    ? "GUIDED RECITATION"
+                    : "TODAY’S CONTEMPLATION"}
               </TextR>
             </View>
           </View>
+
+          {!narration ? (
+            <View style={s.textOnlyNotice}>
+              <Flower2 size={16} color={C.saffron} />
+              <View style={s.textOnlyCopy}>
+                <TextR style={s.textOnlyTitle}>Today’s reading</TextR>
+                <TextR style={s.textOnlyText}>A reviewed recording is not available for this verse yet.</TextR>
+              </View>
+            </View>
+          ) : null}
 
           {/* ─── 3. Unified Sacred Shloka Sanctum ───────────────────────────── */}
           <View style={[s.shlokaCardWrapper, isCompact && { marginBottom: 10 }]}>
@@ -775,78 +770,100 @@ function GitaContent({ today }: { today: string }) {
               {/* Tab Switcher */}
               <View style={[s.cardTabRow, isCompact && { marginBottom: 10 }]}>
                 <Pressable
-                  onPress={() => setViewTab("shloka")}
-                  style={[s.cardTab, displayTab === "shloka" && s.cardTabActive]}
+                  accessibilityLabel={readerLabels.primary}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: viewTab === "shloka" }}
+                  onPress={() => selectTab("shloka")}
+                  style={[s.cardTab, viewTab === "shloka" && s.cardTabActive]}
                 >
                   <TextR
                     style={[
                       s.cardTabText,
-                      displayTab === "shloka" && s.cardTabTextActive,
+                      viewTab === "shloka" && s.cardTabTextActive,
                     ]}
                   >
-                    श्लोक
+                    {readerLabels.primary}
                   </TextR>
                 </Pressable>
 
                 <Pressable
-                  onPress={() => setViewTab("meaning")}
-                  style={[s.cardTab, displayTab === "meaning" && s.cardTabActive]}
+                  accessibilityLabel={readerLabels.interpretation}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: viewTab === "meaning" }}
+                  onPress={() => selectTab("meaning")}
+                  style={[s.cardTab, viewTab === "meaning" && s.cardTabActive]}
                 >
                   <TextR
                     style={[
                       s.cardTabText,
-                      displayTab === "meaning" && s.cardTabTextActive,
+                      viewTab === "meaning" && s.cardTabTextActive,
                     ]}
                   >
-                    भावार्थ
+                    {readerLabels.interpretation}
                   </TextR>
                 </Pressable>
 
                 <Pressable
-                  onPress={() => setViewTab("padartha")}
-                  style={[s.cardTab, displayTab === "padartha" && s.cardTabActive]}
+                  accessibilityLabel={readerLabels.glossary}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: viewTab === "padartha" }}
+                  onPress={() => selectTab("padartha")}
+                  style={[s.cardTab, viewTab === "padartha" && s.cardTabActive]}
                 >
                   <TextR
                     style={[
                       s.cardTabText,
-                      displayTab === "padartha" && s.cardTabTextActive,
+                      viewTab === "padartha" && s.cardTabTextActive,
                     ]}
                   >
-                    पदार्थ
+                    {readerLabels.glossary}
                   </TextR>
                 </Pressable>
               </View>
 
               {/* Central Dynamic Verse Stage */}
               <View style={[s.wordStage, isCompact && { minHeight: 130, paddingVertical: 4 }]}>
-                {displayTab === "shloka" && (
+                {viewTab === "shloka" && (
                   <Animated.View entering={FadeIn.duration(240)} style={s.sanskritList}>
-                    {sanskrit.map((segment, idx) => (
-                      <SacredShlokaLine
-                        key={String(segment.startMs) + segment.text}
-                        segment={segment}
-                        currentMs={currentMs}
-                        isPlaying={isPlaying}
-                        transliteration={transliterationLines[idx]}
-                      />
-                    ))}
+                    {sanskrit.length ? (
+                      sanskrit.map((segment, idx) => (
+                        <SacredShlokaLine
+                          key={String(segment.startMs) + segment.text}
+                          segment={segment}
+                          currentMs={currentMs}
+                          isPlaying={isPlaying}
+                          transliteration={transliterationLines[idx]}
+                        />
+                      ))
+                    ) : (
+                      <View style={s.staticVerseBlock}>
+                        <TextR serif style={s.staticSanskrit}>{verse.sanskrit}</TextR>
+                        <TextR serif style={s.staticTransliteration}>
+                          {toSimpleEnglish(verse.transliteration)}
+                        </TextR>
+                      </View>
+                    )}
                   </Animated.View>
                 )}
 
-                {displayTab === "meaning" && (
+                {viewTab === "meaning" && (
                   <Animated.View entering={FadeIn.duration(240)} style={s.meaningList}>
-                    {hindi.map((segment) => (
-                      <MeaningSentenceRow
-                        key={String(segment.startMs) + segment.text}
-                        segment={segment}
-                        currentMs={currentMs}
-                        isPlaying={isPlaying}
-                      />
-                    ))}
+                    {hindi.length ? (
+                      hindi.map((segment) => (
+                        <MeaningSentenceRow
+                          key={String(segment.startMs) + segment.text}
+                          segment={segment}
+                          currentMs={currentMs}
+                          isPlaying={isPlaying}
+                        />
+                      ))
+                    ) : (
+                      <TextR style={s.staticMeaning}>{verse.meaning}</TextR>
+                    )}
                   </Animated.View>
                 )}
 
-                {displayTab === "padartha" && (
+                {viewTab === "padartha" && (
                   <Animated.View entering={FadeIn.duration(240)}>
                     <WordMeaningsTray
                       words={verse.words}
@@ -858,6 +875,17 @@ function GitaContent({ today }: { today: string }) {
               </View>
             </View>
           </View>
+
+          <Pressable
+            accessibilityHint="Marks today’s Gita practice complete and updates your streak"
+            accessibilityLabel="Complete today’s contemplation"
+            accessibilityRole="button"
+            onPress={completePractice}
+            style={({ pressed }) => [s.completeButton, pressed && s.completeButtonPressed]}
+          >
+            <CheckCircle2 size={20} color={C.white} strokeWidth={2.4} />
+            <TextR style={s.completeButtonText}>Complete today’s contemplation</TextR>
+          </Pressable>
         </Animated.View>
       ) : (
         /* ─── 5. Completed Contemplation & Daily Morning Sankalpa Altar ───── */
@@ -867,6 +895,7 @@ function GitaContent({ today }: { today: string }) {
             onMascotPress={handleMascotTap}
             blessingMessage={blessingMessage}
             isCompact={isCompact}
+            animated={focused && !reduceMotion}
           />
 
           {/* Full Shloka Wisdom Parchment */}
@@ -899,21 +928,29 @@ function GitaContent({ today }: { today: string }) {
             </View>
           </View>
 
-          {/* Re-listen Trigger */}
-          <Pressable
-            onPress={playFromStart}
-            style={({ pressed }) => [s.relistenBtn, pressed && s.pressed]}
-          >
-            <RotateCcw size={15} color={C.saffron} />
-            <TextR style={s.relistenText}>Listen to recitation again</TextR>
-          </Pressable>
+          {narration ? (
+            <Pressable
+              accessibilityLabel="Listen to recitation again"
+              accessibilityRole="button"
+              onPress={playFromStart}
+              style={({ pressed }) => [s.relistenBtn, pressed && s.pressed]}
+            >
+              <RotateCcw size={15} color={C.saffron} />
+              <TextR style={s.relistenText}>Listen to recitation again</TextR>
+            </Pressable>
+          ) : (
+            <Pressable
+              accessibilityLabel="Review today’s verse"
+              accessibilityRole="button"
+              onPress={() => setSessionComplete(false)}
+              style={({ pressed }) => [s.relistenBtn, pressed && s.pressed]}
+            >
+              <RotateCcw size={15} color={C.saffron} />
+              <TextR style={s.relistenText}>Review today’s verse</TextR>
+            </Pressable>
+          )}
         </Animated.View>
       )}
-
-      <KrishnaInvitation
-        visible={isPromptVisible}
-        onContinue={continueQuietly}
-      />
     </Screen>
   );
 }
@@ -921,7 +958,7 @@ function GitaContent({ today }: { today: string }) {
 // ─── Stylesheet ───────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   screenContent: {
-    paddingBottom: 60,
+    paddingBottom: 36,
   },
   loading: {
     minHeight: 500,
@@ -1136,6 +1173,23 @@ const s = StyleSheet.create({
     fontWeight: "800",
   },
 
+  textOnlyNotice: {
+    minHeight: 62,
+    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(254, 240, 226, 0.8)",
+    borderWidth: 1,
+    borderColor: "rgba(229, 107, 39, 0.2)",
+  },
+  textOnlyCopy: { flex: 1 },
+  textOnlyTitle: { color: C.ink, fontSize: 14, fontWeight: "800" },
+  textOnlyText: { color: C.muted, fontSize: 11.5, lineHeight: 16, marginTop: 2 },
+
   // ─── Unified Sacred Shloka Card ────────────────────────────────────────────
   shlokaCardWrapper: {
     marginHorizontal: 0,
@@ -1264,6 +1318,25 @@ const s = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 23.5,
   },
+  staticVerseBlock: {
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 4,
+  },
+  staticSanskrit: {
+    color: "#2E180D",
+    fontSize: 23,
+    lineHeight: 36,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  staticTransliteration: {
+    color: "#5C4335",
+    fontSize: 14.5,
+    lineHeight: 22,
+    fontStyle: "italic",
+    textAlign: "center",
+  },
 
   // ─── Bhavartha Meaning Stage ───────────────────────────────────────────────
   meaningList: {
@@ -1299,6 +1372,14 @@ const s = StyleSheet.create({
     lineHeight: 30,
     color: "#842A04",
     fontWeight: "800",
+  },
+  staticMeaning: {
+    color: C.ink,
+    fontSize: 17,
+    lineHeight: 27,
+    fontWeight: "600",
+    textAlign: "center",
+    paddingHorizontal: 4,
   },
 
   // ─── Padartha Tray ─────────────────────────────────────────────────────────
@@ -1520,6 +1601,37 @@ const s = StyleSheet.create({
     fontWeight: "700",
   },
 
+  completeButton: {
+    minHeight: 56,
+    borderRadius: 28,
+    marginTop: 2,
+    marginBottom: 8,
+    paddingHorizontal: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 9,
+    backgroundColor: C.saffron,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderBottomColor: "#A8470C",
+    borderBottomWidth: 3,
+    shadowColor: C.saffron,
+    shadowOpacity: 0.24,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  completeButtonPressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.985 }],
+  },
+  completeButtonText: {
+    color: C.white,
+    fontSize: 15,
+    fontWeight: "900",
+  },
+
   relistenBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -1535,130 +1647,5 @@ const s = StyleSheet.create({
   pressed: {
     opacity: 0.86,
     transform: [{ scale: 0.98 }],
-  },
-
-  // ─── Modal Overlay ─────────────────────────────────────────────────────────
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(47,26,14,0.48)",
-    justifyContent: "flex-end",
-  },
-  overlaySurface: {
-    minHeight: "78%",
-    overflow: "hidden",
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    backgroundColor: "#FFF7EE",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.85)",
-  },
-  lightField: {
-    ...StyleSheet.absoluteFill,
-    overflow: "hidden",
-    backgroundColor: "#FFF8EE",
-  },
-  orb: {
-    position: "absolute",
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "#F4B942",
-  },
-  orbOne: {
-    top: 112,
-    left: "18%",
-  },
-  orbTwo: {
-    top: 175,
-    right: "17%",
-    width: 5,
-    height: 5,
-  },
-  orbThree: {
-    top: 280,
-    left: "25%",
-    width: 4,
-    height: 4,
-  },
-  overlayContent: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "flex-end",
-    paddingHorizontal: 26,
-    paddingBottom: 36,
-  },
-  overlayMascot: {
-    height: 210,
-    marginBottom: 4,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  overlayPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6.5,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.68)",
-  },
-  overlayPillText: {
-    color: "#9B672B",
-    fontSize: 10,
-    letterSpacing: 1.2,
-    fontWeight: "800",
-  },
-  overlayTitle: {
-    color: "#2F2119",
-    fontSize: 26,
-    lineHeight: 33,
-    textAlign: "center",
-    marginTop: 14,
-  },
-  overlayBody: {
-    color: "#805E4D",
-    fontSize: 13.5,
-    textAlign: "center",
-    marginTop: 7,
-    marginBottom: 22,
-  },
-  overlayPrimary: {
-    width: "100%",
-    minHeight: 52,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 9,
-    borderRadius: 18,
-    backgroundColor: C.saffron,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.7)",
-    borderTopColor: "#FFFFFF",
-    borderBottomColor: "#A8470C",
-    borderBottomWidth: 3.5,
-    shadowColor: C.saffron,
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 5,
-  },
-  overlayPrimaryText: {
-    color: C.white,
-    fontSize: 14.5,
-    fontWeight: "800",
-  },
-  overlaySecondary: {
-    minHeight: 46,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    paddingHorizontal: 16,
-    marginTop: 6,
-  },
-  overlaySecondaryText: {
-    color: "#805E4D",
-    fontSize: 13.5,
-    fontWeight: "800",
   },
 });

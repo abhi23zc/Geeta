@@ -40,18 +40,24 @@ class AlarmService : Service() {
   override fun onBind(intent: Intent?): IBinder? = null
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    AlarmLog.initialize(this)
     if (intent?.action == ACTION_STOP) {
       stopAlarm(intent.getStringExtra(EXTRA_REASON) ?: "stopped")
       return START_NOT_STICKY
     }
 
-    if (player != null) return START_STICKY
+    if (player != null) {
+      if (AlarmStore.isTest(this) && intent != null && !intent.getBooleanExtra("test", false)) {
+        stopAlarm("test-preempted", finishService = false)
+      } else return START_STICKY
+    }
     if (intent == null && !AlarmStore.isRinging(this)) {
       AlarmLog.event("service_restart_rejected", "no active alarm")
       stopSelf()
       return START_NOT_STICKY
     }
-    val config = AlarmStore.get(this)?.takeIf { it.enabled } ?: run {
+    val test = intent?.getBooleanExtra("test", false) ?: AlarmStore.isTest(this)
+    val config = (if (test) AlarmConfig(hour = 0, minute = 0, weekdays = emptySet(), enabled = true, gradualVolume = false, vibration = true, revision = 0) else AlarmStore.get(this)?.takeIf { it.enabled }) ?: run {
       stopSelf()
       return START_NOT_STICKY
     }
@@ -59,15 +65,23 @@ class AlarmService : Service() {
       ?: System.currentTimeMillis()
     startedAt = System.currentTimeMillis()
     gradual = config.gradualVolume
+    AlarmStore.setTest(this, test)
     AlarmStore.setRinging(this, true, startedAt, scheduledAt)
     AlarmLog.event("service_start", "scheduledAt=$scheduledAt")
     acquireWakeLock()
     createChannel()
     startForeground(NOTIFICATION_ID, notification())
-    // Notification is intentionally posted first: if MIUI/Android rejects this
+    // Notification is intentionally posted first: if Android rejects this
     // direct background launch, its full-screen PendingIntent remains the safe path.
     launchWakeScreenIfInteractive()
-    startSound(config)
+    runCatching { startSound(config) }
+      .onSuccess { AlarmLog.event("playback_started") }
+      .onFailure {
+        AlarmLog.event("playback_failed", it.javaClass.simpleName)
+        player?.release()
+        player = null
+      }
+    if (test) handler.postDelayed({ stopAlarm("timeout") }, 30_000L)
     if (config.vibration) startVibration()
     AlarmEvents.emit("alarmTriggered", stateMap(this))
     return START_STICKY
@@ -77,14 +91,37 @@ class AlarmService : Service() {
     val power = getSystemService(PowerManager::class.java)
     wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "geeta:morning-alarm").apply {
       setReferenceCounted(false)
-      acquire()
+      acquire(10 * 60_000L)
     }
   }
 
   private fun startSound(config: AlarmConfig) {
-    val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-      ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-    player = MediaPlayer().apply {
+    val local = runCatching { ContentFiles.resolve(this, ContentFiles.key(config.toneKey)) }.getOrNull()
+    val choices = listOfNotNull(
+      local?.let { android.net.Uri.fromFile(it) to ContentFiles.key(config.toneKey) },
+      RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)?.let { it to "system" },
+      RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)?.let { it to "notification" },
+    )
+    var failure: Throwable? = null
+    for ((uri, actual) in choices) {
+      try {
+        playUri(config, uri)
+        ContentFiles.report(this, actual, if (actual == "system" || actual == "notification") if (local == null) "Selected sound unavailable" else "Selected sound failed" else null)
+        return
+      } catch (error: Throwable) {
+        failure = error
+        player?.release()
+        player = null
+      }
+    }
+    ContentFiles.report(this, "silent", "All sound sources failed")
+    throw failure ?: IllegalStateException("No alarm sound available")
+  }
+
+  private fun playUri(config: AlarmConfig, uri: android.net.Uri) {
+    val sound = MediaPlayer()
+    player = sound
+    sound.apply {
       setAudioAttributes(
         AudioAttributes.Builder()
           .setUsage(AudioAttributes.USAGE_ALARM)
@@ -144,6 +181,7 @@ class AlarmService : Service() {
 
   private fun launchWakeScreenIfInteractive() {
     val power = getSystemService(PowerManager::class.java)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && !getSystemService(NotificationManager::class.java).canUseFullScreenIntent()) return
     if (!power.isInteractive) return
     runCatching { startActivity(AlarmActivity.intent(this)) }
       .onSuccess { AlarmLog.event("direct_activity_launch") }
@@ -167,13 +205,19 @@ class AlarmService : Service() {
       .setColor(Color.rgb(229, 107, 39))
       .setContentTitle("Your Morning Ritual is ready")
       .setContentText("Alarm is ringing · tap to wake gently")
+      .setPriority(Notification.PRIORITY_HIGH)
       .setCategory(Notification.CATEGORY_ALARM)
       .setVisibility(Notification.VISIBILITY_PUBLIC)
       .setOngoing(true)
       .setAutoCancel(false)
       .setOnlyAlertOnce(true)
       .setContentIntent(open)
-      .setFullScreenIntent(open, true)
+      .addAction(Notification.Action.Builder(null, "Stop", PendingIntent.getBroadcast(this, 6202, Intent(this, AlarmStopReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)).build())
+      .apply {
+        val allowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE || getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
+        if (allowed) setFullScreenIntent(open, true)
+        AlarmLog.event("notification_presented", "fullScreen=$allowed")
+      }
       .apply {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
           setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
@@ -182,7 +226,7 @@ class AlarmService : Service() {
       .build()
   }
 
-  private fun stopAlarm(reason: String) {
+  private fun stopAlarm(reason: String, finishService: Boolean = true) {
     AlarmLog.event("alarm_stop", reason)
     handler.removeCallbacksAndMessages(null)
     player?.runCatching { stop() }
@@ -192,9 +236,11 @@ class AlarmService : Service() {
     wakeLock?.takeIf { it.isHeld }?.release()
     wakeLock = null
     AlarmStore.setRinging(this, false)
+    AlarmStore.setTest(this, false)
+    if (reason == "timeout") AlarmActivity.finishVisible()
     AlarmEvents.emit("alarmStopped", mapOf("reason" to reason))
     stopForeground(STOP_FOREGROUND_REMOVE)
-    stopSelf()
+    if (finishService) stopSelf()
   }
 
   private fun volumeProgress(): Float {
@@ -203,7 +249,7 @@ class AlarmService : Service() {
   }
 
   override fun onDestroy() {
-    if (player != null) stopAlarm("service-destroyed")
+    if (player != null || wakeLock != null) stopAlarm("service-destroyed")
     super.onDestroy()
   }
 
@@ -236,6 +282,9 @@ class AlarmService : Service() {
         "triggeredAt" to triggeredAt.toDouble(),
         "scheduledAt" to AlarmStore.scheduledAt(context).toDouble(),
         "volumeProgress" to progress,
+        "actualTone" to ContentFiles.playback(context)["actualTone"],
+        "fallbackReason" to ContentFiles.playback(context)["fallbackReason"],
+        "toneRevision" to ContentFiles.playback(context)["toneRevision"],
       )
     }
   }

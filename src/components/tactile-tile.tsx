@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, {
   useAnimatedStyle,
@@ -28,16 +28,25 @@ export function TactileTile({
 }: TactileTileProps) {
   const router = useRouter();
   const pressed = useSharedValue(0);
+  const { width } = useWindowDimensions();
+
+  // Dynamic responsive sizing for compact phones, standard phones, and tablets
+  const isSmall = width < 360;
+  const isMedium = width >= 360 && width < 600;
+  const iconSize = isSmall ? 44 : isMedium ? 50 : 56;
+  const titleFontSize = isSmall ? 11.5 : isMedium ? 12.5 : 13.5;
+  const tilePaddingV = isSmall ? 11 : isMedium ? 14 : 16;
+  const tilePaddingH = isSmall ? 4 : isMedium ? 6 : 8;
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
-        { translateY: withSpring(pressed.value ? 4 : 0, { damping: 14, stiffness: 220 }) },
+        { translateY: withSpring(pressed.value ? 3 : 0, { damping: 14, stiffness: 220 }) },
         { scale: withSpring(pressed.value ? 0.95 : 1, { damping: 14, stiffness: 220 }) },
       ],
       shadowOffset: {
         width: 0,
-        height: withSpring(pressed.value ? 2 : 7, { damping: 14, stiffness: 220 }),
+        height: withSpring(pressed.value ? 2 : 6, { damping: 14, stiffness: 220 }),
       },
       shadowOpacity: withSpring(pressed.value ? 0.08 : 0.16, { damping: 14, stiffness: 220 }),
     };
@@ -45,8 +54,11 @@ export function TactileTile({
 
   return (
     <AnimatedPressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityHint={`Open ${title}`}
       onPress={() => {
-        if (href) router.push(href);
+        if (href) router.navigate(href);
       }}
       onPressIn={() => {
         pressed.value = 1;
@@ -54,19 +66,48 @@ export function TactileTile({
       onPressOut={() => {
         pressed.value = 0;
       }}
-      style={[styles.container, animatedStyle]}
+      style={[
+        styles.container,
+        {
+          paddingVertical: tilePaddingV,
+          paddingHorizontal: tilePaddingH,
+          borderRadius: isSmall ? 18 : 22,
+        },
+        animatedStyle,
+      ]}
     >
       {/* 3D Top Bevel Highlight Line */}
       <View style={styles.topBevelHighlight} />
 
       {/* 3D Tactile Icon Container with Glossy Inner Reflection */}
-      <View style={[styles.iconCircle, { backgroundColor: bgColor }]}>
+      <View
+        style={[
+          styles.iconCircle,
+          {
+            backgroundColor: bgColor,
+            width: iconSize,
+            height: iconSize,
+            borderRadius: iconSize / 2,
+            marginBottom: isSmall ? 6 : 8,
+          },
+        ]}
+      >
         <View style={styles.iconGlossArc} />
         {icon}
       </View>
 
-      {/* Title */}
-      <TextR style={styles.title}>{title}</TextR>
+      {/* Title with font scaling and auto-fit */}
+      <TextR
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+        style={[
+          styles.title,
+          { fontSize: titleFontSize, lineHeight: Math.round(titleFontSize * 1.3) },
+        ]}
+      >
+        {title}
+      </TextR>
 
       {/* Optional Badge Indicator */}
       {badgeText && (
@@ -174,3 +215,4 @@ const styles = StyleSheet.create({
     color: C.white,
   },
 });
+

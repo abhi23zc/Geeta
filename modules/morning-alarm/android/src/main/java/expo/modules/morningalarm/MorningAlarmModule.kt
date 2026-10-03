@@ -1,11 +1,7 @@
 package expo.modules.morningalarm
 
-import android.Manifest
-import android.app.ActivityManager
-import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -22,7 +18,14 @@ class MorningAlarmModule : Module() {
     Name("MorningAlarm")
     Events("alarmTriggered", "alarmStopped")
 
+    AsyncFunction("hashContentFile") { uri: String -> ContentFiles.hash(ContentFiles.source(context, uri)) }
+    AsyncFunction("getInstalledAlarmTone") { ContentFiles.installed(context) }
+    AsyncFunction("installAlarmTone") { input: ReadableArguments ->
+      ContentFiles.install(context, input.getString("key"), input.getString("uri"), input.getString("revision"), input.getDouble("bytes").toLong(), input.getString("sha256"))
+    }
+
     OnCreate {
+      AlarmLog.initialize(context)
       AlarmEvents.listener = { name, body -> sendEvent(name, body) }
     }
     OnDestroy {
@@ -47,9 +50,9 @@ class MorningAlarmModule : Module() {
       )
       require(config.weekdays.isNotEmpty()) { "Choose at least one alarm day" }
       val stored = AlarmStore.put(context, config)
-      val scheduledAt = if (stored.enabled && AlarmScheduler.canScheduleExact(context)) {
+      val scheduledAt = if (stored.enabled && AlarmCapabilities.ready(context)) {
         AlarmScheduler.scheduleNext(context, stored)
-      } else null
+      } else { AlarmScheduler.cancel(context); null }
       mapOf("scheduled" to (scheduledAt != null), "scheduledAt" to scheduledAt?.toDouble())
     }
 
@@ -57,6 +60,7 @@ class MorningAlarmModule : Module() {
       require(!AlarmStore.isRinging(context)) { "Complete Start my day before changing an active alarm" }
       AlarmScheduler.cancel(context)
       AlarmStore.setEnabled(context, false)
+      mapOf("cancelled" to true)
     }
 
     AsyncFunction("dismissAndScheduleNext") {
@@ -72,7 +76,16 @@ class MorningAlarmModule : Module() {
     }
 
     AsyncFunction("getCapabilityStatus") {
+      reconcile()
       capabilityMap(context)
+    }
+
+    AsyncFunction("reconcile") { reconcile() }
+
+    AsyncFunction("scheduleTest") {
+      require(!AlarmStore.isRinging(context)) { "Stop the active alarm before testing" }
+      require(capabilityMap(context)["notifications"] == true && capabilityMap(context)["notificationChannelReady"] == true) { "Enable alarm notifications first" }
+      AlarmScheduler.scheduleTest(context).toDouble()
     }
 
     AsyncFunction("getLaunchDiagnostics") {
@@ -83,64 +96,47 @@ class MorningAlarmModule : Module() {
         "interactive" to context.getSystemService(android.os.PowerManager::class.java).isInteractive,
         "ringing" to AlarmStore.isRinging(context),
         "capabilities" to capabilityMap(context),
+        "events" to AlarmLog.entries(context),
       )
     }
 
     AsyncFunction("openExactAlarmSettings") {
-      val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+      openResolved(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
         Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}"))
-      } else {
-        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
-      }
-      context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+      else appDetails(), if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) "Alarms & reminders" else "App details")
     }
-
     AsyncFunction("openFullScreenIntentSettings") {
-      val action = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-        Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT
-      } else Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-      context.startActivity(
-        Intent(action, Uri.parse("package:${context.packageName}"))
-          .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-      )
+      openResolved(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+        Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${context.packageName}"))
+      else appDetails(), if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) "Full-screen alarms" else "App details")
     }
-
+    AsyncFunction("openNotificationSettings") {
+      openResolved(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+      else appDetails(), if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) "App notifications" else "App details")
+    }
     AsyncFunction("openNotificationChannelSettings") {
-      val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      openResolved(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
         Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
           .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
           .putExtra(Settings.EXTRA_CHANNEL_ID, AlarmService.CHANNEL_ID)
-      } else {
-        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
-      }
-      openResolved(intent)
+      else appDetails(), if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) "Alarm notification channel" else "App details")
     }
-
     AsyncFunction("openAutoStartSettings") {
-      // Xiaomi does not document this API, so always verify the component and
-      // fall back to this app's detail screen when a ROM removes it.
-      val miui = Intent().setClassName(
-        "com.miui.securitycenter",
-        "com.miui.permcenter.autostart.AutoStartManagementActivity",
-      )
-      openResolved(miui)
+      val target = when (Build.MANUFACTURER.lowercase()) {
+        "xiaomi", "redmi", "poco" -> Intent().setClassName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")
+        "oppo", "realme", "oneplus" -> Intent().setClassName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity")
+        "vivo", "iqoo" -> Intent().setClassName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")
+        "huawei", "honor" -> Intent().setClassName("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity")
+        else -> appDetails()
+      }
+      openResolved(target, if (target.component == null) "App details" else "Phone auto-start settings")
     }
-
     AsyncFunction("openOemPermissionSettings") {
-      val miui = Intent().setClassName(
-        "com.miui.securitycenter",
-        "com.miui.permcenter.permissions.PermissionsEditorActivity",
-      ).putExtra("extra_pkgname", context.packageName)
-      openResolved(miui)
+      openResolved(appDetails(), "App details")
     }
-
     AsyncFunction("openBatterySettings") {
-      val miui = Intent().setClassName(
-        "com.miui.powerkeeper",
-        "com.miui.powerkeeper.ui.HiddenAppsConfigActivity",
-      ).putExtra("package_name", context.packageName)
-        .putExtra("package_label", context.applicationInfo.loadLabel(context.packageManager).toString())
-      openResolved(miui)
+      openResolved(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS), "Battery optimization")
     }
 
     AsyncFunction("notifyWakeScreenReady") {
@@ -160,40 +156,35 @@ class MorningAlarmModule : Module() {
     "vibration" to config.vibration,
   )
 
-  private fun capabilityMap(context: Context): Map<String, Any> {
-    val notifications = context.getSystemService(NotificationManager::class.java).areNotificationsEnabled() &&
-      (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
-    val fullScreen = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-      context.getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
-    } else true
-    val manager = context.getSystemService(NotificationManager::class.java)
-    val channelImportance = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      manager.getNotificationChannel(AlarmService.CHANNEL_ID)?.importance ?: NotificationManager.IMPORTANCE_NONE
-    } else NotificationManager.IMPORTANCE_HIGH
-    val batteryRestricted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-      context.getSystemService(ActivityManager::class.java).isBackgroundRestricted
-    } else false
-    return mapOf(
-      "notifications" to notifications,
-      "exactAlarm" to AlarmScheduler.canScheduleExact(context),
-      "fullScreenIntent" to fullScreen,
-      "channelImportance" to channelImportance,
-      "notificationChannelReady" to (channelImportance >= NotificationManager.IMPORTANCE_HIGH),
-      "batteryRestricted" to batteryRestricted,
-      "sdkInt" to Build.VERSION.SDK_INT,
-      "manufacturer" to Build.MANUFACTURER,
-      "oemGuidance" to (
-        Build.MANUFACTURER.equals("Xiaomi", ignoreCase = true) ||
-          Build.MANUFACTURER.equals("Redmi", ignoreCase = true) ||
-          Build.MANUFACTURER.equals("POCO", ignoreCase = true)
-        ),
-    )
+  private fun capabilityMap(context: Context) = AlarmCapabilities.status(context)
+
+  private fun reconcile(): Boolean {
+    val config = AlarmStore.get(context) ?: return false
+    if (!config.enabled) return false
+    val status = capabilityMap(context)
+    if (status["exactAlarm"] != true || status["notifications"] != true || status["notificationChannelReady"] != true) {
+      AlarmScheduler.cancel(context)
+      AlarmLog.event("schedule_paused", "required access missing; config retained")
+      return false
+    }
+    return runCatching { AlarmScheduler.scheduleNext(context, config) != null }
+      .onFailure { AlarmLog.event("reschedule_failed", it.javaClass.simpleName) }.getOrDefault(false)
   }
 
-  private fun openResolved(intent: Intent) {
-    val target = if (intent.resolveActivity(context.packageManager) != null) intent else
-      Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
-    context.startActivity(target.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+  private fun appDetails() = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
+
+  private fun openResolved(intent: Intent, label: String): Map<String, Any> {
+    val choices = listOf(intent to label, appDetails() to "App details", Intent(Settings.ACTION_SETTINGS) to "Android settings")
+    for ((target, destination) in choices) {
+      try {
+        context.startActivity(target.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        return mapOf("destination" to destination, "fallback" to (target !== intent))
+      } catch (error: android.content.ActivityNotFoundException) {
+        AlarmLog.event("settings_unavailable", destination)
+      } catch (error: SecurityException) {
+        AlarmLog.event("settings_blocked", destination)
+      }
+    }
+    throw IllegalStateException("Settings could not be opened. Open Settings manually and select this app.")
   }
 }

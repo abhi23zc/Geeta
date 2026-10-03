@@ -11,15 +11,13 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { Link, usePathname } from 'expo-router';
+import { Link, usePathname, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import {
   Bell,
   User,
   Flame,
-  BookOpen,
-  Leaf,
   Sun,
   Moon,
   ChevronLeft,
@@ -37,6 +35,13 @@ import Animated, {
 } from 'react-native-reanimated';
 
 export const MORNING_RITUAL_LOGO = require('@/assets/images/morning-ritual-logo.png');
+const DockContext = React.createContext({ height: 76, setHeight: (_height: number) => {} });
+export function DockLayoutProvider({ children }: { children: ReactNode }) {
+  const [height, setHeight] = React.useState(76);
+  const value = React.useMemo(() => ({ height, setHeight }), [height]);
+  return <DockContext.Provider value={value}>{children}</DockContext.Provider>;
+}
+export function useDockHeight() { return React.useContext(DockContext).height; }
 
 export function DawnMeshBackdrop({ night = false }: { night?: boolean }) {
   return (
@@ -147,7 +152,7 @@ export function DiyaGraphic({
       -1,
       true
     );
-  }, [animated]);
+  }, [animated, flameOpacity, flameRotate, flameScaleY, flameTranslateY, glowOpacity, glowScale]);
 
   const animatedFlameStyle = useAnimatedStyle(() => ({
     transform: [
@@ -329,22 +334,28 @@ export function Screen({
   contentContainerStyle?: StyleProp<ViewStyle>;
 }) {
   const nightBg = '#0B0D19';
+  const insets = useSafeAreaInsets();
+  const dockHeight = useDockHeight();
+  const bottomClearance = Math.max(dockHeight + insets.bottom + 24, 130);
+
   const content = (
     <View style={[styles.content, night && { backgroundColor: nightBg }, contentStyle]}>
       <DawnMeshBackdrop night={night} />
-      {children}
+      <View style={styles.responsiveWrapper}>
+        {children}
+      </View>
     </View>
   );
 
   return (
     <SafeAreaView
       style={[styles.safe, night && { backgroundColor: nightBg }]}
-      edges={['top']}
+      edges={['top', 'left', 'right']}
     >
       {scroll ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scroll, { paddingBottom: 100 }, contentContainerStyle]}
+          contentContainerStyle={[styles.scroll, { paddingBottom: bottomClearance }, contentContainerStyle]}
         >
           {content}
         </ScrollView>
@@ -361,12 +372,14 @@ export function Header({
   night = false,
   back = false,
   logo,
+  showActions = true,
 }: {
   eyebrow: string;
   title?: string;
   night?: boolean;
   back?: boolean;
   logo?: ReactNode;
+  showActions?: boolean;
 }) {
   const color = night ? '#F1F3F9' : C.ink;
   const eyebrowColor = night ? '#F4B942' : C.saffron;
@@ -393,27 +406,27 @@ export function Header({
           </View>
         </View>
       </View>
-      <View style={styles.headerActions}>
-        <Pressable style={[styles.actionBtn, night && { backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.08)' }]}>
-          <Bell size={20} color={night ? '#7D86A9' : C.inkSoft} />
-        </Pressable>
-        <View style={[styles.avatar, { backgroundColor: '#E76F2E' }]}>
-          <User size={18} color="#0B0D19" strokeWidth={2.5} />
+      {showActions && (
+        <View style={styles.headerActions}>
+          <Pressable style={[styles.actionBtn, night && { backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.08)' }]}>
+            <Bell size={20} color={night ? '#7D86A9' : C.inkSoft} />
+          </Pressable>
+          <View style={[styles.avatar, { backgroundColor: '#E76F2E' }]}>
+            <User size={18} color="#0B0D19" strokeWidth={2.5} />
+          </View>
         </View>
-      </View>
+      )}
     </View>
   );
 }
 
-const tabs = [
+type TabHref = '/' | '/today' | '/night';
+
+const tabs: { href: TabHref; label: string; IconComponent: typeof Flame }[] = [
   { href: '/', label: 'Home', IconComponent: Flame },
-  { href: '/gita', label: 'Gita', IconComponent: BookOpen },
-  { href: '/breathe', label: 'Breathe', IconComponent: Leaf },
   { href: '/today', label: 'Today', IconComponent: Sun },
   { href: '/night', label: 'Night', IconComponent: Moon },
 ];
-
-import { useRouter } from 'expo-router';
 
 function AnimatedTabItem({
   tab,
@@ -433,7 +446,7 @@ function AnimatedTabItem({
 
   React.useEffect(() => {
     scale.value = withSpring(active ? 1.08 : 1, { damping: 14, stiffness: 180 });
-  }, [active]);
+  }, [active, scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -472,6 +485,7 @@ function AnimatedTabItem({
 }
 
 export function TabBar({ night }: { night?: boolean }) {
+  const { setHeight } = React.useContext(DockContext);
   const path = usePathname();
   const router = useRouter();
   const inset = useSafeAreaInsets();
@@ -495,28 +509,36 @@ export function TabBar({ night }: { night?: boolean }) {
 
   return (
     <View
+      pointerEvents="box-none"
       style={[
-        styles.floatingTabDock,
-        {
-          bottom: Math.max(inset.bottom + 8, 18),
-          backgroundColor: isNight ? '#0B0D19' : 'rgba(255, 246, 238, 0.95)',
-          borderColor: isNight ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
-          borderBottomColor: isNight ? 'rgba(255, 255, 255, 0.04)' : 'rgba(180, 125, 95, 0.4)',
-        },
+        styles.floatingTabDockWrap,
+        { bottom: Math.max(inset.bottom + 8, 18) },
       ]}
     >
-      {tabs.map((t) => {
-        const active = path === t.href;
-        return (
-          <AnimatedTabItem
-            key={t.href}
-            tab={t}
-            active={active}
-            night={isNight}
-            onPress={() => router.push(t.href as any)}
-          />
-        );
-      })}
+      <View
+        onLayout={event => setHeight(event.nativeEvent.layout.height)}
+        style={[
+          styles.floatingTabDock,
+          {
+            backgroundColor: isNight ? '#0B0D19' : 'rgba(255, 246, 238, 0.95)',
+            borderColor: isNight ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
+            borderBottomColor: isNight ? 'rgba(255, 255, 255, 0.04)' : 'rgba(180, 125, 95, 0.4)',
+          },
+        ]}
+      >
+        {tabs.map((t) => {
+          const active = path === t.href;
+          return (
+            <AnimatedTabItem
+              key={t.href}
+              tab={t}
+              active={active}
+              night={isNight}
+              onPress={() => router.navigate(t.href)}
+            />
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -581,16 +603,21 @@ export const styles = StyleSheet.create({
   content: {
     flex: 1,
     backgroundColor: C.surface,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 20,
     position: 'relative',
+    alignItems: 'center',
+  },
+  responsiveWrapper: {
+    width: '100%',
+    maxWidth: 640,
   },
   header: {
     height: 64,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   brand: {
     flexDirection: 'row',
@@ -717,10 +744,17 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  floatingTabDock: {
+  floatingTabDockWrap: {
     position: 'absolute',
-    left: 16,
-    right: 16,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    zIndex: 100,
+  },
+  floatingTabDock: {
+    width: '100%',
+    maxWidth: 480,
     borderRadius: 32,
     flexDirection: 'row',
     alignItems: 'center',
@@ -736,7 +770,6 @@ export const styles = StyleSheet.create({
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 8 },
     elevation: 16,
-    zIndex: 100,
   },
   tabItem: {
     flex: 1,

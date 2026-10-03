@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
 import {
   CheckCircle2,
   Leaf,
@@ -10,16 +10,14 @@ import {
   Wind,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { AppState, Modal, Pressable, StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
   FadeIn,
-  FadeOut,
   cancelAnimation,
   useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withRepeat,
   withSequence,
   withTiming,
@@ -30,6 +28,7 @@ import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 import { AruMascot } from "@/components/aru-mascot";
 import { Header, Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
+import { replaceAppRoute } from "@/navigation/route-actions";
 import { useGitaProgress } from "@/state/gita-store";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -57,7 +56,7 @@ const phases = [
   {
     key: "exhale",
     label: "Exhale",
-    seconds: 4,
+    seconds: 6,
     prompt: "Slowly release breath through nose, relaxing mind and shoulders.",
     Icon: Leaf,
     accentColor: "#D96B43",
@@ -68,21 +67,41 @@ const phases = [
 const R_INNER = 76;
 const CIRCLE_PERIMETER = 2 * Math.PI * R_INNER; // 477.52
 const TOTAL_ROUNDS = 5;
-const ROUND_DURATION_SEC = 12; // 4s + 4s + 4s
-const TOTAL_SESSION_SEC = TOTAL_ROUNDS * ROUND_DURATION_SEC; // 60s = 1 min
+const ROUND_DURATION_SEC = 14; // 4s + 4s + 6s
+const TOTAL_SESSION_SEC = TOTAL_ROUNDS * ROUND_DURATION_SEC; // 70s
+const PREPARATION_SECONDS = 3;
+type BreathingLifecycle = "preparing" | "active" | "paused" | "complete";
 
 export default function Breathe() {
+  const navigation = useNavigation("/");
   const insets = useSafeAreaInsets();
   const { completeBreathing } = useGitaProgress();
+  const { entry } = useLocalSearchParams<{ entry?: "alarm" | "manual" }>();
 
-  const [phaseIndex, setPhaseIndex] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(4);
-  const [paused, setPaused] = useState(false);
-  const [complete, setComplete] = useState(false);
+  const [lifecycle, setLifecycle] = useState<BreathingLifecycle>("preparing");
+  const [preparationSecondsLeft, setPreparationSecondsLeft] = useState(PREPARATION_SECONDS);
   const [elapsedTotalSeconds, setElapsedTotalSeconds] = useState(0);
+  const elapsed = useRef(0);
+  const [focused, setFocused] = useState(false);
+  const focusedRef = useRef(false);
+  const [foreground, setForeground] = useState(AppState.currentState === "active");
   const completionHandled = useRef(false);
+  const appState = useRef(AppState.currentState);
 
+  const preparing = lifecycle === "preparing";
+  const active = lifecycle === "active" && focused && foreground;
+  const paused = lifecycle === "paused";
+  const complete = lifecycle === "complete";
+
+  // Derive the phase from one clock so every round stays exactly 4–4–6.
+  const roundSecond = Math.min(elapsedTotalSeconds, TOTAL_SESSION_SEC - 1) % ROUND_DURATION_SEC;
+  const phaseIndex = roundSecond < 4 ? 0 : roundSecond < 8 ? 1 : 2;
+  const secondsLeft = (phaseIndex === 0 ? 4 : phaseIndex === 1 ? 8 : 14) - roundSecond;
   const phase = phases[phaseIndex];
+  const remainingPhaseSeconds = useRef(secondsLeft);
+  useEffect(() => {
+    remainingPhaseSeconds.current = secondsLeft;
+  }, [secondsLeft]);
   const currentRound = Math.min(
     TOTAL_ROUNDS,
     Math.floor(elapsedTotalSeconds / ROUND_DURATION_SEC) + 1,
@@ -96,26 +115,31 @@ export default function Breathe() {
 
   // Smooth Ring Sweep & Orb Expansion
   useEffect(() => {
-    if (paused || complete) {
+    if (!active) {
       cancelAnimation(progressVal);
       cancelAnimation(orbScale);
       cancelAnimation(glowOpacity);
+      if (preparing) {
+        progressVal.value = 0;
+        orbScale.value = 1;
+        glowOpacity.value = 0.5;
+      }
       return;
     }
 
-    progressVal.value = 0;
+    progressVal.value = 1 - remainingPhaseSeconds.current / phase.seconds;
     progressVal.value = withTiming(1, {
-      duration: phase.seconds * 1000,
+      duration: remainingPhaseSeconds.current * 1000,
       easing: Easing.linear,
     });
 
     if (phase.key === "inhale") {
       orbScale.value = withTiming(1.15, {
-        duration: phase.seconds * 1000,
+        duration: remainingPhaseSeconds.current * 1000,
         easing: Easing.inOut(Easing.ease),
       });
       glowOpacity.value = withTiming(0.85, {
-        duration: phase.seconds * 1000,
+        duration: remainingPhaseSeconds.current * 1000,
       });
     } else if (phase.key === "hold") {
       orbScale.value = withRepeat(
@@ -135,40 +159,74 @@ export default function Breathe() {
       glowOpacity.value = withTiming(0.95, { duration: 600 });
     } else if (phase.key === "exhale") {
       orbScale.value = withTiming(0.92, {
-        duration: phase.seconds * 1000,
+        duration: remainingPhaseSeconds.current * 1000,
         easing: Easing.inOut(Easing.ease),
       });
       glowOpacity.value = withTiming(0.38, {
-        duration: phase.seconds * 1000,
+        duration: remainingPhaseSeconds.current * 1000,
       });
     }
-  }, [phaseIndex, paused, complete]);
+    return () => {
+      cancelAnimation(progressVal);
+      cancelAnimation(orbScale);
+      cancelAnimation(glowOpacity);
+    };
+  }, [active, preparing, glowOpacity, orbScale, phase.key, phase.seconds, phaseIndex, progressVal]);
 
-  // 1-Second Countdown Timer
+  // Practice time is separate from preparation and advances only while visible.
   useEffect(() => {
-    if (paused || complete) return;
+    if (!active) return;
 
     const id = setInterval(() => {
-      setElapsedTotalSeconds((total) => {
-        const nextTotal = total + 1;
-        if (nextTotal >= TOTAL_SESSION_SEC) {
-          setComplete(true);
-        }
-        return nextTotal;
-      });
-
-      setSecondsLeft((current) => {
-        if (current > 1) {
-          return current - 1;
-        }
-
-        setPhaseIndex((next) => (next + 1) % phases.length);
-        return phases[0].seconds; // reset to phase duration
-      });
+      if (appState.current !== "active" || !focusedRef.current) return;
+      elapsed.current = Math.min(elapsed.current + 1, TOTAL_SESSION_SEC);
+      setElapsedTotalSeconds(elapsed.current);
+      if (elapsed.current === TOTAL_SESSION_SEC) setLifecycle("complete");
     }, 1000);
 
     return () => clearInterval(id);
-  }, [paused, complete]);
+  }, [active]);
+
+  // Each new session gets three visible seconds to prepare on this screen.
+  useEffect(() => {
+    if (!preparing || !focused || !foreground) return;
+    let remaining = PREPARATION_SECONDS;
+    const timer = setInterval(() => {
+      if (appState.current !== "active" || !focusedRef.current) return;
+      remaining -= 1;
+      if (remaining === 0) {
+        clearInterval(timer);
+        setLifecycle("active");
+      } else {
+        setPreparationSecondsLeft(remaining);
+      }
+    }, 1_000);
+    return () => clearInterval(timer);
+  }, [focused, foreground, preparing]);
+
+  useFocusEffect(useCallback(() => {
+    focusedRef.current = true;
+    setFocused(true);
+    return () => {
+      focusedRef.current = false;
+      setFocused(false);
+      setPreparationSecondsLeft(PREPARATION_SECONDS);
+      setLifecycle((current) => current === "active" ? "paused" : current);
+    };
+  }, []));
+
+  // A session never advances or animates while the app is not in the foreground.
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      appState.current = nextState;
+      setForeground(nextState === "active");
+      if (nextState !== "active") {
+        setPreparationSecondsLeft(PREPARATION_SECONDS);
+        setLifecycle((current) => (current === "active" ? "paused" : current));
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   // ── Completion handler (runs once when session completes) ──
   useEffect(() => {
@@ -218,17 +276,25 @@ export default function Breathe() {
   }));
 
   const handleRestart = useCallback(() => {
-    setComplete(false);
+    setLifecycle("preparing");
+    setPreparationSecondsLeft(PREPARATION_SECONDS);
+    elapsed.current = 0;
     setElapsedTotalSeconds(0);
-    setPhaseIndex(0);
-    setSecondsLeft(phases[0].seconds);
     completionHandled.current = false;
+    // Reanimated shared values are intentionally mutable animation handles.
+    // eslint-disable-next-line react-hooks/immutability
     celebrateScale.value = 0.7;
   }, [celebrateScale]);
 
   const handleContinueToGita = useCallback(() => {
-    router.replace("/gita");
-  }, []);
+    setLifecycle("paused");
+    // Let the completion modal unmount before handing the root stack to Gita.
+    requestAnimationFrame(() =>
+      replaceAppRoute(navigation, "/gita", {
+        entry: entry === "alarm" ? "alarm" : "manual",
+      }),
+    );
+  }, [entry, navigation]);
 
   const formatMinSec = (totalSec: number) => {
     const m = Math.floor(totalSec / 60);
@@ -238,15 +304,15 @@ export default function Breathe() {
 
   return (
     <Screen
-      contentStyle={{ paddingBottom: Math.max(insets.bottom + 140, 220) }}
+      contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 28, 48) }}
     >
-      <Header eyebrow="Breathe" />
+      <Header eyebrow="Breathe" back showActions={false} />
 
       {/* Hero Header Section */}
       <View style={s.hero}>
         <View style={s.modeChip}>
           <Leaf size={13} color={C.primary} />
-          <TextR style={s.modeText}>SAMA VRITTI PRANAYAMA</TextR>
+          <TextR style={s.modeText}>MORNING PRANAYAMA</TextR>
         </View>
         <TextR style={s.title}>Morning Prana & Stillness</TextR>
         <TextR style={s.subtitle}>
@@ -315,32 +381,36 @@ export default function Breathe() {
       </View>
 
       {/* Phase + countdown badge */}
-      <View style={s.phaseBadge}>
+      <View style={s.phaseBadge} accessibilityLiveRegion="polite">
         <View style={[s.phaseDot, { backgroundColor: phase.accentColor }]} />
         <TextR style={[s.phaseText, { color: phase.accentColor }]}>
-          {phase.label.toUpperCase()}
+          {preparing ? "GET READY" : phase.label.toUpperCase()}
         </TextR>
         <TextR style={s.phaseBadgeSep}>·</TextR>
         <TextR serif style={[s.phaseBadgeSec, { color: phase.accentColor }]}>
-          {String(secondsLeft).padStart(2, "0")}
+          {preparing ? preparationSecondsLeft : String(secondsLeft).padStart(2, "0")}
         </TextR>
         <TextR style={s.phaseBadgeUnit}>s</TextR>
       </View>
 
       {/* Guided Instruction Prompt Pill */}
       <View style={s.prompt}>
-        <TextR style={s.promptText}>{phase.prompt}</TextR>
+        <TextR style={s.promptText}>
+          {preparing
+            ? "Sit comfortably. Follow Aru: inhale 4, hold 4, exhale 6."
+            : phase.prompt}
+        </TextR>
       </View>
 
       {/* Breathing Cycle 3D Control Card (with integrated stats) */}
       <View style={s.cycleCard}>
         <View style={s.cardTopRow}>
           <TextR style={s.sectionTitle}>BREATHING CYCLE</TextR>
-          <TextR style={s.pattern}>4 · 4 · 4 Pattern</TextR>
+          <TextR style={s.pattern}>4 · 4 · 6 Pattern</TextR>
         </View>
         <View style={s.phaseGrid}>
           {phases.map((item, index) => {
-            const isActive = index === phaseIndex;
+            const isActive = !preparing && index === phaseIndex;
             return (
               <View
                 key={item.key}
@@ -390,10 +460,10 @@ export default function Breathe() {
       </View>
 
       {/* 3D Action Row Buttons */}
-      {!complete && (
+      {!complete && !preparing && (
         <View style={s.actionRow}>
           <Pressable
-            onPress={() => setPaused((value) => !value)}
+            onPress={() => setLifecycle((current) => current === "paused" ? "active" : "paused")}
             style={({ pressed }) => [s.pauseButton, pressed && s.pressed]}
           >
             {paused ? (
@@ -406,48 +476,55 @@ export default function Breathe() {
         </View>
       )}
 
-      {/* ── Session Complete Celebration Overlay ── */}
-      {complete && (
-        <Animated.View
-          entering={FadeIn.duration(400)}
-          exiting={FadeOut.duration(200)}
-          style={s.celebrationCard}
-        >
-          <Animated.View style={[s.celebrationInner, animatedCelebrateStyle]}>
-            <View style={s.celebrationIconWrap}>
-              <CheckCircle2 size={36} color={C.white} strokeWidth={2.5} />
-            </View>
-            <TextR style={s.celebrationTitle}>Prana Awakened</TextR>
-            <TextR style={s.celebrationSub}>
-              {TOTAL_ROUNDS} rounds completed · {formatMinSec(TOTAL_SESSION_SEC)}{" "}
-              of mindful breathing
-            </TextR>
+      {/* ── Session Complete Modal ── */}
+      <Modal
+        visible={complete}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={handleRestart}
+      >
+        <View style={s.modalBackdrop}>
+          <Animated.View
+            entering={FadeIn.duration(350)}
+            style={s.celebrationCard}
+          >
+            <Animated.View style={[s.celebrationInner, animatedCelebrateStyle]}>
+              <View style={s.celebrationIconWrap}>
+                <CheckCircle2 size={36} color={C.white} strokeWidth={2.5} />
+              </View>
+              <TextR style={s.celebrationTitle}>Prana Awakened</TextR>
+              <TextR style={s.celebrationSub}>
+                {TOTAL_ROUNDS} rounds completed · {formatMinSec(TOTAL_SESSION_SEC)}{" "}
+                of mindful breathing
+              </TextR>
 
-            {/* Continue to Gita (primary action) */}
-            <Pressable
-              onPress={handleContinueToGita}
-              style={({ pressed }) => [
-                s.continueButton,
-                pressed && s.pressed,
-              ]}
-            >
-              <TextR style={s.continueText}>Continue to Gita</TextR>
-            </Pressable>
+              {/* Continue to Gita (primary action) */}
+              <Pressable
+                onPress={handleContinueToGita}
+                style={({ pressed }) => [
+                  s.continueButton,
+                  pressed && s.pressed,
+                ]}
+              >
+                <TextR style={s.continueText}>Continue to Gita</TextR>
+              </Pressable>
 
-            {/* Restart (secondary action) */}
-            <Pressable
-              onPress={handleRestart}
-              style={({ pressed }) => [
-                s.restartButton,
-                pressed && { opacity: 0.7 },
-              ]}
-            >
-              <RotateCcw size={15} color={C.inkSoft} />
-              <TextR style={s.restartText}>Breathe Again</TextR>
-            </Pressable>
+              {/* Restart (secondary action) */}
+              <Pressable
+                onPress={handleRestart}
+                style={({ pressed }) => [
+                  s.restartButton,
+                  pressed && { opacity: 0.7 },
+                ]}
+              >
+                <RotateCcw size={15} color={C.inkSoft} />
+                <TextR style={s.restartText}>Breathe Again</TextR>
+              </Pressable>
+            </Animated.View>
           </Animated.View>
-        </Animated.View>
-      )}
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -772,21 +849,28 @@ const s = StyleSheet.create({
     opacity: 0.88,
     transform: [{ scale: 0.985 }],
   },
-  // ── Celebration overlay ──
+  // ── Modal backdrop + celebration card ──
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(44, 34, 26, 0.55)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 28,
+  },
   celebrationCard: {
+    width: "100%",
     backgroundColor: C.white,
-    borderRadius: 24,
+    borderRadius: 28,
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.95)",
     borderTopColor: "#FFFFFF",
     borderBottomColor: "rgba(216, 144, 64, 0.25)",
-    borderBottomWidth: 3,
+    borderBottomWidth: 3.5,
     shadowColor: "#8C4010",
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-    marginBottom: 18,
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 12,
     overflow: "hidden",
   },
   celebrationInner: {

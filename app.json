@@ -35,6 +35,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "expo-sqlite",
       "expo-router",
       [
         "expo-splash-screen",
@@ -59,7 +60,8 @@
           "recordAudioAndroid": false,
           "enableBackgroundPlayback": false
         }
-      ]
+      ],
+      "./plugins/with-alarm-desugaring"
     ],
     "experiments": {
       "typedRoutes": true,

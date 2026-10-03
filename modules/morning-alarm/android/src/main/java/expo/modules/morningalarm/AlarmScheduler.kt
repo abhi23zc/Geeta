@@ -35,26 +35,35 @@ object AlarmScheduler {
     return at
   }
 
-  private fun scheduleAt(context: Context, config: AlarmConfig, at: Long) {
+  private fun scheduleAt(context: Context, config: AlarmConfig, at: Long, test: Boolean = false) {
     val manager = context.getSystemService(AlarmManager::class.java)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !manager.canScheduleExactAlarms()) {
       throw SecurityException("Exact alarm access is required")
     }
     val operation = PendingIntent.getBroadcast(
       context,
-      REQUEST_ALARM,
+      if (test) 6111 else REQUEST_ALARM,
       Intent(context, AlarmReceiver::class.java)
+        .putExtra("test", test)
         .putExtra(EXTRA_REVISION, config.revision)
         .putExtra(EXTRA_SCHEDULED_AT, at),
       PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
     val show = PendingIntent.getActivity(
       context,
-      REQUEST_SHOW,
+      if (test) 6112 else REQUEST_SHOW,
       AlarmActivity.intent(context),
       PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
+    AlarmLog.initialize(context)
     manager.setAlarmClock(AlarmManager.AlarmClockInfo(at, show), operation)
+    AlarmLog.event("scheduled", "at=$at test=$test")
+  }
+
+  fun scheduleTest(context: Context): Long {
+    val at = System.currentTimeMillis() + 30_000L
+    scheduleAt(context, AlarmConfig(hour = 0, minute = 0, weekdays = emptySet(), enabled = true, gradualVolume = false, vibration = true, revision = 0), at, test = true)
+    return at
   }
 
   fun cancel(context: Context) {

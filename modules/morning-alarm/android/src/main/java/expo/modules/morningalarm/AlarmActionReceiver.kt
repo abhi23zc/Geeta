@@ -4,7 +4,7 @@ import android.content.Context
 
 object AlarmController {
   fun dismiss(context: Context, finishActivity: Boolean = true): Long? {
-    val config = AlarmStore.get(context)?.takeIf { it.enabled }
+    val config = if (AlarmStore.isTest(context)) null else AlarmStore.get(context)?.takeIf { it.enabled && AlarmCapabilities.ready(context) }
     val next = config?.let { runCatching { AlarmScheduler.scheduleNext(context, it) }.getOrNull() }
     // Update shared state before resolving the JS call so the global route guard
     // cannot bounce a completed alarm back to the wake screen.

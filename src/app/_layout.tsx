@@ -1,29 +1,41 @@
-import { Stack, usePathname, useRouter } from 'expo-router';
+import { Stack, usePathname, useRootNavigationState, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AppState, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { TabBar } from '@/components/ritual-ui';
+import { DockLayoutProvider, TabBar } from '@/components/ritual-ui';
 import {
   configureAlarmNotifications,
+  reconcileAlarm,
   addAlarmTriggeredListener,
   getAlarmPlaybackState,
 } from '@/services/alarm';
 import { RitualProvider } from '@/state/ritual-store';
 import { GitaProvider } from '@/state/gita-store';
+import { TasksProvider } from '@/state/tasks-store';
+import { ContentProvider } from '@/state/content-store';
 
-const TAB_ROUTES = new Set(['/', '/gita', '/breathe', '/today', '/night']);
+const TAB_ROUTES = new Set(['/', '/today', '/night']);
 
 function AppChrome() {
   const pathname = usePathname();
   const router = useRouter();
+  const rootNavigationState = useRootNavigationState();
   const showTabs = TAB_ROUTES.has(pathname);
 
   useEffect(() => {
-    configureAlarmNotifications().catch(() => undefined);
+    const refresh = () => configureAlarmNotifications().then(reconcileAlarm).catch(() => undefined);
+    refresh();
+    const subscription = AppState.addEventListener("change", state => { if (state === "active") refresh(); });
+    return () => subscription.remove();
   }, []);
 
   useEffect(() => {
+    // Native alarm events can arrive before Expo Router has registered the
+    // root stack. Dispatching before this key exists produces an unhandled
+    // REPLACE action even though the file route is present.
+    if (!rootNavigationState?.key) return;
+
     const enforceWakeScreen = () => {
       getAlarmPlaybackState()
         .then((state) => {
@@ -42,7 +54,7 @@ function AppChrome() {
       appState.remove();
       alarm?.remove();
     };
-  }, [pathname, router]);
+  }, [pathname, rootNavigationState?.key, router]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -64,11 +76,17 @@ function AppChrome() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <DockLayoutProvider>
       <RitualProvider>
+        <TasksProvider>
         <GitaProvider>
+        <ContentProvider>
           <AppChrome />
+        </ContentProvider>
         </GitaProvider>
+        </TasksProvider>
       </RitualProvider>
+      </DockLayoutProvider>
     </GestureHandlerRootView>
   );
 }

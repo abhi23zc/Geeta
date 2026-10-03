@@ -1,3 +1,5 @@
+import type { AudioAsset } from '../../shared/content';
+
 export type GitaWord = {
   sanskrit: string;
   meaning: string;
@@ -12,14 +14,33 @@ export type GitaNarrationSegment = {
 };
 
 export type GitaNarration = {
-  audioSource: number;
+  audioSource: number | { uri: string };
+  assetId?: string;
+  asset?: AudioAsset;
   /** The last reviewed spoken phrase. Playback stops here to avoid unreviewed file tails. */
   completionMs: number;
   segments: readonly GitaNarrationSegment[];
 };
 
-export type GitaVerse = {
+/**
+ * The reader is intentionally content-agnostic. A future Gayatri Mantra,
+ * stotram, or guided reflection uses this same shape and only supplies its
+ * own labels and recording.
+ */
+export type SacredContentKind = "gita" | "mantra" | "stotram" | "reflection";
+
+export type SacredPractice = {
   id: string;
+  revision?: string;
+  kind?: SacredContentKind;
+  /** A display-ready source line, e.g. "GAYATRI MANTRA" or "CHAPTER 2 · SHLOKA 47". */
+  referenceLabel?: string;
+  /** Labels for the reader tabs. They may be changed for non-Gita content. */
+  readerLabels?: {
+    primary: string;
+    interpretation: string;
+    glossary: string;
+  };
   chapter: number;
   verse: string;
   theme: string;
@@ -33,6 +54,9 @@ export type GitaVerse = {
   /** Add a reviewed, distributable local recording and matching timings here. */
   narration?: GitaNarration;
 };
+
+/** Kept as an alias so existing callers remain stable while content expands. */
+export type GitaVerse = SacredPractice;
 
 export const GITA_VERSES: readonly GitaVerse[] = [
   {
@@ -174,6 +198,8 @@ export const GITA_VERSES: readonly GitaVerse[] = [
  */
 export const TEMPORARY_NARRATED_VERSE: GitaVerse = {
   id: "10-20",
+  kind: "gita",
+  referenceLabel: "CHAPTER 10 · SHLOKA 20",
   chapter: 10,
   verse: "20",
   theme: "The Divine presence within every being",
@@ -206,6 +232,22 @@ export const TEMPORARY_NARRATED_VERSE: GitaVerse = {
   },
 };
 
+/**
+ * Only verses with a reviewed local recording belong in the guided daily
+ * experience. Add each new recorded verse here once its timings have been
+ * checked; this keeps the primary ritual playable from start to finish.
+ */
+export const NARRATED_GITA_VERSES: readonly GitaVerse[] = [
+  TEMPORARY_NARRATED_VERSE,
+];
+
+/**
+ * The complete written collection remains available as a reading fallback.
+ * The daily ritual rotates through narrations so a person never lands on an
+ * unfinished audio experience.
+ */
+export const DAILY_GITA_VERSES = NARRATED_GITA_VERSES;
+
 export function localDateKey(date = new Date()) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -214,14 +256,10 @@ export function localDateKey(date = new Date()) {
 }
 
 export function getDailyGitaVerse(date = new Date()) {
-  // This is intentionally temporary while only one reviewed narration exists.
-  // Restore the rotation below after each daily verse has reviewed audio.
-  if (TEMPORARY_NARRATED_VERSE.narration) return TEMPORARY_NARRATED_VERSE;
-
   const localDayNumber = Math.floor(
     Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86_400_000,
   );
-  return GITA_VERSES[localDayNumber % GITA_VERSES.length];
+  return DAILY_GITA_VERSES[localDayNumber % DAILY_GITA_VERSES.length];
 }
 
 export function getGitaVerse(id: string | undefined) {

@@ -60,6 +60,9 @@ object AlarmStore {
       .apply()
   }
 
+  fun isTest(context: Context) = prefs(context).getBoolean("test", false)
+  fun setTest(context: Context, test: Boolean) { prefs(context).edit().putBoolean("test", test).apply() }
+
   fun isRinging(context: Context) = prefs(context).getBoolean(KEY_RINGING, false)
   fun triggeredAt(context: Context) = prefs(context).getLong(KEY_TRIGGERED_AT, 0L)
   fun scheduledAt(context: Context) = prefs(context).getLong(KEY_SCHEDULED_AT, 0L)

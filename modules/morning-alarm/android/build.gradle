@@ -16,6 +16,10 @@ android {
     }
   }
 
+  compileOptions {
+    coreLibraryDesugaringEnabled true
+  }
+
   defaultConfig {
     versionCode 1
     versionName "1.0.0"
@@ -23,6 +27,7 @@ android {
 }
 
 dependencies {
+  coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
   implementation 'com.facebook.react:react-android'
   implementation 'androidx.appcompat:appcompat:1.7.1'
   testImplementation 'junit:junit:4.13.2'

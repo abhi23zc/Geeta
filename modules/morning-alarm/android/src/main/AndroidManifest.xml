@@ -27,6 +27,7 @@
       android:foregroundServiceType="mediaPlayback"
       android:stopWithTask="false" />
 
+    <receiver android:name="expo.modules.morningalarm.AlarmStopReceiver" android:exported="false" />
     <receiver
       android:name="expo.modules.morningalarm.AlarmReceiver"
       android:directBootAware="true"

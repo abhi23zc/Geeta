@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { useNavigation } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   AlarmClockPlus,
@@ -9,21 +9,27 @@ import {
   ChevronUp,
   Flame,
   Leaf,
-  Music,
-  Pause,
-  Play,
+  ShieldCheck,
   Sun,
-  User,
-  Vibrate,
   Wind,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, AppState, Image, Linking, Pressable, StyleSheet, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Alert,
+  AppState,
+  FlatList,
+  Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
-import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
-import { Interactive3DCard } from "@/components/interactive-3d-card";
 import { MORNING_RITUAL_LOGO, Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
+import { replaceAppRoute } from "@/navigation/route-actions";
 import {
   ALARM_DAYS,
   AlarmDayId,
@@ -35,16 +41,15 @@ import {
   openExactAlarmSettings,
   openFullScreenIntentSettings,
   openNotificationChannelSettings,
+  openNotificationSettings,
   openOemPermissionSettings,
   scheduleRecurringAlarm,
+  scheduleTestAlarm,
+  SettingsDestination,
 } from "@/services/alarm";
+import { alarmDeviceProfile } from "@/services/alarm-device";
 import { useRitual } from "@/state/ritual-store";
-
-const PUJA_IMAGE_URL =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuBp3Nwdm0p15VSxkX_JCaO4lj2fq6_IyJkZeR82e7JFo6VjuqD_WVtF5LYPj6f2zb0H2WRFEq8_8iGiHTHOZWVoiBRFwy5AuLcoMfCCfTrMhZnfLI3WP982R9FP-F8EuJKCsPf9eD4oiJMZn1Z_LBPHQHZNSppMN8c4rCT4svlc-Wwqx-fMND5xRGnttiW3OlDdinGo0vKF0KLGqfkhZZoTz1sS16DoWW4QVKArxQeTT-0kvdN5wSTfvw";
-
-const DHYAN_IMAGE_URL =
-  "https://lh3.googleusercontent.com/aida-public/AB6AXuDay_gr8PATPcb_Du4k9MPsdJc4xm28aAmyC9qTKc4WDpGEqY0W2PEotVpjz5J4WSocxeV4k6Us2wAlR8L2dpM2xnW8SFBOjAnK-qnX5rYcrggfGKwxw_VrkvpzdrhxvgHRPykTWDwM0eZR17dnI1KAnwiiCgx7zjc8xUKXDueysLvi353rUMEnURxz3CzVVd1Lnhe4cx1jfITm2C9jXreojDsIg-rxX7-DC13JkMdSimgIYoUnm-pNqA";
+import { useContent } from "@/state/content-store";
 
 type ModeKey = "gita" | "shankh" | "pranayama";
 
@@ -84,8 +89,10 @@ const modes: {
   },
 ];
 
-const OEM_GUIDANCE_KEY = "morning-ritual:oem-reliability-guidance-seen";
-const OEM_CONFIRMED_KEY = "morning-ritual:oem-reliability-confirmed";
+const OEM_CONFIRMED_KEY = "morning-ritual:phone-confirmations-v2";
+
+const HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const MINUTES = Array.from({ length: 60 }, (_, i) => i);
 
 function parseAlarm(value: string) {
   const [h = "06", m = "30"] = value.split(":");
@@ -105,22 +112,124 @@ function toStoreTime(hour: number, minute: number, meridiem: "AM" | "PM") {
   return `${String(h).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
+function getAlarmCountdownText(
+  hour: number,
+  minute: number,
+  meridiem: "AM" | "PM",
+  days: { id: AlarmDayId; selected: boolean }[]
+): string {
+  const now = new Date();
+  let targetHour = hour % 12;
+  if (meridiem === "PM") targetHour += 12;
+  const targetMinute = minute;
+
+  const selectedDayIds = days.filter((d) => d.selected).map((d) => d.id);
+
+  const dayIdToJsDay: Record<AlarmDayId, number> = {
+    sun: 0,
+    mon: 1,
+    tue: 2,
+    wed: 3,
+    thu: 4,
+    fri: 5,
+    sat: 6,
+  };
+
+  if (selectedDayIds.length === 0) {
+    const nextDate = new Date(now);
+    nextDate.setHours(targetHour, targetMinute, 0, 0);
+    if (nextDate.getTime() <= now.getTime()) {
+      nextDate.setDate(nextDate.getDate() + 1);
+    }
+    const diffMs = nextDate.getTime() - now.getTime();
+    return formatDiff(diffMs);
+  }
+
+  const selectedJsDays = selectedDayIds.map((id) => dayIdToJsDay[id]);
+  let minDiffMs = Infinity;
+
+  // Check today and upcoming days (up to 7 days)
+  for (let offset = 0; offset <= 7; offset++) {
+    const candidate = new Date(now);
+    candidate.setDate(now.getDate() + offset);
+    candidate.setHours(targetHour, targetMinute, 0, 0);
+
+    const candidateJsDay = candidate.getDay();
+    if (selectedJsDays.includes(candidateJsDay)) {
+      const diffMs = candidate.getTime() - now.getTime();
+      if (diffMs > 0 && diffMs < minDiffMs) {
+        minDiffMs = diffMs;
+        break;
+      }
+    }
+  }
+
+  if (minDiffMs === Infinity) {
+    for (let offset = 8; offset <= 14; offset++) {
+      const candidate = new Date(now);
+      candidate.setDate(now.getDate() + offset);
+      candidate.setHours(targetHour, targetMinute, 0, 0);
+      const candidateJsDay = candidate.getDay();
+      if (selectedJsDays.includes(candidateJsDay)) {
+        minDiffMs = candidate.getTime() - now.getTime();
+        break;
+      }
+    }
+  }
+
+  if (minDiffMs === Infinity || isNaN(minDiffMs)) return "Alarm not scheduled";
+  return formatDiff(minDiffMs);
+}
+
+function formatDiff(diffMs: number): string {
+  const totalMinutes = Math.ceil(diffMs / 60000);
+  if (totalMinutes <= 0) return "Alarm rings in less than a minute";
+
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days} day${days > 1 ? "s" : ""}`);
+  if (hours > 0) parts.push(`${hours} hr${hours > 1 ? "s" : ""}`);
+  if (minutes > 0 || parts.length === 0) parts.push(`${minutes} min`);
+
+  return `Alarm rings in ${parts.join(" ")}`;
+}
+
 function ReadinessRow({
   label,
   ready,
   onPress,
+  status,
 }: {
   label: string;
   ready: boolean;
   onPress: () => void | Promise<void>;
+  status?: "Verified" | "Needs action" | "User confirmed" | "Not applicable";
 }) {
   return (
     <View style={s.readinessRow}>
-      <View style={[s.readinessStatus, ready && s.readinessStatusReady]}>
-        {ready ? <Check size={14} color={C.white} strokeWidth={3} /> : null}
+      <View style={s.readinessRowLeft}>
+        <View style={[s.readinessStatus, ready && s.readinessStatusReady]}>
+          {ready ? <Check size={13} color={C.white} strokeWidth={3} /> : null}
+        </View>
+        <View style={s.readinessTextGroup}>
+          <TextR style={s.readinessLabel} numberOfLines={2}>
+            {label}
+          </TextR>
+          <TextR style={[s.readinessSubStatus, ready && s.readinessSubStatusReady]}>
+            {status ?? (ready ? "Verified" : "Needs action")}
+          </TextR>
+        </View>
       </View>
-      <TextR style={s.readinessLabel}>{label}</TextR>
-      <Pressable onPress={onPress} style={({ pressed }) => [s.settingsButton, pressed && s.pressed]}>
+      <Pressable
+        accessibilityHint={`Opens Android settings for ${label}`}
+        accessibilityLabel={`${ready ? "Review" : "Set up"} ${label}`}
+        accessibilityRole="button"
+        onPress={onPress}
+        style={({ pressed }) => [s.settingsButton, pressed && s.pressed]}
+      >
         <TextR style={s.settingsButtonText}>{ready ? "Review" : "Open settings"}</TextR>
       </Pressable>
     </View>
@@ -142,6 +251,10 @@ export default function Setup() {
 }
 
 function SetupContent() {
+  const navigation = useNavigation("/");
+  const { width } = useWindowDimensions();
+  const isSmall = width < 360;
+
   const {
     alarmTime,
     setAlarmTime,
@@ -166,61 +279,89 @@ function SetupContent() {
   const [mode, setMode] = useState<ModeKey>(
     modes.find((item) => item.tone === alarmTone)?.key ?? "gita",
   );
-  const [previewing, setPreviewing] = useState(false);
   const [gradual, setGradual] = useState(true);
   const [haptics, setHaptics] = useState(true);
+  const [initializing, setInitializing] = useState(true);
   const [saving, setSaving] = useState(false);
   const [capabilities, setCapabilities] = useState<AlarmCapabilityStatus | null>(null);
-  const [oemConfirmed, setOemConfirmed] = useState(false);
+  const [confirmations, setConfirmations] = useState<Record<string, boolean>>({});
+  const [extraExpanded, setExtraExpanded] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [readinessExpanded, setReadinessExpanded] = useState(false);
   const [readinessMessage, setReadinessMessage] = useState("");
+  const [saveError, setSaveError] = useState("");
 
-  const refreshCapabilities = useCallback(() => {
-    getAlarmCapabilityStatus().then(setCapabilities).catch(() => undefined);
+  const [ticker, setTicker] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTicker((t) => t + 1), 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const countdownText = useMemo(
+    () => getAlarmCountdownText(hour, minute, meridiem, days),
+    [hour, minute, meridiem, days, ticker]
+  );
+
+  const refreshCapabilities = useCallback(async () => {
+    try {
+      const next = await getAlarmCapabilityStatus();
+      setCapabilities(next);
+      if (!next.notifications || !next.exactAlarm || !next.notificationChannelReady) setReadinessExpanded(true);
+      return next;
+    } catch {
+      return null;
+    }
   }, []);
 
   useEffect(() => {
-    getNativeAlarmConfig()
-      .then((config) => {
-        if (!config) return;
+    let active = true;
+    Promise.all([
+      getNativeAlarmConfig().catch(() => null),
+      getAlarmCapabilityStatus().catch(() => null),
+      AsyncStorage.getItem(OEM_CONFIRMED_KEY).catch(() => null),
+    ]).then(([config, status, oemValue]) => {
+      if (!active) return;
+      if (config) {
         setGradual(config.gradualVolume);
         setHaptics(config.vibration);
-      })
-      .catch(() => undefined);
-    refreshCapabilities();
-    AsyncStorage.getItem(OEM_CONFIRMED_KEY).then((value) => setOemConfirmed(value === "1"));
+      }
+      setCapabilities(status);
+      try { setConfirmations(JSON.parse(oemValue ?? "{}")); } catch { setConfirmations({}); }
+      if (status) {
+        const ready = status.notifications && status.exactAlarm &&
+          status.notificationChannelReady;
+        setReadinessExpanded(!ready);
+      }
+      setInitializing(false);
+    });
     const subscription = AppState.addEventListener("change", (state) => {
       if (state === "active") refreshCapabilities();
     });
-    return () => subscription.remove();
+    return () => {
+      active = false;
+      subscription.remove();
+    };
   }, [refreshCapabilities]);
 
   const selectedMode = modes.find((item) => item.key === mode) ?? modes[0];
+  const { refresh: refreshContent } = useContent();
 
-  const updateHour = (direction: 1 | -1) => {
-    const next =
-      direction === 1
-        ? hour === 12
-          ? 1
-          : hour + 1
-        : hour === 1
-          ? 12
-          : hour - 1;
-    setHour(next);
-  };
-
-  const updateMinute = (direction: 1 | -1) => {
-    // The native exact-alarm scheduler accepts every minute (0–59), so the
-    // picker must not artificially limit people to five-minute intervals.
-    const next = (minute + direction + 60) % 60;
-    setMinute(next);
-  };
+  const coreReadiness = capabilities
+    ? [
+        capabilities.notifications,
+        capabilities.exactAlarm,
+        capabilities.notificationChannelReady,
+      ]
+    : [];
+  const coreReadyCount = coreReadiness.filter(Boolean).length;
+  const coreReady = coreReadiness.length === 3 && coreReadyCount === 3;
 
   const updateMeridiem = (next: "AM" | "PM") => {
     setMeridiem(next);
   };
 
   const save = async () => {
-    if (saving) return;
+    if (saving || initializing) return;
     const selectedDayIds = days
       .filter((day) => day.selected)
       .map((day) => day.id as AlarmDayId);
@@ -231,10 +372,8 @@ function SetupContent() {
 
     const time = toStoreTime(hour, minute, meridiem);
     setSaving(true);
-    setAlarmTone(selectedMode.tone);
-    setAlarmTime(time);
-    setAlarmDays(selectedDayIds);
-    setAlarmEnabled(false);
+    setSaveError("");
+    setReadinessMessage("");
     try {
       const result = await scheduleRecurringAlarm({
         time,
@@ -243,31 +382,45 @@ function SetupContent() {
         gradualVolume: gradual,
         vibration: haptics,
       });
+      setAlarmTone(selectedMode.tone);
+      setAlarmTime(time);
+      setAlarmDays(selectedDayIds);
       setAlarmEnabled(true);
+      void refreshContent().catch(() => undefined);
       setCapabilities(result.capabilities);
-      const coreReady = result.scheduled && result.capabilities.notifications &&
-        result.capabilities.exactAlarm && result.capabilities.fullScreenIntent &&
+      const resultCoreReady = result.scheduled && result.capabilities.notifications &&
+        result.capabilities.exactAlarm &&
         result.capabilities.notificationChannelReady;
-      if (!coreReady) {
-        setReadinessMessage("Your choices are saved. Complete the required items below, then tap Save again.");
-        return;
-      }
-      if (result.capabilities.oemGuidance && !await AsyncStorage.getItem(OEM_GUIDANCE_KEY)) {
-        await AsyncStorage.setItem(OEM_GUIDANCE_KEY, "1");
-        setReadinessMessage("For Xiaomi reliability, enable Auto-start and choose Unrestricted battery use below.");
+      if (!resultCoreReady) {
+        setReadinessExpanded(true);
+        setReadinessMessage("Alarm saved. Complete the highlighted Android setting so it can ring reliably.");
         return;
       }
       setReadinessMessage("");
-      Alert.alert("Alarm scheduled", `${recurrenceLabel} at ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${meridiem}`);
-      router.replace("/");
+      Alert.alert("Alarm scheduled", `${!result.capabilities.fullScreenIntent ? "Full-screen access is off. Use the alarm notification to open or stop the alarm.\n" : ""}${recurrenceLabel} at ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${meridiem}`);
+      replaceAppRoute(navigation, "/");
     } catch (error) {
-      Alert.alert(
-        "Alarm not scheduled",
-        error instanceof Error ? error.message : "Please try again.",
-      );
+      setSaveError(error instanceof Error ? error.message : "The alarm could not be saved. Please try again.");
     } finally {
       setSaving(false);
     }
+  };
+
+  const profile = alarmDeviceProfile(capabilities?.manufacturer ?? "");
+  const openSettings = async (open: () => Promise<SettingsDestination | undefined>) => {
+    try {
+      const result = await open();
+      setReadinessMessage(result ? `Opened ${result.destination}.${result.fallback ? " Follow the manual instructions below." : ""} Return here to recheck access.` : "Android native settings are unavailable in this build.");
+    } catch (error) { setReadinessMessage(error instanceof Error ? error.message : "Open Settings manually and select this app."); }
+  };
+  const testAlarm = async () => {
+    if (testing) return;
+    setTesting(true);
+    try {
+      await scheduleTestAlarm();
+      setReadinessMessage("Test alarm scheduled in 30 seconds. Lock your screen to check presentation. It stops after 30 seconds and keeps your saved alarm.");
+    } catch (error) { setReadinessMessage(error instanceof Error ? error.message : "Test could not be scheduled."); }
+    finally { setTesting(false); }
   };
 
   const selectedDays = days.filter((day) => day.selected);
@@ -284,7 +437,8 @@ function SetupContent() {
         <View style={s.headerLeft}>
           <Pressable
             accessibilityLabel="Go back"
-            onPress={() => router.back()}
+            accessibilityRole="button"
+            onPress={() => navigation.goBack()}
             style={({ pressed }) => [s.backButton, pressed && s.pressed]}
           >
             <ArrowLeft size={27} color={C.ink} strokeWidth={2.2} />
@@ -292,98 +446,79 @@ function SetupContent() {
           <View style={s.logoContainer}>
             <Image source={MORNING_RITUAL_LOGO} style={s.logo} />
           </View>
-          <TextR style={s.headerTitle}>Set Alarm</TextR>
-        </View>
-        <View style={s.avatar}>
-          <User size={18} color={C.white} strokeWidth={2.3} />
+          <TextR style={[s.headerTitle, isSmall && s.headerTitleSmall]}>Set Alarm</TextR>
         </View>
       </View>
 
       <View style={s.sectionTop}>
         <View style={s.sectionTitleRow}>
-          <View style={s.sectionIcon}>
-            <AlarmClockPlus size={22} color={C.saffron} strokeWidth={2.2} />
+          <View style={[s.sectionIcon, isSmall && s.sectionIconSmall]}>
+            <AlarmClockPlus size={isSmall ? 19 : 22} color={C.saffron} strokeWidth={2.2} />
           </View>
-          <TextR style={s.mainTitle}>Sacred Timing</TextR>
+          <TextR style={[s.mainTitle, isSmall && s.mainTitleSmall]}>Sacred Timing</TextR>
         </View>
         <Pressable
+          accessibilityLabel="Save alarm"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: saving || initializing, busy: saving }}
+          disabled={saving || initializing}
           onPress={save}
-          style={({ pressed }) => [s.saveChip, pressed && s.pressed]}
+          style={({ pressed }) => [
+            s.saveChip,
+            (saving || initializing) && s.buttonDisabled,
+            pressed && s.pressed,
+          ]}
         >
-          <TextR style={s.saveText}>{saving ? "Saving…" : "Save"}</TextR>
+          <TextR style={[s.saveText, isSmall && s.saveTextSmall]}>
+            {saving ? "Saving…" : initializing ? "Loading…" : "Save"}
+          </TextR>
         </Pressable>
       </View>
-      <View style={s.readinessCard}>
-        <TextR style={s.readinessTitle}>Alarm readiness</TextR>
-        <TextR style={s.readinessIntro}>
-          Complete these once so Android can wake the screen and show your morning ritual.
-        </TextR>
-        {readinessMessage ? <TextR style={s.readinessWarning}>{readinessMessage}</TextR> : null}
-        <ReadinessRow label="Alarm notifications" ready={capabilities?.notifications ?? false} onPress={() => Linking.openSettings()} />
-        <ReadinessRow label="Alarms & reminders" ready={capabilities?.exactAlarm ?? false} onPress={openExactAlarmSettings} />
-        <ReadinessRow label="Full-screen alarms" ready={capabilities?.fullScreenIntent ?? false} onPress={openFullScreenIntentSettings} />
-        <ReadinessRow label="High-priority alarm channel" ready={capabilities?.notificationChannelReady ?? false} onPress={openNotificationChannelSettings} />
-        {capabilities?.oemGuidance ? (
-          <>
-            <ReadinessRow label="MIUI Auto-start" ready={oemConfirmed} onPress={openAutoStartSettings} />
-            <ReadinessRow label="MIUI unrestricted battery" ready={oemConfirmed && !capabilities.batteryRestricted} onPress={openBatterySettings} />
-            <ReadinessRow label="MIUI lock-screen pop-ups" ready={oemConfirmed} onPress={openOemPermissionSettings} />
-            <Pressable
-              onPress={async () => {
-                const next = !oemConfirmed;
-                setOemConfirmed(next);
-                await AsyncStorage.setItem(OEM_CONFIRMED_KEY, next ? "1" : "0");
-              }}
-              style={({ pressed }) => [s.confirmOem, pressed && s.pressed]}
-            >
-              <TextR style={s.confirmOemText}>{oemConfirmed ? "✓ MIUI settings confirmed" : "I enabled all three MIUI settings"}</TextR>
-            </Pressable>
-          </>
-        ) : null}
-        <TextR style={s.readinessFootnote}>
-          Force-stopped apps and powered-off phones cannot ring. If full-screen access is denied, Android will show a persistent alarm notification instead.
-        </TextR>
-      </View>
 
-      <Interactive3DCard maxTiltDeg={6} style={s.timeCard}>
-        {/* <View style={s.glowOne} /> */}
-        {/* <View style={s.glowTwo} /> */}
+      <View style={[s.timeCard, isSmall && s.timeCardSmall]}>
         <View style={s.windowTitle}>
           <Sun size={18} color={C.goldDark} />
-          <TextR style={s.windowText}>Brahma Muhurta Window</TextR>
+          <TextR style={s.windowText}>Wake-up time</TextR>
         </View>
 
+        {/* Smooth Scrollable Wheel Picker */}
         <View style={s.timePicker}>
-          <TimeColumn
-            value={String(hour).padStart(2, "0")}
-            onIncrease={() => updateHour(1)}
-            onDecrease={() => updateHour(-1)}
-            label="hour"
+          <SmoothWheelColumn
+            data={HOURS}
+            value={hour}
+            onChange={setHour}
+            padZero
+            isSmall={isSmall}
           />
-          <TextR serif style={s.colon}>
+          <TextR serif style={[s.colon, isSmall && s.colonSmall]}>
             :
           </TextR>
-          <TimeColumn
-            value={String(minute).padStart(2, "0")}
-            onIncrease={() => updateMinute(1)}
-            onDecrease={() => updateMinute(-1)}
-            label="minute"
+          <SmoothWheelColumn
+            data={MINUTES}
+            value={minute}
+            onChange={setMinute}
+            padZero
+            isSmall={isSmall}
           />
-          <View style={s.meridiemTrack}>
+          <View style={[s.meridiemTrack, isSmall && s.meridiemTrackSmall]}>
             {(["AM", "PM"] as const).map((value) => {
               const active = meridiem === value;
               return (
                 <Pressable
+                  accessibilityLabel={`${value} time period`}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
                   key={value}
                   onPress={() => updateMeridiem(value)}
                   style={({ pressed }) => [
                     s.meridiemButton,
+                    isSmall && s.meridiemButtonSmall,
                     active && s.meridiemActive,
                     pressed && s.pressed,
                   ]}
                 >
                   <TextR
-                    style={[s.meridiemText, active && s.meridiemActiveText]}
+                    style={[s.meridiemText, isSmall && s.meridiemTextSmall, active && s.meridiemActiveText]}
                   >
                     {value}
                   </TextR>
@@ -393,21 +528,25 @@ function SetupContent() {
           </View>
         </View>
 
-        <View style={s.sunrisePill}>
-          <Sun size={15} color={C.goldDark} />
-          <TextR style={s.sunriseText}>
-            Sunrise is at <TextR style={s.sunriseStrong}>06:18 AM</TextR> today
+        {/* Dynamic Alarm Countdown Pill */}
+        <View style={s.countdownBadge}>
+          <BellRing size={14} color={C.saffron} strokeWidth={2.4} />
+          <TextR style={[s.countdownText, isSmall && s.countdownTextSmall]}>
+            {countdownText}
           </TextR>
         </View>
-      </Interactive3DCard>
+      </View>
 
       <View style={s.recurrenceHeader}>
-        <TextR style={s.label}>Weekly Recurrence</TextR>
-        <TextR style={s.recurrenceValue}>{recurrenceLabel}</TextR>
+        <TextR style={[s.label, isSmall && s.labelSmall]}>Weekly Recurrence</TextR>
+        <TextR style={[s.recurrenceValue, isSmall && s.recurrenceValueSmall]}>{recurrenceLabel}</TextR>
       </View>
       <View style={s.weekRow}>
         {days.map((day) => (
           <Pressable
+            accessibilityLabel={`${day.id}, ${day.selected ? "selected" : "not selected"}`}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: day.selected }}
             key={day.id}
             onPress={() =>
               setDays((items) =>
@@ -424,19 +563,107 @@ function SetupContent() {
               pressed && s.dayPressed,
             ]}
           >
-            <TextR style={[s.dayText, day.selected && s.dayTextSelected]}>
+            <TextR style={[s.dayText, isSmall && s.dayTextSmall, day.selected && s.dayTextSelected]}>
               {day.label}
             </TextR>
           </Pressable>
         ))}
       </View>
 
-      <View style={s.modeHeader}>
-        <View>
-          <TextR style={s.label}>Morning Awakening Mode</TextR>
-          <TextR style={s.caption}>Selected devotional flow upon waking</TextR>
+      <View style={s.readinessCard}>
+        <Pressable
+          accessibilityLabel={`Alarm readiness, ${initializing ? "checking" : coreReady ? "ready" : `${coreReadyCount} of 3 requirements ready`}`}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: readinessExpanded }}
+          onPress={() => setReadinessExpanded((value) => !value)}
+          style={({ pressed }) => [s.readinessSummary, pressed && s.pressed]}
+        >
+          <View style={[s.readinessSummaryIcon, coreReady && s.readinessSummaryIconReady]}>
+            {coreReady ? (
+              <ShieldCheck size={20} color={C.white} strokeWidth={2.5} />
+            ) : (
+              <AlarmClockPlus size={20} color={C.saffron} strokeWidth={2.3} />
+            )}
+          </View>
+          <View style={s.readinessSummaryCopy}>
+            <TextR style={[s.readinessTitle, isSmall && s.readinessTitleSmall]}>Alarm readiness</TextR>
+            <TextR style={s.readinessSummaryText}>
+              {initializing
+                ? "Checking Android settings…"
+                : coreReady
+                  ? "Required Android access verified"
+                  : `${coreReadyCount} of 3 required settings ready`}
+            </TextR>
+          </View>
+          {readinessExpanded ? (
+            <ChevronUp size={20} color={C.muted} />
+          ) : (
+            <ChevronDown size={20} color={C.muted} />
+          )}
+        </Pressable>
+        {readinessMessage ? <TextR style={s.readinessWarning}>{readinessMessage}</TextR> : null}
+        {saveError ? <TextR accessibilityRole="alert" style={s.saveError}>{saveError}</TextR> : null}
+        {readinessExpanded ? (
+          <View style={s.readinessDetails}>
+            <TextR style={s.readinessIntro}>
+              Notifications and exact-alarm access are required. Full-screen access is optional; Android controls when an alarm screen appears.
+            </TextR>
+            <ReadinessRow label="Alarm notifications" ready={capabilities?.notifications ?? false} onPress={() => openSettings(openNotificationSettings)} />
+            <ReadinessRow status={capabilities && capabilities.sdkInt < 31 ? "Not applicable" : undefined} label="Alarms & reminders" ready={capabilities?.exactAlarm ?? false} onPress={() => openSettings(openExactAlarmSettings)} />
+            <ReadinessRow label="High-priority alarm channel" ready={capabilities?.notificationChannelReady ?? false} onPress={() => openSettings(openNotificationChannelSettings)} />
+            <ReadinessRow status={capabilities && capabilities.sdkInt < 34 ? "Not applicable" : undefined} label="Full-screen alarms (optional)" ready={capabilities?.fullScreenIntent ?? false} onPress={() => openSettings(openFullScreenIntentSettings)} />
+            {!capabilities?.fullScreenIntent ? <TextR style={s.readinessIntro}>Without full-screen access, use the alarm notification to open or stop the alarm.</TextR> : null}
+            <TextR style={s.readinessFootnote}>
+              A force-stopped app or powered-off phone cannot ring. Without full-screen access, Android shows a persistent alarm notification.
+            </TextR>
+          </View>
+        ) : null}
+        <View style={s.reliabilitySection}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: extraExpanded }}
+            onPress={() => setExtraExpanded(value => !value)}
+            style={({ pressed }) => [s.reliabilitySummary, pressed && s.pressed]}
+          >
+            <TextR style={[s.readinessTitle, isSmall && s.readinessTitleSmall]}>Extra reliability on your phone</TextR>
+            {extraExpanded ? <ChevronUp size={20} color={C.muted} /> : <ChevronDown size={20} color={C.muted} />}
+          </Pressable>
+          {extraExpanded ? <View style={s.readinessDetails}>
+            <TextR style={s.oemTitle}>{profile.name}</TextR>
+            <ReadinessRow label="Background activity allowed" ready={capabilities != null && !capabilities.batteryRestricted} status={capabilities && capabilities.sdkInt < 28 ? "Not applicable" : undefined} onPress={() => openSettings(openBatterySettings)} />
+            <ReadinessRow label="Battery optimization exemption" ready={capabilities?.batteryOptimizationExempt ?? false} onPress={() => openSettings(openBatterySettings)} />
+            <TextR style={s.readinessIntro}>These checks are separate. Battery exemption is advisory and does not verify your phone’s custom settings. Menu names vary by software version.</TextR>
+            {profile.steps.map(step => {
+              const key = `${profile.id}:${step.id}`;
+              const confirmed = confirmations[key] === true;
+              return <View key={key}>
+                <ReadinessRow label={step.label} ready={confirmed} status={confirmed ? "User confirmed" : "Needs action"} onPress={() => openSettings(step.settings === "battery" ? openBatterySettings : step.settings === "autostart" ? openAutoStartSettings : openOemPermissionSettings)} />
+                <TextR style={s.readinessIntro}>{step.guidance}</TextR>
+                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: confirmed }} onPress={async () => {
+                  const next = { ...confirmations, [key]: !confirmed };
+                  setConfirmations(next);
+                  try { await AsyncStorage.setItem(OEM_CONFIRMED_KEY, JSON.stringify(next)); } catch { setReadinessMessage("Confirmation could not be saved. Try again."); }
+                }} style={s.confirmOem}><TextR style={s.confirmOemText}>{confirmed ? "✓ User confirmed" : "I checked this setting"}</TextR></Pressable>
+              </View>;
+            })}
+          </View> : null}
+          <Pressable
+            accessibilityRole="button"
+            disabled={testing || initializing}
+            onPress={testAlarm}
+            style={({ pressed }) => [s.testAlarmRow, pressed && s.pressed, (testing || initializing) && s.buttonDisabled]}
+          >
+            <TextR style={s.settingsButtonText}>{testing ? "Scheduling…" : "Test alarm in 30 seconds"}</TextR>
+          </Pressable>
         </View>
-        <Leaf size={23} color={C.goldDark} />
+      </View>
+
+      <View style={s.modeHeader}>
+        <View style={s.modeHeaderLeft}>
+          <TextR style={[s.label, isSmall && s.labelSmall]}>Morning Awakening Mode</TextR>
+          <TextR style={[s.caption, isSmall && s.captionSmall]}>Selected devotional flow upon waking</TextR>
+        </View>
+        <Leaf size={isSmall ? 20 : 23} color={C.goldDark} />
       </View>
 
       <View style={s.modeList}>
@@ -445,6 +672,7 @@ function SetupContent() {
             key={item.key}
             active={mode === item.key}
             item={item}
+            isSmall={isSmall}
             onPress={() => {
               setMode(item.key);
             }}
@@ -452,105 +680,147 @@ function SetupContent() {
         ))}
       </View>
 
-      <View style={s.soundCard}>
-        <View style={s.soundRow}>
-          <View style={s.soundLeft}>
-            <View style={s.musicIcon}>
-              <Music size={22} color={C.goldDark} fill={C.goldDark} />
-            </View>
-            <View style={s.soundTextBlock}>
-              <TextR style={s.caps}>Soundtrack</TextR>
-              <TextR style={s.soundTitle}>{selectedMode.tone}</TextR>
-            </View>
-          </View>
-          <Pressable
-            accessibilityLabel="Preview tone"
-            onPress={() => setPreviewing((value) => !value)}
-            style={[s.previewButton, previewing && s.previewActive]}
-          >
-            {previewing ? (
-              <Pause size={19} color={C.saffron} fill={C.saffron} />
-            ) : (
-              <Play size={19} color={C.saffron} fill={C.saffron} />
-            )}
-          </Pressable>
-        </View>
-
-        <ToggleRow
-          title="Gradual Awakening"
-          description="Slow volume rise over 5 minutes like dawn light"
-          enabled={gradual}
-          onPress={() => setGradual((value) => !value)}
-        />
-        <ToggleRow
-          title="Gentle Heartbeat Pulse"
-          description="Soft rhythmic haptic feedback"
-          enabled={haptics}
-          onPress={() => setHaptics((value) => !value)}
-          icon={<Vibrate size={18} color={C.mutedSoft} />}
-        />
-      </View>
-
-      <View style={s.companionGrid}>
-        <CompanionCard
-          image={PUJA_IMAGE_URL}
-          label="Morning Puja"
-          title="Automatic Diya reminder"
-          color={C.goldDark}
-        />
-        <CompanionCard
-          image={DHYAN_IMAGE_URL}
-          label="Post-Alarm"
-          title="10 Min Silent Dhyan"
-          color={C.greenDark}
-        />
-      </View>
-
       <Pressable
+        accessibilityLabel="Save alarm and morning ritual"
+        accessibilityRole="button"
+        accessibilityState={{ disabled: saving || initializing, busy: saving }}
+        disabled={saving || initializing}
         onPress={save}
-        style={({ pressed }) => [s.primaryButton, pressed && s.primaryPressed]}
+        style={({ pressed }) => [
+          s.primaryButton,
+          isSmall && s.primaryButtonSmall,
+          (saving || initializing) && s.buttonDisabled,
+          pressed && s.primaryPressed,
+        ]}
       >
-        <Sun size={23} color={C.white} />
-        <TextR style={s.primaryText}>
-          {saving ? "Scheduling Alarm…" : "Save Alarm & Morning Ritual"}
+        <Sun size={isSmall ? 20 : 23} color={C.white} />
+        <TextR style={[s.primaryText, isSmall && s.primaryTextSmall]}>
+          {saving ? "Scheduling Alarm…" : initializing ? "Checking Alarm…" : "Save Alarm & Morning Ritual"}
         </TextR>
       </Pressable>
     </Screen>
   );
 }
 
-function TimeColumn({
+function SmoothWheelColumn({
+  data,
   value,
-  label,
-  onIncrease,
-  onDecrease,
+  onChange,
+  padZero = true,
+  isSmall,
 }: {
-  value: string;
-  label: string;
-  onIncrease: () => void;
-  onDecrease: () => void;
+  data: number[];
+  value: number;
+  onChange: (val: number) => void;
+  padZero?: boolean;
+  isSmall?: boolean;
 }) {
+  const itemHeight = isSmall ? 48 : 54;
+  const flatListRef = useRef<FlatList<number>>(null);
+  const isScrollingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isScrollingRef.current) {
+      const idx = data.indexOf(value);
+      if (idx >= 0) {
+        try {
+          flatListRef.current?.scrollToIndex({ index: idx, animated: true });
+        } catch {}
+      }
+    }
+  }, [value, data]);
+
+  const onMomentumEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      isScrollingRef.current = false;
+      const offsetY = e.nativeEvent.contentOffset.y;
+      const idx = Math.round(offsetY / itemHeight);
+      const clamped = Math.max(0, Math.min(data.length - 1, idx));
+      if (data[clamped] !== value) {
+        onChange(data[clamped]);
+      }
+    },
+    [data, itemHeight, value, onChange]
+  );
+
   return (
-    <View style={s.timeColumn}>
-      <Pressable
-        accessibilityLabel={`Increase ${label}`}
-        onPress={onIncrease}
-        hitSlop={{ top: 12, bottom: 12, left: 14, right: 14 }}
-        style={({ pressed }) => [s.chevronButton, pressed && s.chevronPressed]}
-      >
-        <ChevronUp size={24} color={C.primary} strokeWidth={2.5} />
-      </Pressable>
-      <TextR serif style={s.timeNumber}>
-        {value}
-      </TextR>
-      <Pressable
-        accessibilityLabel={`Decrease ${label}`}
-        onPress={onDecrease}
-        hitSlop={{ top: 12, bottom: 12, left: 14, right: 14 }}
-        style={({ pressed }) => [s.chevronButton, pressed && s.chevronPressed]}
-      >
-        <ChevronDown size={24} color={C.primary} strokeWidth={2.5} />
-      </Pressable>
+    <View
+      style={[
+        s.wheelColumnWrapper,
+        { height: itemHeight * 3 },
+        isSmall && s.wheelColumnWrapperSmall,
+      ]}
+    >
+      {/* Center Selection Lens Bracket */}
+      <View
+        style={[s.wheelLens, { top: itemHeight, height: itemHeight }]}
+        pointerEvents="none"
+      />
+
+      <FlatList
+        ref={flatListRef}
+        data={data}
+        keyExtractor={(item) => String(item)}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={itemHeight}
+        snapToAlignment="center"
+        decelerationRate="fast"
+        nestedScrollEnabled={true}
+        bounces={false}
+        overScrollMode="never"
+        getItemLayout={(_, index) => ({
+          length: itemHeight,
+          offset: itemHeight * index,
+          index,
+        })}
+        initialScrollIndex={Math.max(0, data.indexOf(value))}
+        onScrollBeginDrag={() => {
+          isScrollingRef.current = true;
+        }}
+        onScrollEndDrag={(e) => {
+          const offsetY = e.nativeEvent.contentOffset.y;
+          const idx = Math.round(offsetY / itemHeight);
+          const clamped = Math.max(0, Math.min(data.length - 1, idx));
+          if (data[clamped] !== value) {
+            onChange(data[clamped]);
+          }
+        }}
+        onMomentumScrollEnd={onMomentumEnd}
+        onScrollToIndexFailed={(info) => {
+          setTimeout(() => {
+            flatListRef.current?.scrollToIndex({
+              index: Math.max(0, Math.min(data.length - 1, info.index)),
+              animated: false,
+            });
+          }, 60);
+        }}
+        ListHeaderComponent={<View style={{ height: itemHeight }} />}
+        ListFooterComponent={<View style={{ height: itemHeight }} />}
+        renderItem={({ item }) => {
+          const isSelected = item === value;
+          return (
+            <Pressable
+              onPress={() => {
+                const idx = data.indexOf(item);
+                flatListRef.current?.scrollToIndex({ index: idx, animated: true });
+                onChange(item);
+              }}
+              style={[s.wheelItem, { height: itemHeight }]}
+            >
+              <TextR
+                serif
+                style={[
+                  s.wheelItemText,
+                  isSmall && s.wheelItemTextSmall,
+                  isSelected && s.wheelItemTextSelected,
+                ]}
+              >
+                {padZero ? String(item).padStart(2, "0") : String(item)}
+              </TextR>
+            </Pressable>
+          );
+        }}
+      />
     </View>
   );
 }
@@ -559,45 +829,45 @@ function ModeCard({
   active,
   item,
   onPress,
+  isSmall,
 }: {
   active: boolean;
   item: (typeof modes)[number];
   onPress: () => void;
+  isSmall?: boolean;
 }) {
   const Icon = item.Icon;
 
   return (
     <Pressable
+      accessibilityLabel={`${item.title}. ${item.description}`}
+      accessibilityRole="radio"
+      accessibilityState={{ selected: active }}
       onPress={onPress}
       style={({ pressed }) => [
         s.modeCard,
+        isSmall && s.modeCardSmall,
         active ? s.modeCardActive : s.modeCardRest,
         pressed && s.pressed,
       ]}
     >
-      <View style={[s.modeIcon, active ? s.modeIconActive : s.modeIconRest]}>
+      <View style={[s.modeIcon, isSmall && s.modeIconSmall, active ? s.modeIconActive : s.modeIconRest]}>
         <Icon
-          size={25}
+          size={isSmall ? 22 : 25}
           color={active ? C.white : item.iconColor}
           fill={active && item.key === "gita" ? C.white : "transparent"}
         />
       </View>
       <View style={s.modeBody}>
         <View style={s.modeTitleLine}>
-          <TextR style={s.modeTitle}>{item.title}</TextR>
+          <TextR style={[s.modeTitle, isSmall && s.modeTitleSmall]}>{item.title}</TextR>
           {active && (
             <View style={s.activePill}>
               <TextR style={s.activePillText}>Active</TextR>
             </View>
           )}
         </View>
-        <TextR style={s.modeDescription}>{item.description}</TextR>
-        {active && (
-          <View style={s.activeAudioRow}>
-            <AudioSpectrumVisualizer isPlaying barCount={6} height={12} />
-            <TextR style={s.activeAudioText}>Previewing tone</TextR>
-          </View>
-        )}
+        <TextR style={[s.modeDescription, isSmall && s.modeDescriptionSmall]}>{item.description}</TextR>
       </View>
       <View style={[s.radio, active && s.radioActive]}>
         {active ? (
@@ -610,84 +880,131 @@ function ModeCard({
   );
 }
 
-function ToggleRow({
-  title,
-  description,
-  enabled,
-  onPress,
-  icon,
-}: {
-  title: string;
-  description: string;
-  enabled: boolean;
-  onPress: () => void;
-  icon?: React.ReactNode;
-}) {
-  return (
-    <View style={s.toggleRow}>
-      <View style={s.toggleCopy}>
-        {icon && <View style={s.inlineIcon}>{icon}</View>}
-        <View style={s.toggleText}>
-          <TextR style={s.toggleTitle}>{title}</TextR>
-          <TextR style={s.toggleDescription}>{description}</TextR>
-        </View>
-      </View>
-      <Pressable
-        accessibilityRole="switch"
-        accessibilityState={{ checked: enabled }}
-        onPress={onPress}
-        style={[s.switchTrack, enabled ? s.switchOn : s.switchOff]}
-      >
-        <View style={[s.switchKnob, enabled && s.switchKnobOn]} />
-      </Pressable>
-    </View>
-  );
-}
-
-function CompanionCard({
-  image,
-  label,
-  title,
-  color,
-}: {
-  image: string;
-  label: string;
-  title: string;
-  color: string;
-}) {
-  return (
-    <View style={s.companionCard}>
-      <Image source={{ uri: image }} style={s.companionImage} />
-      <View style={s.companionCopy}>
-        <TextR numberOfLines={1} style={[s.companionLabel, { color }]}>
-          {label}
-        </TextR>
-        <TextR style={s.companionTitle}>{title}</TextR>
-      </View>
-    </View>
-  );
-}
-
 const s = StyleSheet.create({
   readinessCard: {
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 20,
+    marginBottom: 24,
+    borderRadius: 22,
     backgroundColor: "rgba(255,249,242,0.96)",
     borderWidth: 1,
     borderColor: "#F0DCCB",
+    overflow: "hidden",
   },
-  readinessTitle: { color: C.ink, fontSize: 18, fontWeight: "800" },
-  readinessIntro: { color: "#6B574B", fontSize: 12, lineHeight: 18, marginTop: 4, marginBottom: 10 },
-  readinessWarning: { color: "#A64B16", fontSize: 12, lineHeight: 17, fontWeight: "700", marginBottom: 8 },
-  readinessRow: { minHeight: 48, flexDirection: "row", alignItems: "center", borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#E8D6C8" },
-  readinessStatus: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: "#B99E8D", alignItems: "center", justifyContent: "center" },
+  readinessTitle: { color: C.ink, fontSize: 17, fontWeight: "800" },
+  readinessTitleSmall: { fontSize: 15 },
+  readinessSummary: {
+    minHeight: 74,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  readinessSummaryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FBE6D8",
+  },
+  readinessSummaryIconReady: { backgroundColor: C.greenDark },
+  readinessSummaryCopy: { flex: 1, marginHorizontal: 12, minWidth: 0 },
+  readinessSummaryText: { color: "#6B574B", fontSize: 12, lineHeight: 17, marginTop: 2 },
+  readinessDetails: { paddingHorizontal: 16, paddingBottom: 14 },
+  reliabilitySection: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: "#E8D6C8" },
+  reliabilitySummary: {
+    minHeight: 58,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  testAlarmRow: {
+    minHeight: 50,
+    paddingHorizontal: 16,
+    justifyContent: "center",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#E8D6C8",
+  },
+  readinessIntro: { color: "#6B574B", fontSize: 12, lineHeight: 18, marginBottom: 10 },
+  readinessWarning: {
+    color: "#8B451D",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "700",
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: "#FCE8D8",
+  },
+  saveError: {
+    color: "#9C2F20",
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: "700",
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: "#FBE3DF",
+  },
+  readinessRow: {
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#E8D6C8",
+    paddingVertical: 8,
+  },
+  readinessRowLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 8,
+  },
+  readinessStatus: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: "#B99E8D",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
   readinessStatusReady: { backgroundColor: C.greenDark, borderColor: C.greenDark },
-  readinessLabel: { flex: 1, color: C.ink, fontSize: 13, fontWeight: "700", marginLeft: 9 },
-  settingsButton: { paddingHorizontal: 8, paddingVertical: 8 },
-  settingsButtonText: { color: C.saffron, fontSize: 11, fontWeight: "800" },
+  readinessTextGroup: {
+    marginLeft: 10,
+    flex: 1,
+    minWidth: 0,
+  },
+  readinessLabel: {
+    color: C.ink,
+    fontSize: 13,
+    fontWeight: "700",
+    lineHeight: 18,
+  },
+  readinessSubStatus: {
+    color: "#9C5430",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 1,
+  },
+  readinessSubStatusReady: {
+    color: C.greenDark,
+  },
+  settingsButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: "rgba(235, 120, 60, 0.08)",
+    flexShrink: 0,
+  },
+  settingsButtonText: { color: C.saffron, fontSize: 12, fontWeight: "800" },
   confirmOem: { alignSelf: "flex-start", marginTop: 8, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 12, backgroundColor: "#FDE8D8" },
   confirmOemText: { color: "#7C4B2C", fontSize: 12, fontWeight: "800" },
+  oemTitle: { color: C.ink, fontSize: 13, fontWeight: "900", marginTop: 14, marginBottom: 2 },
   readinessFootnote: { color: "#7C675B", fontSize: 10.5, lineHeight: 15, marginTop: 10 },
   loadingState: {
     flex: 1,
@@ -697,7 +1014,7 @@ const s = StyleSheet.create({
   header: {
     height: 64,
     marginHorizontal: -4,
-    marginBottom: 12,
+    marginBottom: 8,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -738,10 +1055,6 @@ const s = StyleSheet.create({
     borderRadius: 21,
     resizeMode: "cover",
   },
-  chevronPressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.88 }],
-  },
   headerTitle: {
     marginLeft: 14,
     fontSize: 26,
@@ -749,28 +1062,22 @@ const s = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: -0.8,
   },
-  avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: C.primary,
-    shadowColor: C.primary,
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
+  headerTitleSmall: {
+    fontSize: 22,
+    marginLeft: 10,
   },
   pressed: {
     opacity: 0.85,
     transform: [{ scale: 0.985 }],
   },
   sectionTop: {
-    marginTop: 3,
-    marginBottom: 18,
+    marginTop: 2,
+    marginBottom: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 8,
   },
   sectionTitleRow: {
     flexDirection: "row",
@@ -785,16 +1092,26 @@ const s = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: C.sand,
   },
+  sectionIconSmall: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 8,
+  },
   mainTitle: {
     fontSize: 28,
     lineHeight: 34,
     fontWeight: "800",
     letterSpacing: -0.7,
   },
+  mainTitleSmall: {
+    fontSize: 22,
+    lineHeight: 28,
+  },
   saveChip: {
-    minWidth: 80,
+    minWidth: 76,
     height: 38,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     borderRadius: 21,
     alignItems: "center",
     justifyContent: "center",
@@ -811,52 +1128,51 @@ const s = StyleSheet.create({
   },
   saveText: {
     color: C.ink,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "800",
     letterSpacing: 0.3,
   },
+  saveTextSmall: {
+    fontSize: 14,
+  },
+  buttonDisabled: { opacity: 0.55 },
   timeCard: {
-    minHeight: 305,
-    borderRadius: 34,
-    marginBottom: 28,
-    paddingHorizontal: 25,
-    paddingTop: 30,
-    paddingBottom: 28,
+    minHeight: 236,
+    borderRadius: 28,
+    marginBottom: 24,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
     alignItems: "center",
     overflow: "hidden",
-    backgroundColor: "#B86D3A",
-    shadowColor: "#B86D3A",
+    backgroundColor: "rgba(255, 252, 248, 0.98)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(216, 144, 64, 0.35)",
+    borderBottomWidth: 3,
+    shadowColor: "#8C4010",
     shadowOpacity: 0.12,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
-  glowOne: {
-    position: "absolute",
-    top: -72,
-    right: -54,
-    width: 185,
-    height: 185,
-    borderRadius: 95,
-    backgroundColor: "rgba(229,107,39,0.08)",
-  },
-  glowTwo: {
-    position: "absolute",
-    bottom: -78,
-    left: -56,
-    width: 185,
-    height: 185,
-    borderRadius: 95,
-    backgroundColor: "rgba(244,185,66,0.16)",
+  timeCardSmall: {
+    minHeight: 206,
+    paddingHorizontal: 10,
+    paddingTop: 12,
+    paddingBottom: 14,
+    borderRadius: 22,
   },
   windowTitle: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    marginBottom: 22,
+    marginBottom: 4,
   },
   windowText: {
-    fontSize: 16,
-    lineHeight: 23,
+    fontSize: 15,
+    lineHeight: 22,
     color: C.inkSoft,
     fontWeight: "500",
   },
@@ -865,44 +1181,85 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  timeColumn: {
-    width: 86,
-    alignItems: "center",
+  wheelColumnWrapper: {
+    width: 82,
+    position: "relative",
+    overflow: "hidden",
+    justifyContent: "center",
   },
-  chevronButton: {
-    height: 34,
-    width: 56,
+  wheelColumnWrapperSmall: {
+    width: 66,
+  },
+  wheelLens: {
+    position: "absolute",
+    left: 2,
+    right: 2,
+    borderRadius: 14,
+    backgroundColor: "rgba(235, 120, 60, 0.08)",
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "rgba(216, 144, 64, 0.25)",
+  },
+  wheelItem: {
     alignItems: "center",
     justifyContent: "center",
   },
-  timeNumber: {
-    fontSize: 57,
-    lineHeight: 66,
+  wheelItemText: {
+    fontSize: 26,
+    lineHeight: 32,
     fontWeight: "300",
-    letterSpacing: -2.2,
+    color: C.mutedSoft,
+    opacity: 0.4,
+    letterSpacing: -0.5,
+  },
+  wheelItemTextSmall: {
+    fontSize: 22,
+    lineHeight: 28,
+  },
+  wheelItemTextSelected: {
+    fontSize: 48,
+    lineHeight: 54,
+    fontWeight: "300",
+    color: C.ink,
+    opacity: 1,
+    letterSpacing: -1.8,
   },
   colon: {
-    marginHorizontal: 2,
-    paddingBottom: 6,
-    fontSize: 54,
-    lineHeight: 62,
+    marginHorizontal: 4,
+    fontSize: 44,
+    lineHeight: 52,
     color: "rgba(168,71,12,0.67)",
     fontWeight: "300",
+    alignSelf: "center",
+  },
+  colonSmall: {
+    fontSize: 34,
+    lineHeight: 42,
+    marginHorizontal: 1,
   },
   meridiemTrack: {
     marginLeft: 10,
-    padding: 5,
+    padding: 4,
     borderRadius: 24,
     backgroundColor: "rgba(255,248,245,0.72)",
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.8)",
   },
+  meridiemTrackSmall: {
+    marginLeft: 6,
+    padding: 3,
+  },
   meridiemButton: {
-    minWidth: 43,
+    minWidth: 44,
     height: 34,
     borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
+  },
+  meridiemButtonSmall: {
+    minWidth: 36,
+    height: 30,
+    borderRadius: 15,
   },
   meridiemActive: {
     backgroundColor: C.primary,
@@ -920,33 +1277,33 @@ const s = StyleSheet.create({
     letterSpacing: 0.6,
     color: C.muted,
   },
+  meridiemTextSmall: {
+    fontSize: 11,
+    letterSpacing: 0.2,
+  },
   meridiemActiveText: {
     color: C.white,
   },
-  sunrisePill: {
-    marginTop: 27,
-    minHeight: 39,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+  countdownBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(248,229,214,0.95)",
+    gap: 7,
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: "rgba(235, 120, 60, 0.09)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.9)",
-    shadowColor: "#8C4010",
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    borderColor: "rgba(235, 120, 60, 0.18)",
   },
-  sunriseText: {
-    fontSize: 14,
-    color: C.muted,
+  countdownText: {
+    color: "#9C4215",
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.2,
   },
-  sunriseStrong: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: C.ink,
+  countdownTextSmall: {
+    fontSize: 11.5,
   },
   recurrenceHeader: {
     marginBottom: 14,
@@ -960,20 +1317,30 @@ const s = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: -0.2,
   },
+  labelSmall: {
+    fontSize: 17,
+    lineHeight: 22,
+  },
   recurrenceValue: {
     color: C.primary,
     fontSize: 15,
     fontWeight: "600",
   },
+  recurrenceValueSmall: {
+    fontSize: 13,
+  },
   weekRow: {
-    marginBottom: 26,
+    marginBottom: 24,
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
+    gap: 6,
   },
   dayChip: {
-    width: 49,
-    height: 49,
-    borderRadius: 25,
+    flex: 1,
+    maxWidth: 48,
+    aspectRatio: 1,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FCEADD",
@@ -1006,6 +1373,9 @@ const s = StyleSheet.create({
     fontSize: 16,
     fontWeight: "900",
   },
+  dayTextSmall: {
+    fontSize: 13,
+  },
   dayTextSelected: {
     color: C.white,
   },
@@ -1015,25 +1385,39 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  modeHeaderLeft: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 8,
+  },
   caption: {
     marginTop: 3,
     color: C.muted,
-    fontSize: 15,
-    lineHeight: 21,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  captionSmall: {
+    fontSize: 12,
+    lineHeight: 17,
   },
   modeList: {
-    gap: 14,
+    gap: 12,
     marginBottom: 24,
   },
   modeCard: {
-    minHeight: 108,
-    borderRadius: 30,
-    padding: 18,
+    minHeight: 100,
+    borderRadius: 26,
+    padding: 16,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.9)",
     borderTopColor: "#FFFFFF",
+  },
+  modeCardSmall: {
+    minHeight: 88,
+    padding: 12,
+    borderRadius: 20,
   },
   modeCardActive: {
     backgroundColor: "#FDE4D5",
@@ -1054,14 +1438,20 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
   },
   modeIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 16,
+    marginRight: 14,
     borderWidth: 1.2,
     borderColor: "rgba(255, 255, 255, 0.9)",
+  },
+  modeIconSmall: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
   },
   modeIconActive: {
     backgroundColor: C.saffron,
@@ -1079,6 +1469,7 @@ const s = StyleSheet.create({
   modeBody: {
     flex: 1,
     paddingRight: 8,
+    minWidth: 0,
   },
   modeTitleLine: {
     flexDirection: "row",
@@ -1087,40 +1478,37 @@ const s = StyleSheet.create({
     gap: 8,
   },
   modeTitle: {
-    fontSize: 18,
-    lineHeight: 23,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: "900",
     letterSpacing: 0.1,
   },
+  modeTitleSmall: {
+    fontSize: 15,
+    lineHeight: 19,
+  },
   activePill: {
-    paddingHorizontal: 11,
-    height: 25,
-    borderRadius: 13,
+    paddingHorizontal: 10,
+    height: 23,
+    borderRadius: 12,
     justifyContent: "center",
     backgroundColor: "#FFD8CA",
   },
   activePillText: {
     color: C.ink,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "900",
-    letterSpacing: 1.4,
+    letterSpacing: 1.2,
   },
   modeDescription: {
-    marginTop: 5,
+    marginTop: 4,
     color: C.muted,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
   },
-  activeAudioRow: {
-    marginTop: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  activeAudioText: {
+  modeDescriptionSmall: {
     fontSize: 12,
-    fontWeight: "700",
-    color: C.saffron,
+    lineHeight: 17,
   },
   radio: {
     width: 26,
@@ -1147,192 +1535,11 @@ const s = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
   },
-  soundCard: {
-    borderRadius: 30,
-    padding: 18,
-    marginBottom: 26,
-    backgroundColor: "#FFF0E8",
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.9)",
-    borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(215, 170, 140, 0.25)",
-    borderBottomWidth: 2,
-    shadowColor: "#8C4010",
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-  },
-  soundRow: {
-    paddingBottom: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  soundLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  musicIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(244,185,66,0.45)",
-    borderWidth: 1.2,
-    borderColor: "rgba(255, 255, 255, 0.9)",
-    shadowColor: C.goldDark,
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-  },
-  soundTextBlock: {
-    flex: 1,
-  },
-  caps: {
-    textTransform: "uppercase",
-    color: C.muted,
-    fontSize: 12,
-    fontWeight: "900",
-    letterSpacing: 1.8,
-  },
-  soundTitle: {
-    marginTop: 3,
-    fontSize: 17,
-    lineHeight: 22,
-    fontWeight: "900",
-  },
-  previewButton: {
-    width: 43,
-    height: 43,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FBE6D8",
-    borderWidth: 1.2,
-    borderColor: "rgba(255, 255, 255, 0.9)",
-    borderTopColor: "#FFFFFF",
-    shadowColor: C.saffron,
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-  },
-  previewActive: {
-    backgroundColor: "#FFD8CA",
-  },
-  toggleRow: {
-    minHeight: 70,
-    paddingVertical: 11,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  toggleCopy: {
-    flex: 1,
-    paddingRight: 14,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  inlineIcon: {
-    width: 28,
-    alignItems: "center",
-    marginRight: 9,
-  },
-  toggleText: {
-    flex: 1,
-  },
-  toggleTitle: {
-    fontSize: 18,
-    lineHeight: 23,
-    fontWeight: "800",
-  },
-  toggleDescription: {
-    marginTop: 2,
-    color: C.muted,
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  switchTrack: {
-    width: 53,
-    height: 32,
-    borderRadius: 18,
-    padding: 4,
-    justifyContent: "center",
-  },
-  switchOn: {
-    backgroundColor: C.saffron,
-  },
-  switchOff: {
-    backgroundColor: "#E9D7C8",
-  },
-  switchKnob: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: C.white,
-    shadowColor: "#32170A",
-    shadowOpacity: 0.14,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  switchKnobOn: {
-    transform: [{ translateX: 21 }],
-  },
-  companionGrid: {
-    flexDirection: "row",
-    gap: 14,
-    marginBottom: 36,
-  },
-  companionCard: {
-    flex: 1,
-    minHeight: 148,
-    borderRadius: 30,
-    padding: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FCE5D6",
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.9)",
-    borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(200, 140, 100, 0.3)",
-    borderBottomWidth: 2.5,
-    shadowColor: "#8C4010",
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-  },
-  companionImage: {
-    width: 55,
-    height: 55,
-    borderRadius: 28,
-    marginRight: 11,
-    backgroundColor: C.sand,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.8)",
-  },
-  companionCopy: {
-    flex: 1,
-  },
-  companionLabel: {
-    textTransform: "uppercase",
-    fontSize: 11,
-    lineHeight: 15,
-    fontWeight: "900",
-    letterSpacing: 0.8,
-  },
-  companionTitle: {
-    marginTop: 5,
-    fontSize: 16,
-    lineHeight: 23,
-    fontWeight: "600",
-  },
   primaryButton: {
-    minHeight: 63,
-    borderRadius: 32,
-    marginBottom: 6,
-    paddingHorizontal: 22,
+    minHeight: 62,
+    borderRadius: 31,
+    marginBottom: 10,
+    paddingHorizontal: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1349,6 +1556,11 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
   },
+  primaryButtonSmall: {
+    minHeight: 54,
+    borderRadius: 27,
+    paddingHorizontal: 14,
+  },
   primaryPressed: {
     transform: [{ scale: 0.98 }],
     opacity: 0.92,
@@ -1358,5 +1570,8 @@ const s = StyleSheet.create({
     fontSize: 18,
     fontWeight: "900",
     letterSpacing: 0.1,
+  },
+  primaryTextSmall: {
+    fontSize: 15,
   },
 });

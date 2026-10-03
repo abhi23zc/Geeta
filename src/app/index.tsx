@@ -1,24 +1,19 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
-  Image,
+  AccessibilityInfo,
+  AppState,
   Linking,
   Pressable,
   StyleSheet,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
-import Svg, { Circle, Path } from 'react-native-svg';
 import {
   Bell,
   BookOpen,
   Bookmark,
-  CheckCircle2,
+  Check,
   Flame,
   Flower2,
   Leaf,
@@ -26,24 +21,41 @@ import {
   Music,
   SlidersHorizontal,
   Sun,
-  Volume2,
 } from 'lucide-react-native';
 
 import { DiyaGraphic, Header, Screen, TextR } from '@/components/ritual-ui';
 import { TactileTile } from '@/components/tactile-tile';
 import { C } from '@/constants/ritual-theme';
+import { toneLabel } from '../../shared/content';
+import { useContent } from '@/state/content-store';
+import { saveTeaching } from '@/services/content-cache';
+import { useLocalDateKey } from '@/hooks/use-local-date-key';
 import {
   cancelScheduledAlarm,
+  getAlarmHomeSnapshot,
   openExactAlarmSettings,
   openFullScreenIntentSettings,
+  openNotificationChannelSettings,
   scheduleRecurringAlarm,
+  type AlarmHomeSnapshot,
 } from '@/services/alarm';
+import { useGitaProgress } from '@/state/gita-store';
 import { useRitual } from '@/state/ritual-store';
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+type AlarmHomeStatus =
+  | 'loading'
+  | 'off'
+  | 'updating'
+  | 'scheduled'
+  | 'action-required'
+  | 'unavailable';
 
-const DAWN_IMAGE_URL =
-  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1000&auto=format&fit=crop';
+type AlarmIssue =
+  | 'exact-alarm'
+  | 'notifications'
+  | 'full-screen'
+  | 'channel'
+  | null;
 
 function formatAlarm(value: string) {
   const [rawHour = '6', minute = '30'] = value.split(':');
@@ -54,8 +66,64 @@ function formatAlarm(value: string) {
   };
 }
 
+function getAlarmStatus(
+  snapshot: AlarmHomeSnapshot | null,
+  isUpdating: boolean,
+): AlarmHomeStatus {
+  if (isUpdating) return 'updating';
+  if (!snapshot) return 'loading';
+  if (!snapshot.available) return 'unavailable';
+  if (!snapshot.config?.enabled) return 'off';
+
+  const { capabilities } = snapshot;
+  if (
+    !snapshot.scheduled ||
+    !capabilities.notifications ||
+    !capabilities.notificationChannelReady
+  ) {
+    return 'action-required';
+  }
+  return 'scheduled';
+}
+
+function getAlarmIssue(snapshot: AlarmHomeSnapshot | null): AlarmIssue {
+  if (!snapshot) return null;
+  const { capabilities } = snapshot;
+  if (!capabilities.exactAlarm) return 'exact-alarm';
+  if (!capabilities.notifications) return 'notifications';
+  if (!capabilities.notificationChannelReady) return 'channel';
+  if (!capabilities.fullScreenIntent) return 'full-screen';
+  return null;
+}
+
+function issueCopy(issue: AlarmIssue) {
+  switch (issue) {
+    case 'exact-alarm':
+      return 'Allow Alarms & reminders so Android can schedule this wake-up.';
+    case 'notifications':
+      return 'Allow notifications so your alarm can appear over the lock screen.';
+    case 'full-screen':
+      return 'Full-screen access is off. Use the alarm notification to open or stop it.';
+    case 'channel':
+      return 'Set the Morning Ritual alarm channel to High importance.';
+    default:
+      return 'This alarm needs attention before it can wake you reliably.';
+  }
+}
+
+function formatDays(days: readonly string[]) {
+  const labels: Record<string, string> = {
+    mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun',
+  };
+  if (days.length === 7) return 'Every day';
+  return days.map((day) => labels[day] ?? day).join(', ');
+}
+
 export default function Home() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isSmall = width < 360;
+
   const {
     alarmTime,
     alarmTone,
@@ -64,90 +132,153 @@ export default function Home() {
     setAlarmEnabled,
     alarmReady,
   } = useRitual();
-  const [bookmarked, setBookmarked] = useState(false);
-  const formattedAlarm = formatAlarm(alarmTime);
+  const {
+    ready: gitaReady,
+    bookmarks,
+    completedDates,
+    breathingCompletedDates,
+    streak,
+    toggleBookmark,
+  } = useGitaProgress();
+  const today = useLocalDateKey();
+  const { practice: todayVerse, snapshot: content, fallback } = useContent();
+  const [snapshot, setSnapshot] = useState<AlarmHomeSnapshot | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [alarmError, setAlarmError] = useState<string | null>(null);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
-  const bookmarkScale = useSharedValue(1);
+  const refreshAlarm = useCallback(async () => {
+    try {
+      const next = await getAlarmHomeSnapshot();
+      setSnapshot(next);
+      setAlarmError(null);
+    } catch {
+      setAlarmError('We could not confirm your alarm status. Try again before relying on it.');
+    }
+  }, []);
 
-  const animatedBookmarkStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: bookmarkScale.value }],
-  }));
+  useEffect(() => {
+    if (!alarmReady) return;
+    const timer = setTimeout(() => {
+      void refreshAlarm();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [alarmReady, refreshAlarm]);
 
-  const handleBookmarkPress = () => {
-    bookmarkScale.value = withSpring(1.35, { damping: 10, stiffness: 300 }, () => {
-      bookmarkScale.value = withSpring(1, { damping: 12, stiffness: 200 });
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && alarmReady) refreshAlarm();
     });
-    setBookmarked(!bookmarked);
-  };
+    return () => subscription.remove();
+  }, [alarmReady, refreshAlarm]);
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then(setReducedMotion)
+      .catch(() => undefined);
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      setReducedMotion,
+    );
+    return () => subscription.remove();
+  }, []);
+
+  const status = getAlarmStatus(snapshot, isUpdating);
+  const issue = getAlarmIssue(snapshot);
+  const activeConfig = snapshot?.config;
+  const displayTime = activeConfig
+    ? `${String(activeConfig.hour).padStart(2, '0')}:${String(activeConfig.minute).padStart(2, '0')}`
+    : alarmTime;
+  const formattedAlarm = formatAlarm(displayTime);
+  const displayTone = toneLabel(activeConfig?.tone.key ?? alarmTone);
+  const displayDays = activeConfig?.weekdays ?? alarmDays;
+  const alarmRequested = activeConfig?.enabled ?? alarmEnabled;
+  const reflectionComplete = completedDates.has(today);
+  const breathingComplete = breathingCompletedDates.has(today);
+  const ritualCount = Number(reflectionComplete) + Number(breathingComplete);
+  const bookmarked = bookmarks.has(todayVerse.id);
+  const loading = !alarmReady || !gitaReady || (!snapshot && !alarmError);
 
   const toggleAlarm = async () => {
-    if (!alarmReady) return;
+    if (isUpdating || !snapshot?.available) return;
+    setIsUpdating(true);
+    setAlarmError(null);
     try {
-      if (alarmEnabled) {
+      if (alarmRequested) {
         await cancelScheduledAlarm();
         setAlarmEnabled(false);
       } else {
-        const result = await scheduleRecurringAlarm({
+        await scheduleRecurringAlarm({
           time: alarmTime,
           tone: alarmTone,
           days: alarmDays,
         });
         setAlarmEnabled(true);
-        if (!result.capabilities.notifications) {
-          Alert.alert(
-            'Allow alarm notifications',
-            'Enable notifications so Android can show the ringing alarm over the lock screen.',
-            [
-              { text: 'Not now', style: 'cancel' },
-              { text: 'Open settings', onPress: () => Linking.openSettings() },
-            ],
-          );
-        } else if (!result.scheduled || !result.capabilities.exactAlarm) {
-          Alert.alert(
-            'Allow Alarms & reminders',
-            'Your alarm is saved, but Android needs exact-alarm access before it can be scheduled.',
-            [
-              { text: 'Not now', style: 'cancel' },
-              { text: 'Open settings', onPress: openExactAlarmSettings },
-            ],
-          );
-        } else if (!result.capabilities.fullScreenIntent) {
-          Alert.alert(
-            'Allow full-screen alarms',
-            'The alarm will ring as a heads-up notification until full-screen alarm access is enabled.',
-            [
-              { text: 'Continue', style: 'cancel' },
-              { text: 'Open settings', onPress: openFullScreenIntentSettings },
-            ],
-          );
-        }
       }
+      await refreshAlarm();
     } catch (error) {
-      Alert.alert(
-        "Could not update alarm",
-        error instanceof Error ? error.message : "Please try again.",
-      );
+      setAlarmError(error instanceof Error ? error.message : 'Please try again.');
+      await refreshAlarm();
+    } finally {
+      setIsUpdating(false);
     }
   };
 
+  const fixAlarm = async () => {
+    try {
+      switch (issue) {
+        case 'exact-alarm':
+          await openExactAlarmSettings();
+          break;
+        case 'notifications':
+          await Linking.openSettings();
+          break;
+        case 'full-screen':
+          await openFullScreenIntentSettings();
+          break;
+        case 'channel':
+          await openNotificationChannelSettings();
+          break;
+        default:
+          break;
+      }
+    } catch {
+      setAlarmError('We could not open Android settings. Please open the app settings manually.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <Screen>
+        <Header eyebrow="Home" showActions={false} />
+        <View style={s.loadingCard} accessibilityRole="progressbar">
+          <TextR serif style={s.loadingTitle}>Preparing your ritual</TextR>
+          <TextR style={s.loadingSub}>Checking your alarm and today&apos;s progress.</TextR>
+        </View>
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
-      <Header eyebrow="Home" />
+      <Header eyebrow="Home" showActions={false} />
 
       {/* Sacred Top Greeting & Muhurta Badge */}
       <View style={s.topRow}>
         <View style={s.muhurtaBadge}>
           <View style={s.pulseDot} />
-          <TextR style={s.muhurtaText}>Brahma Muhurta · 05:45 AM</TextR>
+          <TextR style={s.muhurtaText}>Today&apos;s ritual</TextR>
         </View>
         <View style={s.streakBadge}>
-          <Flame size={17} color={C.saffron} fill={C.saffron} />
-          <TextR style={s.streakText}>Day 12</TextR>
+          <Flame size={15} color={C.saffron} fill={C.saffron} />
+          <TextR style={s.streakText}>
+            {streak > 0 ? `${streak}-day streak` : 'Begin your streak'}
+          </TextR>
         </View>
       </View>
 
       <View style={s.greetingContainer}>
-        <TextR serif style={s.greetingTitle}>
+        <TextR serif style={[s.greetingTitle, isSmall && { fontSize: 26, lineHeight: 32 }]}>
           Shubh Prabhat
         </TextR>
         <TextR style={s.greetingSub}>
@@ -156,12 +287,22 @@ export default function Home() {
       </View>
 
       {/* Devotional Hero Alarm Card */}
-      <View style={s.heroAlarmCard}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open alarm setup"
+        accessibilityHint="Open alarm time, sound, and wake settings"
+        onPress={() => router.navigate('/alarm/setup')}
+        style={({ pressed }) => [
+          s.heroAlarmCard,
+          status === 'action-required' && s.heroAlarmAttention,
+          pressed && s.cardPressed,
+        ]}
+      >
         <View style={s.alarmHeaderRow}>
-          <View>
+          <View style={{ flex: 1 }}>
             <TextR style={s.alarmKicker}>AWAKENING SANKALPA</TextR>
             <View style={s.timeRow}>
-              <TextR serif style={s.alarmTime}>
+              <TextR serif style={[s.alarmTime, isSmall && { fontSize: 40 }]}>
                 {formattedAlarm.time}
               </TextR>
               <TextR style={s.amText}>{formattedAlarm.meridiem}</TextR>
@@ -170,58 +311,97 @@ export default function Home() {
 
           {/* 3D Glass Toggle Switch */}
           <Pressable
-            onPress={toggleAlarm}
+            onPress={(event) => {
+              event.stopPropagation();
+              void toggleAlarm();
+            }}
+            disabled={isUpdating || status === 'unavailable'}
+            accessibilityLabel="Alarm enabled"
+            accessibilityHint={alarmRequested ? 'Turn off your recurring alarm.' : 'Schedule your recurring alarm.'}
             accessibilityRole="switch"
-            accessibilityState={{ checked: alarmEnabled, disabled: !alarmReady }}
+            accessibilityState={{ checked: alarmRequested, disabled: isUpdating || status === 'unavailable' }}
             style={[
               s.switchTrack,
-              alarmEnabled ? s.switchTrackOn : s.switchTrackOff,
+              alarmRequested ? s.switchTrackOn : s.switchTrackOff,
+              (isUpdating || status === 'unavailable') && s.switchTrackDisabled,
             ]}
           >
             <View
               style={[
                 s.switchKnob,
-                alarmEnabled ? s.switchKnobOn : s.switchKnobOff,
+                alarmRequested ? s.switchKnobOn : s.switchKnobOff,
               ]}
             >
               <Sun
-                size={15}
+                size={14}
                 color={C.saffron}
-                fill={alarmEnabled ? C.saffron : 'transparent'}
+                fill={alarmRequested ? C.saffron : 'transparent'}
               />
             </View>
           </Pressable>
         </View>
 
         <View style={s.toneRow}>
-          <Music size={20} color={C.primary} />
-          <TextR style={s.toneText}>Sacred Flute & Morning Shankh Naad</TextR>
+          <Music size={18} color={C.primary} />
+          <TextR style={s.toneText} numberOfLines={1}>{displayTone}</TextR>
         </View>
+        <TextR style={s.scheduleText}>{formatDays(displayDays)}</TextR>
 
         <View style={s.alarmFooterRow}>
           <Link href="/alarm/setup" asChild>
-            <Pressable style={s.customizeBtn}>
-              <SlidersHorizontal size={18} color={C.saffron} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Customize alarm"
+              accessibilityHint="Open alarm time, sound, and wake settings"
+              style={s.customizeBtn}
+            >
+              <SlidersHorizontal size={16} color={C.saffron} />
               <TextR style={s.customizeText}>Customize tone & ritual</TextR>
             </Pressable>
           </Link>
           <View style={s.gentleWakeBadge}>
             <View style={s.greenDot} />
-            <TextR style={s.gentleWakeText}>GENTLE WAKE</TextR>
+            <TextR style={s.gentleWakeText}>
+              {status === 'updating' ? 'UPDATING' : status === 'scheduled' ? 'SCHEDULED' : status === 'action-required' ? 'ACTION REQUIRED' : status === 'unavailable' ? 'ANDROID ONLY' : 'OFF'}
+            </TextR>
           </View>
         </View>
-      </View>
+        {status === 'action-required' && (
+          <View style={s.alarmStatusAlert}>
+            <TextR style={s.alarmStatusText}>{issueCopy(issue)}</TextR>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Fix alarm permissions"
+              accessibilityHint="Open the Android setting needed for this alarm"
+              onPress={(event) => {
+                event.stopPropagation();
+                void fixAlarm();
+              }}
+              style={({ pressed }) => [s.fixAlarmButton, pressed && s.pressedControl]}
+            >
+              <TextR style={s.fixAlarmText}>Fix alarm</TextR>
+            </Pressable>
+          </View>
+        )}
+        {status === 'scheduled' && !snapshot?.capabilities.fullScreenIntent && (
+          <TextR style={s.alarmStatusText}>Full-screen access is off. Use the alarm notification to open or stop it.</TextR>
+        )}
+        {status === 'unavailable' && (
+          <TextR style={s.alarmStatusText}>Alarms are available in the Android development or release app.</TextR>
+        )}
+        {alarmError && <TextR style={s.alarmErrorText}>{alarmError}</TextR>}
+      </Pressable>
 
       {/* Awakening Vibe Banner */}
       <View style={s.vibeCard}>
         <View style={s.diyaGlowCircle}>
-          <DiyaGraphic size={46} color={C.saffron} flameColor={C.gold} showAura={false} animated={true} />
+          <DiyaGraphic size={isSmall ? 38 : 44} color={C.saffron} flameColor={C.gold} showAura={false} animated={!reducedMotion} />
         </View>
         <View style={s.vibeContent}>
           <TextR style={s.vibeKicker}>AWAKENING VIBE</TextR>
           <TextR style={s.vibeTitle}>Inner Light Sanctuary</TextR>
           <TextR style={s.vibeSub} numberOfLines={2}>
-            Let gentle flute notes softly align your breathing rhythm as dawn unfolds.
+            Begin with a few quiet breaths before you enter today&apos;s ritual.
           </TextR>
         </View>
       </View>
@@ -236,126 +416,115 @@ export default function Home() {
         <View style={s.gridRow}>
           <TactileTile
             href="/alarm/setup"
-            icon={<Bell size={26} color="#271900" />}
+            icon={<Bell size={isSmall ? 20 : 24} color="#271900" />}
             bgColor="#FEC24A"
             title="Set Alarm"
           />
           <TactileTile
             href="/breathe"
-            icon={<Leaf size={26} color="#00210A" />}
+            icon={<Leaf size={isSmall ? 20 : 24} color="#00210A" />}
             bgColor="#BDEFC1"
             title="Sadhana"
           />
           <TactileTile
             href="/gita"
-            icon={<BookOpen size={26} color="#351000" />}
+            icon={<BookOpen size={isSmall ? 20 : 24} color="#351000" />}
             bgColor="#FFDBCC"
             title="Daily Gita"
           />
           <TactileTile
             href="/night"
-            icon={<Moon size={26} color="#574239" />}
+            icon={<Moon size={isSmall ? 20 : 24} color="#574239" />}
             bgColor="#F2DFD1"
             title="Night Rest"
           />
         </View>
       </View>
 
-      {/* Today's Bhagavad Gita Wisdom Card */}
       <View style={s.shlokaCard}>
+        <View style={s.contentCachePillRow}>
+          <Link href="/downloads" asChild>
+            <Pressable style={s.cacheBadge}>
+              <TextR style={s.cacheBadgeText}>
+                {fallback ? 'Offline practice' : 'Today’s downloaded practice'} · {Object.keys(content.days).length}/7 days · Downloads →
+              </TextR>
+            </Pressable>
+          </Link>
+          <Link href="/saved" asChild>
+            <Pressable style={s.savedTeachingsBtn}>
+              <TextR style={s.savedTeachingsText}>Saved teachings →</TextR>
+            </Pressable>
+          </Link>
+        </View>
+
         <View style={s.shlokaHeader}>
           <View style={s.shlokaKickerGroup}>
             <View style={s.shlokaDot} />
-            <TextR style={s.shlokaKicker}>TODAY'S SACRED SHLOKA</TextR>
+            <TextR style={s.shlokaKicker}>TODAY&apos;S SACRED SHLOKA</TextR>
           </View>
-          <TextR style={s.shlokaChapter}>Adhyaya 2 · 47</TextR>
+          <TextR style={s.shlokaChapter}>Adhyaya {todayVerse.chapter} · {todayVerse.verse}</TextR>
         </View>
 
-        <TextR serif style={s.shlokaDevanagari}>
-          कर्मण्येवाधिकारस्ते मा फलेषु कदाचन।
+        <TextR serif style={[s.shlokaDevanagari, isSmall && { fontSize: 20, lineHeight: 28 }]}>
+          {todayVerse.sanskrit.split('\n')[0]}
         </TextR>
 
         <TextR style={s.shlokaEnglish}>
-          “You have a right to your action, never to its fruits. Let not the
-          fruits of action be your motive.”
+          {todayVerse.meaning}
         </TextR>
 
         <View style={s.shlokaActionRow}>
           <Pressable
-            onPress={() => router.push('/gita')}
+            onPress={() => router.navigate('/gita')}
+            accessibilityRole="button"
+            accessibilityLabel="Reflect on today&apos;s verse"
+            accessibilityHint="Open today&apos;s Bhagavad Gita reflection"
             style={({ pressed }) => [
               s.reflectBtn,
               pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] },
             ]}
           >
-            <TextR style={s.reflectText}>Reflect on Verse 47 →</TextR>
+            <TextR style={s.reflectText}>Reflect on Verse {todayVerse.verse} →</TextR>
           </Pressable>
-          <AnimatedPressable
-            onPress={handleBookmarkPress}
-            style={[s.bookmarkBtn, animatedBookmarkStyle]}
+          <Pressable
+            onPress={() => { if (!bookmarked) void saveTeaching(todayVerse).catch(() => undefined); toggleBookmark(todayVerse.id); }}
+            accessibilityRole="button"
+            accessibilityLabel={bookmarked ? 'Remove verse bookmark' : 'Bookmark today&apos;s verse'}
+            style={({ pressed }) => [s.bookmarkBtn, pressed && s.pressedControl]}
           >
             <Bookmark
-              size={20}
+              size={18}
               color={bookmarked ? C.saffron : C.inkSoft}
               fill={bookmarked ? C.saffron : 'transparent'}
             />
-          </AnimatedPressable>
+          </Pressable>
         </View>
       </View>
 
-      {/* Visual Atmospheric Photo Frame */}
-      <View style={s.atmosphereFrame}>
-        <Image source={{ uri: DAWN_IMAGE_URL }} style={s.atmosphereImage} />
-        <View style={s.atmosphereOverlay} />
-        <View style={s.atmosphereContent}>
-          <View>
-            <TextR style={s.atmoKicker}>MINDFUL ATMOSPHERE</TextR>
-            <TextR style={s.atmoTitle}>Peace of Pure Dawn</TextR>
-          </View>
-          <View style={s.volumeBtn}>
-            <Volume2 size={22} color={C.white} />
-          </View>
-        </View>
-      </View>
-
-      {/* Sacred Habit / Pure Morning Awareness Strip */}
-      <View style={s.sadhanaStrip}>
+      <View
+        accessible
+        style={s.sadhanaStrip}
+        accessibilityLabel={`Today&apos;s ritual progress: ${ritualCount} of 2 complete`}
+      >
         <View style={s.sadhanaLeft}>
           <View style={s.sadhanaIconCircle}>
-            <Flower2 size={22} color="#023314" />
+            <Flower2 size={20} color="#023314" />
           </View>
-          <View>
-            <TextR style={s.sadhanaTitle}>Morning Chanting Sadhana</TextR>
-            <TextR style={s.sadhanaSub}>Completed 108 Gayatri Japa</TextR>
+          <View style={{ flex: 1 }}>
+            <TextR style={s.sadhanaTitle}>Today&apos;s ritual · {ritualCount}/2</TextR>
+            <TextR style={s.sadhanaSub} numberOfLines={2}>
+              {reflectionComplete ? 'Gita reflection complete' : 'Gita reflection pending'}
+              {' · '}
+              {breathingComplete ? 'Breathing complete' : 'Breathing pending'}
+            </TextR>
           </View>
         </View>
-        <CheckCircle2 size={24} color={C.green} fill={C.greenLight} />
+        <View style={[s.progressCheck, ritualCount === 2 && s.progressCheckComplete]}>
+          <Check size={16} color={ritualCount === 2 ? C.white : C.greenDark} strokeWidth={3} />
+        </View>
       </View>
 
     </Screen>
-  );
-}
-
-function Tile({
-  href,
-  icon,
-  bgColor,
-  title,
-}: {
-  href: any;
-  icon: React.ReactNode;
-  bgColor: string;
-  title: string;
-}) {
-  return (
-    <Link href={href} asChild>
-      <Pressable style={s.tile}>
-        <View style={[s.tileIconCircle, { backgroundColor: bgColor }]}>
-          {icon}
-        </View>
-        <TextR style={s.tileTitle}>{title}</TextR>
-      </Pressable>
-    </Link>
   );
 }
 
@@ -364,33 +533,36 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
   },
   muhurtaBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(254, 194, 74, 0.25)',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 999,
-    gap: 8,
+    gap: 7,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.9)',
     borderTopColor: '#FFFFFF',
     shadowColor: C.gold,
     shadowOpacity: 0.15,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
     elevation: 2,
+    flexShrink: 1,
   },
   pulseDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: C.primary,
   },
   muhurtaText: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '800',
     color: C.primary,
     letterSpacing: 0.6,
@@ -400,66 +572,69 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 248, 242, 0.9)',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 999,
     gap: 6,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.9)',
     shadowColor: C.saffron,
     shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
     elevation: 2,
+    flexShrink: 1,
   },
   streakText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '800',
     color: C.ink,
   },
   greetingContainer: {
-    marginTop: 4,
-    marginBottom: 22,
+    marginTop: 2,
+    marginBottom: 18,
   },
   greetingTitle: {
-    fontSize: 32,
-    lineHeight: 40,
+    fontSize: 30,
+    lineHeight: 38,
     color: C.ink,
     fontWeight: '600',
+    letterSpacing: -0.3,
   },
   greetingSub: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14.5,
+    lineHeight: 21,
     color: C.muted,
-    marginTop: 4,
+    marginTop: 3,
     fontWeight: '500',
   },
   heroAlarmCard: {
     position: 'relative',
     backgroundColor: 'rgba(255, 248, 242, 0.94)',
     borderRadius: 24,
-    padding: 22,
+    padding: 18,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.95)',
     borderTopColor: '#FFFFFF',
     borderBottomColor: 'rgba(140, 64, 16, 0.18)',
     borderBottomWidth: 3.5,
-    marginBottom: 18,
+    marginBottom: 16,
     overflow: 'hidden',
     shadowColor: C.saffron,
     shadowOpacity: 0.16,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 7 },
+    elevation: 5,
   },
   alarmHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: 12,
   },
   alarmKicker: {
-    fontSize: 12.5,
-    letterSpacing: 1.5,
+    fontSize: 12,
+    letterSpacing: 1.4,
     fontWeight: '800',
     color: C.saffron,
     textTransform: 'uppercase',
@@ -471,19 +646,20 @@ const s = StyleSheet.create({
     gap: 6,
   },
   alarmTime: {
-    fontSize: 52,
+    fontSize: 48,
     color: C.ink,
     fontWeight: '300',
+    letterSpacing: -0.5,
   },
   amText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: C.saffron,
   },
   switchTrack: {
-    width: 60,
-    height: 34,
-    borderRadius: 17,
+    width: 58,
+    height: 32,
+    borderRadius: 16,
     padding: 3,
     justifyContent: 'center',
     borderWidth: 1.5,
@@ -502,9 +678,9 @@ const s = StyleSheet.create({
     backgroundColor: C.surfaceHighest,
   },
   switchKnob: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: C.white,
     alignItems: 'center',
     justifyContent: 'center',
@@ -515,9 +691,9 @@ const s = StyleSheet.create({
     borderBottomWidth: 2,
     shadowColor: '#000',
     shadowOpacity: 0.22,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
   switchKnobOn: {
     transform: [{ translateX: 26 }],
@@ -528,20 +704,23 @@ const s = StyleSheet.create({
   toneRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginTop: 16,
+    gap: 8,
+    marginTop: 14,
   },
   toneText: {
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '700',
     color: C.ink,
+    flexShrink: 1,
   },
   alarmFooterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 18,
-    paddingTop: 14,
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: C.divider,
   },
@@ -549,9 +728,10 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flexShrink: 1,
   },
   customizeText: {
-    fontSize: 14.5,
+    fontSize: 14,
     fontWeight: '800',
     color: C.saffron,
   },
@@ -559,6 +739,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flexShrink: 0,
   },
   greenDot: {
     width: 7,
@@ -567,199 +748,195 @@ const s = StyleSheet.create({
     backgroundColor: C.green,
   },
   gentleWakeText: {
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '800',
     color: C.greenDark,
     letterSpacing: 0.8,
   },
   vibeCard: {
     backgroundColor: 'rgba(254, 236, 220, 0.85)',
-    borderRadius: 24,
-    padding: 18,
+    borderRadius: 22,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    marginBottom: 24,
+    gap: 14,
+    marginBottom: 20,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.9)',
     borderTopColor: '#FFFFFF',
     shadowColor: C.saffron,
     shadowOpacity: 0.1,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 5 },
     elevation: 3,
   },
   diyaGlowCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: C.white,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.95)',
     shadowColor: C.saffron,
-    shadowOpacity: 0.22,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 5,
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+    flexShrink: 0,
   },
   vibeContent: {
     flex: 1,
+    minWidth: 0,
   },
   vibeKicker: {
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '800',
     color: C.goldDark,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   vibeTitle: {
-    fontSize: 19.5,
+    fontSize: 18,
     fontWeight: '700',
     color: C.ink,
-    marginTop: 2,
+    marginTop: 1,
   },
   vibeSub: {
-    fontSize: 13.5,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 19,
     color: C.muted,
-    marginTop: 3,
+    marginTop: 2,
     fontWeight: '500',
   },
   gatewaysSection: {
-    marginBottom: 26,
+    marginBottom: 22,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 12.5,
-    letterSpacing: 1.5,
+    fontSize: 12,
+    letterSpacing: 1.4,
     fontWeight: '800',
     color: C.ink,
     textTransform: 'uppercase',
   },
   sectionSubtitle: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '700',
     color: C.saffron,
   },
   gridRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 10,
-  },
-  tile: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 248, 242, 0.88)',
-    borderRadius: 20,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopColor: '#FFFFFF',
-    shadowColor: C.saffron,
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
-  },
-  tileIconCircle: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.7)',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-  },
-  tileTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: C.ink,
-    textAlign: 'center',
+    gap: 8,
   },
   shlokaCard: {
     backgroundColor: 'rgba(255, 252, 248, 0.96)',
     borderRadius: 24,
-    padding: 22,
+    padding: 18,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.95)',
     borderTopColor: '#F4B942',
     borderTopWidth: 3,
     borderBottomColor: 'rgba(140, 64, 16, 0.14)',
     borderBottomWidth: 3,
-    marginBottom: 22,
+    marginBottom: 18,
     shadowColor: C.saffron,
     shadowOpacity: 0.14,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 5,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  contentCachePillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(140, 64, 16, 0.08)',
+  },
+  cacheBadge: {
+    flexShrink: 1,
+  },
+  cacheBadgeText: {
+    fontSize: 11.5,
+    color: C.muted,
+    fontWeight: '600',
+  },
+  savedTeachingsBtn: {
+    flexShrink: 0,
+  },
+  savedTeachingsText: {
+    fontSize: 11.5,
+    color: C.saffron,
+    fontWeight: '700',
   },
   shlokaHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   shlokaKickerGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 7,
+    flexShrink: 1,
   },
   shlokaDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: C.saffron,
   },
   shlokaKicker: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '800',
     color: C.saffron,
     letterSpacing: 1.2,
   },
   shlokaChapter: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
     color: C.ink,
+    flexShrink: 0,
   },
   shlokaDevanagari: {
-    fontSize: 24,
-    lineHeight: 36,
+    fontSize: 22,
+    lineHeight: 33,
     color: C.primary,
     fontWeight: '600',
-    marginBottom: 10,
-    letterSpacing: 0.3,
+    marginBottom: 8,
+    letterSpacing: 0.2,
   },
   shlokaEnglish: {
-    fontSize: 15,
-    lineHeight: 23,
+    fontSize: 14,
+    lineHeight: 21,
     fontStyle: 'italic',
     color: C.muted,
-    marginBottom: 18,
+    marginBottom: 14,
     fontWeight: '500',
   },
   shlokaActionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   reflectBtn: {
     backgroundColor: '#FFDBCC',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     borderRadius: 999,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.95)',
@@ -767,20 +944,21 @@ const s = StyleSheet.create({
     borderBottomColor: 'rgba(140, 64, 16, 0.2)',
     borderBottomWidth: 2.5,
     shadowColor: C.saffron,
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+    flexShrink: 1,
   },
   reflectText: {
-    fontSize: 14.5,
+    fontSize: 13.5,
     fontWeight: '800',
     color: '#351000',
   },
   bookmarkBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: 'rgba(254, 236, 220, 0.95)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -790,80 +968,21 @@ const s = StyleSheet.create({
     borderBottomColor: 'rgba(140, 64, 16, 0.15)',
     borderBottomWidth: 2,
     shadowColor: C.saffron,
-    shadowOpacity: 0.14,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 3 },
     elevation: 3,
-  },
-  atmosphereFrame: {
-    height: 170,
-    borderRadius: 24,
-    overflow: 'hidden',
-    marginBottom: 18,
-    position: 'relative',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(0, 0, 0, 0.25)',
-    borderBottomWidth: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.16,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 5,
-  },
-  atmosphereImage: {
-    width: '100%',
-    height: '100%',
-  },
-  atmosphereOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(35, 26, 17, 0.42)',
-  },
-  atmosphereContent: {
-    position: 'absolute',
-    left: 20,
-    right: 20,
-    bottom: 18,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-  },
-  atmoKicker: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: C.gold,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  atmoTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: C.white,
-    marginTop: 2,
-  },
-  volumeBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.35)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
+    flexShrink: 0,
   },
   sadhanaStrip: {
     backgroundColor: 'rgba(248, 229, 214, 0.92)',
     borderRadius: 20,
-    padding: 18,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 22,
+    gap: 10,
+    marginBottom: 20,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.95)',
     borderTopColor: '#FFFFFF',
@@ -876,14 +995,16 @@ const s = StyleSheet.create({
     elevation: 4,
   },
   sadhanaLeft: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
+    minWidth: 0,
   },
   sadhanaIconCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: C.greenLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -891,16 +1012,104 @@ const s = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 6,
     elevation: 2,
+    flexShrink: 0,
   },
   sadhanaTitle: {
-    fontSize: 15.5,
+    fontSize: 14.5,
     fontWeight: '800',
     color: C.ink,
   },
   sadhanaSub: {
-    fontSize: 13.5,
+    fontSize: 12.5,
     color: C.muted,
     marginTop: 2,
     fontWeight: '500',
+  },
+  loadingCard: {
+    backgroundColor: 'rgba(255, 248, 242, 0.94)',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: C.glassBorder,
+    shadowColor: C.saffron,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+  loadingTitle: {
+    fontSize: 26,
+    color: C.ink,
+  },
+  loadingSub: {
+    marginTop: 6,
+    fontSize: 14,
+    color: C.muted,
+  },
+  heroAlarmAttention: {
+    borderColor: 'rgba(244, 185, 66, 0.8)',
+  },
+  cardPressed: {
+    opacity: 0.96,
+    transform: [{ scale: 0.992 }],
+  },
+  switchTrackDisabled: {
+    opacity: 0.55,
+  },
+  scheduleText: {
+    marginTop: 4,
+    marginLeft: 26,
+    fontSize: 12,
+    color: C.muted,
+    fontWeight: '600',
+  },
+  alarmStatusAlert: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: C.divider,
+  },
+  alarmStatusText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: C.muted,
+  },
+  alarmErrorText: {
+    marginTop: 10,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: C.primary,
+    fontWeight: '700',
+  },
+  fixAlarmButton: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    minHeight: 40,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: C.saffron,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fixAlarmText: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: C.white,
+  },
+  pressedControl: {
+    opacity: 0.82,
+    transform: [{ scale: 0.97 }],
+  },
+  progressCheck: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: C.greenLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  progressCheckComplete: {
+    backgroundColor: C.green,
   },
 });

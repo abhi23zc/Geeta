@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { useNavigation } from "expo-router";
 import {
   BellRing,
   Leaf,
@@ -16,6 +16,7 @@ import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer"
 import { Interactive3DCard } from "@/components/interactive-3d-card";
 import { Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
+import { replaceAppRoute } from "@/navigation/route-actions";
 import {
   addAlarmStoppedListener,
   addAlarmTriggeredListener,
@@ -40,9 +41,15 @@ function formatAlarm(value: string) {
 }
 
 export default function Wake() {
+  // Target the root file-based stack explicitly. The wake screen can be
+  // mounted by Android's full-screen alarm intent before a default navigation
+  // context has settled.
+  const navigation = useNavigation("/");
   const { alarmTime, alarmTone } = useRitual();
   const [started, setStarted] = useState(false);
   const reportedReady = useRef(false);
+  const mounted = useRef(true);
+  const dismissing = useRef(false);
   const [nativeConfig, setNativeConfig] = useState<NativeAlarmConfig | null>(null);
   const [playback, setPlayback] = useState<AlarmPlaybackState>({
     ringing: true,
@@ -52,6 +59,7 @@ export default function Wake() {
   });
 
   useEffect(() => {
+    mounted.current = true;
     getNativeAlarmConfig().then(setNativeConfig).catch(() => undefined);
     const refresh = () => getAlarmPlaybackState().then(setPlayback).catch(() => undefined);
     refresh();
@@ -63,11 +71,34 @@ export default function Wake() {
     const back = BackHandler.addEventListener("hardwareBackPress", () => true);
     return () => {
       clearInterval(timer);
+      mounted.current = false;
       triggered?.remove();
       stopped?.remove();
       back.remove();
     };
   }, []);
+
+  const handleStartDay = async () => {
+    if (dismissing.current) return;
+
+    dismissing.current = true;
+    setStarted(true);
+    try {
+      await dismissAlarmAndScheduleNext();
+      if (!mounted.current) return;
+      if (!replaceAppRoute(navigation, "/breathe", { entry: "alarm" })) {
+        throw new Error("The breathing screen is not ready. Please try again.");
+      }
+    } catch (error) {
+      if (!mounted.current) return;
+      dismissing.current = false;
+      setStarted(false);
+      Alert.alert(
+        "Could not stop alarm",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    }
+  };
 
   const formatted = useMemo(() => {
     if (playback.scheduledAt > 0) {
@@ -81,7 +112,7 @@ export default function Wake() {
     ? Math.round(playback.volumeProgress * 100)
     : 100;
   const ragaTitle =
-    alarmTone === "Raag Bhairav & Sacred Flute"
+    playback.actualTone === 'system' || playback.actualTone === 'notification' ? 'System alarm sound' : playback.actualTone === 'silent' ? 'Sound unavailable — vibration active' : alarmTone === "Raag Bhairav & Sacred Flute"
       ? "Shiva / Gita Morning Raga"
       : alarmTone;
 
@@ -156,7 +187,7 @@ export default function Wake() {
                     height={16}
                   />
                   <TextR style={s.audioSub}>
-                    Gentle Tanpura & Bansuri Flute
+                    {playback.fallbackReason ?? 'Downloaded alarm music'}
                   </TextR>
                 </View>
               </View>
@@ -192,19 +223,8 @@ export default function Wake() {
           <Pressable
             accessibilityHint="Keep holding for 1.5 seconds"
             delayLongPress={1500}
-            onLongPress={async () => {
-              setStarted(true);
-              try {
-                await dismissAlarmAndScheduleNext();
-                router.replace("/breathe");
-              } catch (error) {
-                setStarted(false);
-                Alert.alert(
-                  "Could not stop alarm",
-                  error instanceof Error ? error.message : "Please try again.",
-                );
-              }
-            }}
+            disabled={started}
+            onLongPress={handleStartDay}
             style={({ pressed }) => [
               s.primaryButton,
               pressed && s.pressedScale,
@@ -212,7 +232,7 @@ export default function Wake() {
           >
             <Sun size={23} color={C.white} strokeWidth={2.2} />
             <TextR style={s.primaryText}>
-              {started ? "Peaceful Morning Begins..." : "Hold to start my day"}
+              {started ? "Starting your practice…" : "Hold to start my day"}
             </TextR>
           </Pressable>
 
@@ -228,6 +248,7 @@ export default function Wake() {
             Your Surya Namaskar routine is prepared for 06:45 AM
           </TextR>
         </View>
+
       </View>
     </Screen>
   );

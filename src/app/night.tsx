@@ -11,7 +11,7 @@ import {
   SunMedium,
   Timer,
 } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Image, Pressable, StyleSheet, TextInput, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -25,18 +25,14 @@ import { Header, Screen, TextR } from "@/components/ritual-ui";
 import { AruMascot } from "@/components/aru-mascot";
 import { Interactive3DCard } from "@/components/interactive-3d-card";
 import { C } from "@/constants/ritual-theme";
-import { Task, useRitual } from "@/state/ritual-store";
+import { useRitual } from "@/state/ritual-store";
+import { Task, useTasks } from "@/state/tasks-store";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const NIGHT_TEMPLE_URL =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuCBM-a_USNYgwfogwljPSzQLIKdcDNkUICdu9RAKLzyv3Aa5SQeaiok00CnOst5mTCXfCvdHBcKY7_lKfuxWDKJ8q_1bFjBzCGx8nUz984x7rEGZmf5fobbcJKXzEDAVScc0gEySJDyeF0eYN660d56aEoS-g_a_bsDEK0NzMwUbYrwJmqOCUi81OPz3s5gitqPCbD8_XzOJrFTKIcB3XqW8Q1ZWjlSan0KbOvvixaCmkjHCpc_nNFXWQ";
 
-const reviewCopy: Record<string, string> = {
-  proposal: "Completed with focus",
-  walk: "5,420 steps under moonlight",
-  read: "Carried forward to dawn",
-};
 
 function CelestialMoonIcon({ size = 32 }: { size?: number }) {
   return (
@@ -66,8 +62,9 @@ function CelestialMoonIcon({ size = 32 }: { size?: number }) {
 }
 
 export default function Night() {
-  const { tasks, toggleTask, reflection, setReflection, alarmTime, alarmTone } =
+  const { reflection, setReflection, alarmTime, alarmTone } =
     useRitual();
+  const { tasks: reviewTasks, toggleCompletion: toggleTask, ready: tasksReady, loadError: tasksLoadError } = useTasks();
   const [journal, setJournal] = useState(
     "Practiced remaining calm during the client review. Felt grounded.",
   );
@@ -78,13 +75,6 @@ export default function Night() {
   const defaultJoyText =
     "Warm sunlight on my balcony while reciting morning Gayatri mantra; peaceful, unhurried conversation with mother over ginger tea.";
 
-  const reviewTasks = useMemo(() => {
-    const preferred = ["proposal", "walk", "read"]
-      .map((id) => tasks.find((task) => task.id === id))
-      .filter(Boolean) as Task[];
-
-    return preferred.length ? preferred : tasks.slice(0, 3);
-  }, [tasks]);
 
   const completedCount = reviewTasks.filter((t) => t.done).length;
 
@@ -132,18 +122,16 @@ export default function Night() {
         <SectionTitle
           icon={<View style={s.sectionDot} />}
           title="Daily Mindful Review"
-          badge={`${completedCount} of 4 Done`}
+          badge={tasksReady ? `${completedCount} of ${reviewTasks.length} Done` : 'Loading'}
           night
         />
         <View style={s.reviewCard}>
-          {reviewTasks.map((task, index) => (
+          {!tasksReady ? <TextR style={s.reviewSub}>{tasksLoadError ? 'Open Today to recover your saved intentions.' : 'Preparing your intentions…'}</TextR> : reviewTasks.length === 0 ? <TextR style={s.reviewSub}>No intentions for today. You can add one on Today.</TextR> : null}
+          {reviewTasks.map((task) => (
             <ReviewRow
               key={task.id}
               task={task}
-              carried={
-                task.id === "read" ||
-                (!task.done && index === reviewTasks.length - 1)
-              }
+              carried={!task.done}
               onToggle={() => toggleTask(task.id)}
             />
           ))}
@@ -159,7 +147,7 @@ export default function Night() {
         />
         <View style={s.joyCard}>
           <View style={s.joyTop}>
-            <TextR style={s.promptKicker}>TODAY'S SACRED PROMPT</TextR>
+            <TextR style={s.promptKicker}>TODAY’S SACRED PROMPT</TextR>
             <View style={s.kritajnataChip}>
               <TextR style={s.kritajnataText}>Kritajnata</TextR>
             </View>
@@ -256,7 +244,7 @@ export default function Night() {
         <View style={s.dawnCard}>
           <View style={s.dawnTop}>
             <View style={{ flex: 1 }}>
-              <TextR style={s.promptKicker}>TOMORROW'S WAKE-UP</TextR>
+              <TextR style={s.promptKicker}>TOMORROW’S WAKE-UP</TextR>
               <View style={s.timeRow}>
                 <TextR serif style={s.timeText}>
                   {alarmTime || "06:00"}
@@ -426,20 +414,19 @@ function ReviewRow({
             style={[s.reviewTitle, done && s.reviewTitleDone]}
             numberOfLines={1}
           >
-            {task.id === "read" ? "Read 10 pages of Upanishads" : task.title}
+            {task.title}
           </TextR>
           <TextR
             style={[s.reviewSub, carried && s.reviewSubCarry]}
             numberOfLines={1}
           >
-            {reviewCopy[task.id] ??
-              (done ? "Completed with focus" : "Carried forward to dawn ↻")}
+            {done ? "Completed today" : task.recurrence === 'daily' ? "Not completed today" : "Continues tomorrow"}
           </TextR>
         </View>
       </View>
       {carried ? (
         <View style={s.tomorrowPill}>
-          <TextR style={s.tomorrowText}>Tomorrow</TextR>
+          <TextR style={s.tomorrowText}>Pending</TextR>
         </View>
       ) : (
         <CheckCircle2 size={20} color={done ? "#2DD4BF" : "#7D86A9"} fill={done ? "rgba(45, 212, 191, 0.15)" : "transparent"} />

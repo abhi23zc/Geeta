@@ -7,8 +7,15 @@ import android.os.Build
 
 class AlarmReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
+    AlarmLog.initialize(context)
     AlarmLog.event("receiver_fired")
-    val config = AlarmStore.get(context) ?: return
+    val test = intent.getBooleanExtra("test", false)
+    if (!AlarmCapabilities.ready(context)) {
+      AlarmLog.event("delivery_paused", "required access missing")
+      return
+    }
+    if (test && AlarmStore.isRinging(context)) return
+    val config = if (test) AlarmConfig(hour = 0, minute = 0, weekdays = emptySet(), enabled = true, gradualVolume = false, vibration = true, revision = 0) else AlarmStore.get(context) ?: return
     val revision = intent.getLongExtra(AlarmScheduler.EXTRA_REVISION, -1L)
     if (!config.enabled || revision != config.revision) {
       AlarmLog.event("receiver_rejected", "enabled=${config.enabled}, revision=$revision")
@@ -16,16 +23,15 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 
     val scheduledAt = intent.getLongExtra(AlarmScheduler.EXTRA_SCHEDULED_AT, System.currentTimeMillis())
-    val service = AlarmService.startIntent(context, scheduledAt)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      context.startForegroundService(service)
-    } else {
-      context.startService(service)
-    }
-    AlarmLog.event("foreground_service_requested")
+    val service = AlarmService.startIntent(context, scheduledAt).putExtra("test", test)
+    runCatching {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(service)
+      else context.startService(service)
+    }.onSuccess { AlarmLog.event("foreground_service_requested") }
+      .onFailure { AlarmLog.event("foreground_service_failed", it.javaClass.simpleName) }
 
-    // There is always one future recurrence after an alarm has fired. Snoozing
-    // temporarily replaces it and dismissal restores it.
-    runCatching { AlarmScheduler.scheduleNext(context, config) }
+    // Tests have independent scheduling identifiers and never create a recurrence.
+    if (!test) runCatching { AlarmScheduler.scheduleNext(context, config) }
+      .onFailure { AlarmLog.event("reschedule_failed", it.javaClass.simpleName) }
   }
 }

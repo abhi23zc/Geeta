@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { NativeModule, requireOptionalNativeModule } from "expo-modules-core";
 import { Platform } from "react-native";
+import { toneKey } from "../../shared/content";
 
 export const ALARM_CHANNEL_ID = "morning-ritual-native-alarm-v3";
 const MIGRATION_KEY = "morning-ritual:native-alarm-migrated-v3";
@@ -25,7 +26,7 @@ export type NativeAlarmConfig = {
   minute: number;
   weekdays: AlarmDayId[];
   enabled: boolean;
-  tone: { kind: "system" | "bundled"; key?: string };
+  tone: { kind: "system" | "bundled" | "downloaded"; key?: string };
   gradualVolume: boolean;
   vibration: boolean;
 };
@@ -37,6 +38,7 @@ export type AlarmCapabilityStatus = {
   channelImportance: number;
   notificationChannelReady: boolean;
   batteryRestricted: boolean;
+  batteryOptimizationExempt: boolean;
   sdkInt: number;
   manufacturer: string;
   oemGuidance: boolean;
@@ -49,14 +51,32 @@ export type AlarmLaunchDiagnostics = {
   interactive: boolean;
   ringing: boolean;
   capabilities: AlarmCapabilityStatus;
+  events: string[];
 };
 
 export type AlarmPlaybackState = {
+  actualTone?: string;
+  fallbackReason?: string;
+  toneRevision?: string;
   ringing: boolean;
   triggeredAt: number;
   scheduledAt: number;
   volumeProgress: number;
 };
+
+/**
+ * The compact alarm state consumed by dashboard surfaces. `scheduled` means
+ * Android currently allows an exact occurrence and alarm notifications.
+ * Full-screen access and manufacturer confirmations are advisory.
+ */
+export type AlarmHomeSnapshot = {
+  available: boolean;
+  config: NativeAlarmConfig | null;
+  capabilities: AlarmCapabilityStatus;
+  scheduled: boolean;
+};
+
+export type SettingsDestination = { destination: string; fallback: boolean };
 
 type AlarmEvents = {
   alarmTriggered(state: AlarmPlaybackState): void;
@@ -64,20 +84,26 @@ type AlarmEvents = {
 };
 
 declare class MorningAlarmNativeModule extends NativeModule<AlarmEvents> {
+  hashContentFile(uri: string): Promise<string>;
+  installAlarmTone(input: { key: string; uri: string; revision: string; bytes: number; sha256: string }): Promise<string>;
+  getInstalledAlarmTone(): Promise<{ key: string | null; revision: string | null }>;
   schedule(config: NativeAlarmConfig): Promise<{ scheduled: boolean; scheduledAt?: number }>;
   cancel(): Promise<void>;
   dismissAndScheduleNext(): Promise<number | null>;
+  reconcile(): Promise<boolean>;
+  scheduleTest(): Promise<number>;
   getConfig(): Promise<NativeAlarmConfig | null>;
   getPlaybackState(): Promise<AlarmPlaybackState>;
   getCapabilityStatus(): Promise<AlarmCapabilityStatus>;
   getLaunchDiagnostics(): Promise<AlarmLaunchDiagnostics>;
-  openExactAlarmSettings(): Promise<void>;
-  openFullScreenIntentSettings(): Promise<void>;
-  openNotificationChannelSettings(): Promise<void>;
+  openExactAlarmSettings(): Promise<SettingsDestination>;
+  openFullScreenIntentSettings(): Promise<SettingsDestination>;
+  openNotificationSettings(): Promise<SettingsDestination>;
+  openNotificationChannelSettings(): Promise<SettingsDestination>;
   notifyWakeScreenReady(): Promise<void>;
-  openAutoStartSettings(): Promise<void>;
-  openOemPermissionSettings(): Promise<void>;
-  openBatterySettings(): Promise<void>;
+  openAutoStartSettings(): Promise<SettingsDestination>;
+  openOemPermissionSettings(): Promise<SettingsDestination>;
+  openBatterySettings(): Promise<SettingsDestination>;
 }
 
 const NativeAlarm = Platform.OS === "android"
@@ -85,6 +111,16 @@ const NativeAlarm = Platform.OS === "android"
   : null;
 
 export const isNativeAlarmAvailable = NativeAlarm != null;
+
+export async function hashContentFile(uri: string) {
+  if (!NativeAlarm) throw new Error("Verified downloads require the updated Android native build.");
+  return NativeAlarm.hashContentFile(uri);
+}
+export async function installAlarmTone(input: { key: string; uri: string; revision: string; bytes: number; sha256: string }) {
+  if (!NativeAlarm) throw new Error("Downloaded alarms require an Android native build.");
+  return NativeAlarm.installAlarmTone(input);
+}
+export async function getInstalledAlarmTone() { return NativeAlarm?.getInstalledAlarmTone() ?? null; }
 
 function parseTime(time: string) {
   const [hour = "6", minute = "30"] = time.split(":");
@@ -147,7 +183,7 @@ export async function scheduleRecurringAlarm({
     minute,
     weekdays: days,
     enabled: true,
-    tone: { kind: "system", key: tone },
+    tone: { kind: "downloaded", key: toneKey(tone) },
     gradualVolume: gradualVolume ?? existing?.gradualVolume ?? true,
     vibration: vibration ?? existing?.vibration ?? true,
   });
@@ -163,21 +199,52 @@ export async function getNativeAlarmConfig() { return NativeAlarm?.getConfig() ?
 export async function getAlarmPlaybackState(): Promise<AlarmPlaybackState> {
   return (await NativeAlarm?.getPlaybackState()) ?? { ringing: false, triggeredAt: 0, scheduledAt: 0, volumeProgress: 0 };
 }
+export async function reconcileAlarm() { return NativeAlarm?.reconcile() ?? false; }
+export async function scheduleTestAlarm() {
+  if (!NativeAlarm) throw new Error("Test alarms require an Android native build.");
+  await requestAlarmPermission();
+  return NativeAlarm.scheduleTest();
+}
+
 export async function getAlarmCapabilityStatus() {
+  await configureAlarmNotifications();
   return NativeAlarm?.getCapabilityStatus() ?? {
     notifications: false, exactAlarm: false, fullScreenIntent: false,
-    channelImportance: 0, notificationChannelReady: false, batteryRestricted: false,
+    channelImportance: 0, notificationChannelReady: false, batteryRestricted: false, batteryOptimizationExempt: false,
     sdkInt: 0, manufacturer: "", oemGuidance: false,
   };
 }
-export async function openExactAlarmSettings() { await NativeAlarm?.openExactAlarmSettings(); }
-export async function openFullScreenIntentSettings() { await NativeAlarm?.openFullScreenIntentSettings(); }
-export async function openNotificationChannelSettings() { await NativeAlarm?.openNotificationChannelSettings(); }
+
+export async function getAlarmHomeSnapshot(): Promise<AlarmHomeSnapshot> {
+  if (!NativeAlarm) {
+    return {
+      available: false,
+      config: null,
+      capabilities: await getAlarmCapabilityStatus(),
+      scheduled: false,
+    };
+  }
+
+  const [config, capabilities] = await Promise.all([
+    NativeAlarm.getConfig(),
+    NativeAlarm.getCapabilityStatus(),
+  ]);
+  return {
+    available: true,
+    config,
+    capabilities,
+    scheduled: Boolean(config?.enabled && capabilities.exactAlarm && capabilities.notifications && capabilities.notificationChannelReady),
+  };
+}
+export async function openExactAlarmSettings() { return NativeAlarm?.openExactAlarmSettings(); }
+export async function openFullScreenIntentSettings() { return NativeAlarm?.openFullScreenIntentSettings(); }
+export async function openNotificationSettings() { return NativeAlarm?.openNotificationSettings(); }
+export async function openNotificationChannelSettings() { return NativeAlarm?.openNotificationChannelSettings(); }
 export async function getLaunchDiagnostics() { return NativeAlarm?.getLaunchDiagnostics(); }
 export async function notifyWakeScreenReady() { await NativeAlarm?.notifyWakeScreenReady(); }
-export async function openAutoStartSettings() { await NativeAlarm?.openAutoStartSettings(); }
-export async function openOemPermissionSettings() { await NativeAlarm?.openOemPermissionSettings(); }
-export async function openBatterySettings() { await NativeAlarm?.openBatterySettings(); }
+export async function openAutoStartSettings() { return NativeAlarm?.openAutoStartSettings(); }
+export async function openOemPermissionSettings() { return NativeAlarm?.openOemPermissionSettings(); }
+export async function openBatterySettings() { return NativeAlarm?.openBatterySettings(); }
 export function addAlarmTriggeredListener(listener: (state: AlarmPlaybackState) => void) {
   return NativeAlarm?.addListener("alarmTriggered", listener);
 }

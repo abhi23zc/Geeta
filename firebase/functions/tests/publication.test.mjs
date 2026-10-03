@@ -1,0 +1,40 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
+import { randomUUID } from 'node:crypto';
+
+test('real upload validation, atomic publication, ETag, conflict and rollback', async t => {
+  if (!process.env.FIREBASE_AUTH_EMULATOR_HOST || !process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_STORAGE_EMULATOR_HOST) throw new Error('Run through npm run test:firebase; production access is forbidden');
+  const app=initializeApp({projectId:'demo-geeta',storageBucket:'demo-geeta.appspot.com'},`publication-${randomUUID()}`);
+  const db=getFirestore(app), auth=getAuth(app), storage=getStorage(app);
+  const email=`editor-${randomUUID()}@example.test`, password='Local-test-password-123';
+  const user=await auth.createUser({email,password}); await auth.setCustomUserClaims(user.uid,{admin:true});
+  const login=await fetch(`http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=demo-key`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,returnSecureToken:true})});
+  const {idToken}=await login.json(); assert.ok(idToken);
+  const base='http://127.0.0.1:5001/demo-geeta/asia-south1/contentApi/api';
+  async function post(path,body,token=idToken){const r=await fetch(`${base}/admin/${path}`,{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify(body)});return{status:r.status,body:await r.json()};}
+  const audio=await readFile('../../assets/audio/gita/geeta-10-20-hi.mp3');
+  const path=`drafts/${user.uid}/${randomUUID()}.mp3`;
+  await storage.bucket().file(path).save(audio,{metadata:{contentType:'audio/mpeg'}});
+  const validation=await post('validate-asset',{path,kind:'daily'}); assert.equal(validation.status,200,JSON.stringify(validation.body));
+  const asset=validation.body; assert.equal(asset.bytes,audio.length); assert.match(asset.sha256,/^[a-f0-9]{64}$/);
+  const practice={id:'test-10-20',revision:randomUUID(),kind:'gita',chapter:10,verse:'20',theme:'Test practice',sanskrit:'अहमात्मा',transliteration:'Aham atma',meaning:'Meaning',takeaway:'Takeaway',context:'Context',reflectionPrompt:'Prompt',words:[],narration:{asset,completionMs:asset.durationMs,segments:[{kind:'sanskrit',text:'अहमात्मा',startMs:0,endMs:1000},{kind:'meaning',text:'Meaning',startMs:1000,endMs:asset.durationMs}]}};
+  const alarms=['gita','shankh','pranayama'].map(key=>({key,revision:randomUUID(),title:key,description:'Test alarm',asset}));
+  const before=(await db.doc('delivery/current').get()).data()?.releaseId??null;
+  const body={start:'2026-10-03',practices:Array.from({length:7},()=>practice),alarms,expectedReleaseId:before};
+  assert.equal((await post('publish',body,'invalid')).status,403);
+  const published=await post('publish',body);assert.equal(published.status,200,JSON.stringify(published.body));
+  const url=`${base}/v1/content-window?start=2026-10-03&days=7&locale=hi-IN`;
+  const response=await fetch(url), window=await response.json();assert.equal(window.days.length,7);assert.equal(window.releaseId,published.body.releaseId);assert.match(window.days[0].practice.narration.asset.url,/token=/);
+  assert.equal((await fetch(url,{headers:{'If-None-Match':response.headers.get('ETag')}})).status,304);
+  const conflict=await post('publish',body);assert.equal(conflict.status,400);assert.match(conflict.body.error,/Another admin/);
+  const invalid=await post('publish',{...body,expectedReleaseId:published.body.releaseId,practices:[]});assert.equal(invalid.status,400);assert.equal((await db.doc('delivery/current').get()).data().releaseId,published.body.releaseId);
+  const restored=await post('restore',{restoreId:published.body.releaseId,expectedReleaseId:published.body.releaseId});assert.equal(restored.status,200);assert.notEqual(restored.body.releaseId,published.body.releaseId);
+  assert.equal((await post('delivery',{enabled:false})).status,200);assert.equal((await (await fetch(url)).json()).enabled,false);
+  await post('delivery',{enabled:true});
+  await auth.deleteUser(user.uid);
+});

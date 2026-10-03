@@ -78,6 +78,7 @@ class AlarmActivity : ReactActivity() {
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     current = WeakReference(this)
     if (intent.data == null) intent.data = Uri.parse("geeta:///alarm/wake")
+    AlarmLog.initialize(this)
     AlarmLog.event("activity_create")
     super.onCreate(savedInstanceState)
     fallback = layoutInflater.inflate(R.layout.alarm_fallback, null).also { view ->

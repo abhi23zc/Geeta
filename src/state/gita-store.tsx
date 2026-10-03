@@ -33,6 +33,7 @@ type GitaContextValue = {
   getReflection: (dateKey: string) => DailyReflection | undefined;
   toggleBookmark: (verseId: string) => void;
   saveReflection: (dateKey: string, verseId: string, text: string) => void;
+  completeDailyPractice: (dateKey: string, verseId: string) => void;
   completeReflection: (dateKey: string, verseId: string, text: string) => boolean;
   completeBreathing: (dateKey?: string) => void;
 };
@@ -147,6 +148,23 @@ export function GitaProvider({ children }: PropsWithChildren) {
     [],
   );
 
+  const completeDailyPractice = useCallback((dateKey: string, verseId: string) => {
+    setProgress((current) => {
+      if (current.reflections[dateKey]?.completedAt) return current;
+      return {
+        ...current,
+        reflections: {
+          ...current.reflections,
+          [dateKey]: {
+            verseId,
+            text: current.reflections[dateKey]?.text ?? "",
+            completedAt: new Date().toISOString(),
+          },
+        },
+      };
+    });
+  }, []);
+
   const completeBreathing = useCallback((dateKey = localDateKey()) => {
     setProgress((current) =>
       current.breathingCompletedDates.includes(dateKey)
@@ -175,10 +193,11 @@ export function GitaProvider({ children }: PropsWithChildren) {
       getReflection: (dateKey) => progress.reflections[dateKey],
       toggleBookmark,
       saveReflection,
+      completeDailyPractice,
       completeReflection,
       completeBreathing,
     };
-  }, [completeBreathing, completeReflection, progress, ready, saveReflection, today, toggleBookmark]);
+  }, [completeBreathing, completeDailyPractice, completeReflection, progress, ready, saveReflection, today, toggleBookmark]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
