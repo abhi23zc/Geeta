@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/preserve-manual-memoization */
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
 import {
@@ -192,11 +191,15 @@ function SacredShlokaLine({
   currentMs,
   isPlaying,
   transliteration,
+  isSmall = false,
+  isTablet = false,
 }: {
   segment: GitaNarrationSegment;
   currentMs: number;
   isPlaying: boolean;
   transliteration?: string;
+  isSmall?: boolean;
+  isTablet?: boolean;
 }) {
   const active = isPlaying && currentMs >= segment.startMs && currentMs < segment.endMs;
   const complete = currentMs >= segment.endMs;
@@ -225,6 +228,18 @@ function SacredShlokaLine({
     ],
   }));
 
+  const sanskritDynamicStyle = isSmall
+    ? { fontSize: 20, lineHeight: 30 }
+    : isTablet
+    ? { fontSize: 28, lineHeight: 42 }
+    : undefined;
+
+  const phoneticDynamicStyle = isSmall
+    ? { fontSize: 13, lineHeight: 18 }
+    : isTablet
+    ? { fontSize: 17, lineHeight: 25 }
+    : undefined;
+
   return (
     <Animated.View
       accessibilityState={{ selected: active }}
@@ -235,6 +250,7 @@ function SacredShlokaLine({
         serif
         style={[
           s.sacredLineSanskrit,
+          sanskritDynamicStyle,
           !isPlaying && s.sacredLineSanskritResting,
           complete && s.sacredLineSanskritComplete,
           active && s.sacredLineSanskritActive,
@@ -249,6 +265,7 @@ function SacredShlokaLine({
           serif
           style={[
             s.sacredLinePhonetic,
+            phoneticDynamicStyle,
             !isPlaying && s.sacredLinePhoneticResting,
             complete && s.sacredLinePhoneticComplete,
             active && s.sacredLinePhoneticActive,
@@ -266,10 +283,14 @@ function MeaningSentenceRow({
   segment,
   currentMs,
   isPlaying,
+  isSmall = false,
+  isTablet = false,
 }: {
   segment: GitaNarrationSegment;
   currentMs: number;
   isPlaying: boolean;
+  isSmall?: boolean;
+  isTablet?: boolean;
 }) {
   const active = isPlaying && currentMs >= segment.startMs && currentMs < segment.endMs;
   const complete = currentMs >= segment.endMs;
@@ -296,11 +317,18 @@ function MeaningSentenceRow({
     ],
   }));
 
+  const meaningDynamicStyle = isSmall
+    ? { fontSize: 15, lineHeight: 23 }
+    : isTablet
+    ? { fontSize: 20, lineHeight: 30 }
+    : undefined;
+
   return (
     <Animated.View style={[s.meaningRow, animStyle]}>
       <TextR
         style={[
           s.meaningSentenceText,
+          meaningDynamicStyle,
           !isPlaying && s.meaningSentenceResting,
           complete && s.meaningSentenceComplete,
           active && s.meaningSentenceActive,
@@ -317,11 +345,15 @@ function MascotStage({
   onMascotPress,
   blessingMessage,
   isCompact = false,
+  isSmall = false,
+  isTablet = false,
   animated = true,
 }: {
   onMascotPress: () => void;
   blessingMessage: string | null;
   isCompact?: boolean;
+  isSmall?: boolean;
+  isTablet?: boolean;
   animated?: boolean;
 }) {
   const auraGlow = useSharedValue(0.55);
@@ -346,13 +378,14 @@ function MascotStage({
     transform: [{ scale: 0.95 + auraGlow.value * 0.1 }],
   }));
 
-  const mascotSize = isCompact ? 165 : 205;
+  const mascotSize = isSmall ? 145 : isCompact ? 165 : isTablet ? 240 : 205;
+  const daisHeight = isSmall ? 150 : isCompact ? 165 : isTablet ? 245 : 210;
 
   return (
-    <View style={[s.daisContainer, isCompact && { height: 165, marginTop: 0, marginBottom: 2 }]}>
+    <View style={[s.daisContainer, { height: daisHeight, marginTop: isSmall ? 0 : 2, marginBottom: isSmall ? 2 : 4 }]}>
       {/* Soft Orangish Dawn Light Halo */}
       <Animated.View style={[s.daisAuraHalo, auraAnimStyle]} pointerEvents="none">
-        <Svg width={360} height={230} viewBox="0 0 360 230">
+        <Svg width={360} height={daisHeight + 20} viewBox="0 0 360 230" preserveAspectRatio="xMidYMid meet">
           <Defs>
             <RadialGradient id="softOrangeAura" cx="50%" cy="50%" rx="50%" ry="50%">
               <Stop offset="0%" stopColor="#FDBA74" stopOpacity="0.55" />
@@ -388,10 +421,10 @@ function MascotStage({
         <Animated.View
           entering={FadeInUp.duration(280)}
           exiting={FadeOut.duration(200)}
-          style={s.blessingBubble}
+          style={[s.blessingBubble, isSmall && { paddingHorizontal: 10, paddingVertical: 4.5 }]}
         >
-          <Sparkles size={14} color="#D97706" />
-          <TextR style={s.blessingText}>{blessingMessage}</TextR>
+          <Sparkles size={isSmall ? 12 : 14} color="#D97706" />
+          <TextR style={[s.blessingText, isSmall && { fontSize: 10 }, isTablet && { fontSize: 13 }]}>{blessingMessage}</TextR>
         </Animated.View>
       )}
     </View>
@@ -403,19 +436,23 @@ function WordMeaningsTray({
   words,
   onSelectWord,
   selectedWord,
+  isSmall = false,
+  isTablet = false,
 }: {
   words: GitaWord[];
   onSelectWord: (word: GitaWord) => void;
   selectedWord: GitaWord | null;
+  isSmall?: boolean;
+  isTablet?: boolean;
 }) {
   return (
     <View style={s.padarthaContainer}>
       <View style={s.padarthaHeaderRow}>
         <View style={s.padarthaBadge}>
-          <Sparkles size={12} color="#9A3C08" />
-          <TextR style={s.padarthaKicker}>PADARTHA · SACRED ROOTS</TextR>
+          <Sparkles size={isSmall ? 10 : 12} color="#9A3C08" />
+          <TextR style={[s.padarthaKicker, isSmall && { fontSize: 9.5 }]}>PADARTHA · SACRED ROOTS</TextR>
         </View>
-        <TextR style={s.padarthaSubtext}>Tap to reveal depth</TextR>
+        <TextR style={[s.padarthaSubtext, isSmall && { fontSize: 9.5 }]}>Tap to reveal depth</TextR>
       </View>
 
       <View style={s.padarthaChipsRow}>
@@ -430,6 +467,7 @@ function WordMeaningsTray({
               onPress={() => onSelectWord(item)}
               style={({ pressed }) => [
                 s.padarthaChip,
+                isSmall && { paddingHorizontal: 8, paddingVertical: 5 },
                 isSelected && s.padarthaChipActive,
                 pressed && { opacity: 0.82, transform: [{ scale: 0.96 }] },
               ]}
@@ -438,6 +476,8 @@ function WordMeaningsTray({
                 serif
                 style={[
                   s.padarthaChipSanskrit,
+                  isSmall && { fontSize: 13.5 },
+                  isTablet && { fontSize: 17 },
                   isSelected && s.padarthaChipSanskritActive,
                 ]}
               >
@@ -446,6 +486,8 @@ function WordMeaningsTray({
               <TextR
                 style={[
                   s.padarthaChipMeaning,
+                  isSmall && { fontSize: 10 },
+                  isTablet && { fontSize: 13 },
                   isSelected && s.padarthaChipMeaningActive,
                 ]}
               >
@@ -457,11 +499,11 @@ function WordMeaningsTray({
       </View>
 
       {selectedWord && (
-        <Animated.View entering={FadeInDown.duration(200)} style={s.padarthaDetailCard}>
+        <Animated.View entering={FadeInDown.duration(200)} style={[s.padarthaDetailCard, isSmall && { padding: 10 }]}>
           <View style={s.padarthaDetailGlow} />
-          <TextR serif style={s.padarthaDetailWord}>{selectedWord.sanskrit}</TextR>
-          <TextR style={s.padarthaDetailMeaning}>“{selectedWord.meaning}”</TextR>
-          <TextR style={s.padarthaDetailHint}>Reflect on how this applies to your actions today.</TextR>
+          <TextR serif style={[s.padarthaDetailWord, isSmall && { fontSize: 14.5 }]}>{selectedWord.sanskrit}</TextR>
+          <TextR style={[s.padarthaDetailMeaning, isSmall && { fontSize: 12 }]}>“{selectedWord.meaning}”</TextR>
+          <TextR style={[s.padarthaDetailHint, isSmall && { fontSize: 10 }]}>Reflect on how this applies to your actions today.</TextR>
         </Animated.View>
       )}
     </View>
@@ -491,7 +533,9 @@ function GitaContent({ today }: { today: string }) {
   const navigation = useNavigation("/");
   const { entry } = useLocalSearchParams<{ entry?: "alarm" | "manual" }>();
   const { alarmTime } = useRitual();
-  const { height } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const isSmall = width < 360;
+  const isTablet = width >= 768;
   const isCompact = height < 750;
   const reduceMotion = useReducedMotion();
 
@@ -664,13 +708,16 @@ function GitaContent({ today }: { today: string }) {
     blessingTimer.current = setTimeout(() => setBlessingMessage(null), 3800);
   };
 
+  const headerBtnSize = isSmall ? 36 : isTablet ? 46 : isCompact ? 38 : 42;
+  const headerIconSize = isSmall ? 16 : isTablet ? 20 : 18;
+
   return (
-    <Screen contentContainerStyle={[s.screenContent, isCompact && { paddingBottom: 40 }]}>
+    <Screen contentContainerStyle={[s.screenContent, { paddingBottom: isCompact ? 46 : 60 }]}>
       {entry === "alarm" ? (
         <View style={s.topAlarmRow}>
-          <View style={s.topAlarmPill}>
-            <Sunrise size={13} color="#8A5D18" strokeWidth={2.3} />
-            <TextR style={s.topAlarmText}>
+          <View style={[s.topAlarmPill, isSmall && { paddingHorizontal: 9, paddingVertical: 4 }]}>
+            <Sunrise size={isSmall ? 11 : 13} color="#8A5D18" strokeWidth={2.3} />
+            <TextR style={[s.topAlarmText, isSmall && { fontSize: 9.5 }]}>
               MORNING ALARM RITUAL · {formatAlarmTime(alarmTime)}
             </TextR>
           </View>
@@ -683,36 +730,40 @@ function GitaContent({ today }: { today: string }) {
         <TactileRoundButton
           onPress={exitToHome}
           accessibilityLabel="Back to Home"
-          size={isCompact ? 38 : 40}
+          size={headerBtnSize}
         >
-          <ChevronLeft size={20} color={C.ink} />
+          <ChevronLeft size={headerIconSize} color={C.ink} />
         </TactileRoundButton>
 
         {/* Sacred Chapter Pill with Morning Sadhana Streak */}
-        <View style={s.chapterPill}>
+        <View style={[s.chapterPill, isSmall && { paddingHorizontal: 9, paddingVertical: 5, gap: 4 }]}>
           <View style={s.chapterDotGlow}>
             <View style={s.chapterDot} />
           </View>
-          <TextR style={s.chapterText}>
+          <TextR
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={[s.chapterText, isSmall && { fontSize: 9.5 }, isTablet && { fontSize: 13 }]}
+          >
             {referenceLabel}
           </TextR>
           {currentStreak > 0 && (
-            <View style={s.streakBadge}>
-              <Flame size={12} color="#D97706" fill="#F59E0B" />
-              <TextR style={s.streakBadgeText}>{currentStreak}d</TextR>
+            <View style={[s.streakBadge, isSmall && { paddingHorizontal: 4, paddingVertical: 1 }]}>
+              <Flame size={isSmall ? 10 : 12} color="#D97706" fill="#F59E0B" />
+              <TextR style={[s.streakBadgeText, isSmall && { fontSize: 9 }]}>{currentStreak}d</TextR>
             </View>
           )}
         </View>
 
         {/* Top Tactile Action Cluster */}
-        <View style={s.headerActions}>
+        <View style={[s.headerActions, isSmall && { gap: 5 }]}>
           <TactileRoundButton
             onPress={() => { if (!isBookmarked) void saveTeaching(verse).catch(() => undefined); progressStore.toggleBookmark(verse.id); }}
             accessibilityLabel={isBookmarked ? "Remove verse bookmark" : "Bookmark verse"}
-            size={isCompact ? 38 : 40}
+            size={headerBtnSize}
           >
             <Bookmark
-              size={17}
+              size={isSmall ? 15 : 17}
               color={isBookmarked ? C.saffron : C.ink}
               fill={isBookmarked ? C.gold : "transparent"}
             />
@@ -721,9 +772,9 @@ function GitaContent({ today }: { today: string }) {
           <TactileRoundButton
             onPress={shareVerse}
             accessibilityLabel="Share verse"
-            size={isCompact ? 38 : 40}
+            size={headerBtnSize}
           >
-            <Share2 size={16} color={C.ink} />
+            <Share2 size={isSmall ? 14 : 16} color={C.ink} />
           </TactileRoundButton>
         </View>
       </View>
@@ -735,14 +786,16 @@ function GitaContent({ today }: { today: string }) {
             onMascotPress={handleMascotTap}
             blessingMessage={blessingMessage}
             isCompact={isCompact}
+            isSmall={isSmall}
+            isTablet={isTablet}
             animated={focused && !reduceMotion}
           />
 
           {/* Mode Pill Indicator */}
           <View style={[s.modePillRow, isCompact && { marginBottom: 6 }]}>
-            <View style={s.modePill}>
-              <Flower2 size={13} color={C.saffron} />
-              <TextR style={s.modePillText}>
+            <View style={[s.modePill, isSmall && { paddingHorizontal: 10, paddingVertical: 4 }]}>
+              <Flower2 size={isSmall ? 11 : 13} color={C.saffron} />
+              <TextR style={[s.modePillText, isSmall && { fontSize: 9.5 }, isTablet && { fontSize: 12 }]}>
                 {viewTab === "meaning"
                   ? "SACRED BHAVARTHA"
                   : viewTab === "padartha"
@@ -766,7 +819,14 @@ function GitaContent({ today }: { today: string }) {
 
           {/* ─── 3. Unified Sacred Shloka Sanctum ───────────────────────────── */}
           <View style={[s.shlokaCardWrapper, isCompact && { marginBottom: 10 }]}>
-            <View style={[s.shlokaCard3D, isCompact && { paddingVertical: 14, paddingHorizontal: 12 }]}>
+            <View
+              style={[
+                s.shlokaCard3D,
+                isSmall && { paddingVertical: 12, paddingHorizontal: 10, borderRadius: 20 },
+                isTablet && { paddingVertical: 24, paddingHorizontal: 22, borderRadius: 28 },
+                !isSmall && !isTablet && isCompact && { paddingVertical: 14, paddingHorizontal: 12 },
+              ]}
+            >
               {/* Tab Switcher */}
               <View style={[s.cardTabRow, isCompact && { marginBottom: 10 }]}>
                 <Pressable
@@ -774,11 +834,13 @@ function GitaContent({ today }: { today: string }) {
                   accessibilityRole="tab"
                   accessibilityState={{ selected: viewTab === "shloka" }}
                   onPress={() => selectTab("shloka")}
-                  style={[s.cardTab, viewTab === "shloka" && s.cardTabActive]}
+                  style={[s.cardTab, isSmall && { paddingHorizontal: 13, paddingVertical: 5.5 }, isTablet && { paddingHorizontal: 24, paddingVertical: 9 }, viewTab === "shloka" && s.cardTabActive]}
                 >
                   <TextR
                     style={[
                       s.cardTabText,
+                      isSmall && { fontSize: 13.5 },
+                      isTablet && { fontSize: 17 },
                       viewTab === "shloka" && s.cardTabTextActive,
                     ]}
                   >
@@ -791,11 +853,13 @@ function GitaContent({ today }: { today: string }) {
                   accessibilityRole="tab"
                   accessibilityState={{ selected: viewTab === "meaning" }}
                   onPress={() => selectTab("meaning")}
-                  style={[s.cardTab, viewTab === "meaning" && s.cardTabActive]}
+                  style={[s.cardTab, isSmall && { paddingHorizontal: 13, paddingVertical: 5.5 }, isTablet && { paddingHorizontal: 24, paddingVertical: 9 }, viewTab === "meaning" && s.cardTabActive]}
                 >
                   <TextR
                     style={[
                       s.cardTabText,
+                      isSmall && { fontSize: 13.5 },
+                      isTablet && { fontSize: 17 },
                       viewTab === "meaning" && s.cardTabTextActive,
                     ]}
                   >
@@ -808,11 +872,13 @@ function GitaContent({ today }: { today: string }) {
                   accessibilityRole="tab"
                   accessibilityState={{ selected: viewTab === "padartha" }}
                   onPress={() => selectTab("padartha")}
-                  style={[s.cardTab, viewTab === "padartha" && s.cardTabActive]}
+                  style={[s.cardTab, isSmall && { paddingHorizontal: 13, paddingVertical: 5.5 }, isTablet && { paddingHorizontal: 24, paddingVertical: 9 }, viewTab === "padartha" && s.cardTabActive]}
                 >
                   <TextR
                     style={[
                       s.cardTabText,
+                      isSmall && { fontSize: 13.5 },
+                      isTablet && { fontSize: 17 },
                       viewTab === "padartha" && s.cardTabTextActive,
                     ]}
                   >
@@ -822,7 +888,7 @@ function GitaContent({ today }: { today: string }) {
               </View>
 
               {/* Central Dynamic Verse Stage */}
-              <View style={[s.wordStage, isCompact && { minHeight: 130, paddingVertical: 4 }]}>
+              <View style={[s.wordStage, isCompact && { minHeight: 120, paddingVertical: 4 }]}>
                 {viewTab === "shloka" && (
                   <Animated.View entering={FadeIn.duration(240)} style={s.sanskritList}>
                     {sanskrit.length ? (
@@ -833,12 +899,30 @@ function GitaContent({ today }: { today: string }) {
                           currentMs={currentMs}
                           isPlaying={isPlaying}
                           transliteration={transliterationLines[idx]}
+                          isSmall={isSmall}
+                          isTablet={isTablet}
                         />
                       ))
                     ) : (
                       <View style={s.staticVerseBlock}>
-                        <TextR serif style={s.staticSanskrit}>{verse.sanskrit}</TextR>
-                        <TextR serif style={s.staticTransliteration}>
+                        <TextR
+                          serif
+                          style={[
+                            s.staticSanskrit,
+                            isSmall && { fontSize: 20, lineHeight: 30 },
+                            isTablet && { fontSize: 27, lineHeight: 40 },
+                          ]}
+                        >
+                          {verse.sanskrit}
+                        </TextR>
+                        <TextR
+                          serif
+                          style={[
+                            s.staticTransliteration,
+                            isSmall && { fontSize: 13, lineHeight: 19 },
+                            isTablet && { fontSize: 16.5, lineHeight: 24 },
+                          ]}
+                        >
                           {toSimpleEnglish(verse.transliteration)}
                         </TextR>
                       </View>
@@ -855,10 +939,20 @@ function GitaContent({ today }: { today: string }) {
                           segment={segment}
                           currentMs={currentMs}
                           isPlaying={isPlaying}
+                          isSmall={isSmall}
+                          isTablet={isTablet}
                         />
                       ))
                     ) : (
-                      <TextR style={s.staticMeaning}>{verse.meaning}</TextR>
+                      <TextR
+                        style={[
+                          s.staticMeaning,
+                          isSmall && { fontSize: 15, lineHeight: 23 },
+                          isTablet && { fontSize: 19.5, lineHeight: 29 },
+                        ]}
+                      >
+                        {verse.meaning}
+                      </TextR>
                     )}
                   </Animated.View>
                 )}
@@ -869,6 +963,8 @@ function GitaContent({ today }: { today: string }) {
                       words={verse.words}
                       onSelectWord={(w) => setSelectedWord(w)}
                       selectedWord={selectedWord}
+                      isSmall={isSmall}
+                      isTablet={isTablet}
                     />
                   </Animated.View>
                 )}
@@ -881,10 +977,17 @@ function GitaContent({ today }: { today: string }) {
             accessibilityLabel="Complete today’s contemplation"
             accessibilityRole="button"
             onPress={completePractice}
-            style={({ pressed }) => [s.completeButton, pressed && s.completeButtonPressed]}
+            style={({ pressed }) => [
+              s.completeButton,
+              isSmall && { minHeight: 48, borderRadius: 24 },
+              isTablet && { minHeight: 62, borderRadius: 31 },
+              pressed && s.completeButtonPressed,
+            ]}
           >
-            <CheckCircle2 size={20} color={C.white} strokeWidth={2.4} />
-            <TextR style={s.completeButtonText}>Complete today’s contemplation</TextR>
+            <CheckCircle2 size={isSmall ? 18 : isTablet ? 23 : 20} color={C.white} strokeWidth={2.4} />
+            <TextR style={[s.completeButtonText, isSmall && { fontSize: 13.5 }, isTablet && { fontSize: 17 }]}>
+              Complete today’s contemplation
+            </TextR>
           </Pressable>
         </Animated.View>
       ) : (
@@ -895,35 +998,75 @@ function GitaContent({ today }: { today: string }) {
             onMascotPress={handleMascotTap}
             blessingMessage={blessingMessage}
             isCompact={isCompact}
+            isSmall={isSmall}
+            isTablet={isTablet}
             animated={focused && !reduceMotion}
           />
 
           {/* Full Shloka Wisdom Parchment */}
-          <View style={s.completedVerseCard}>
-            <TextR serif style={s.completedSanskrit}>
+          <View
+            style={[
+              s.completedVerseCard,
+              isSmall && { padding: 14, borderRadius: 20 },
+              isTablet && { padding: 26, borderRadius: 28 },
+            ]}
+          >
+            <TextR
+              serif
+              style={[
+                s.completedSanskrit,
+                isSmall && { fontSize: 20, lineHeight: 30 },
+                isTablet && { fontSize: 28, lineHeight: 42 },
+              ]}
+            >
               {verse.sanskrit}
             </TextR>
 
-            <View style={s.completedTranslitBox}>
-              <TextR serif style={s.completedTranslation}>
+            <View style={[s.completedTranslitBox, isSmall && { paddingHorizontal: 6, paddingVertical: 2 }]}>
+              <TextR
+                serif
+                style={[
+                  s.completedTranslation,
+                  isSmall && { fontSize: 12.5, lineHeight: 18 },
+                  isTablet && { fontSize: 16, lineHeight: 24 },
+                ]}
+              >
                 “{toSimpleEnglish(verse.transliteration)}”
               </TextR>
             </View>
 
-            <View style={s.goldDivider} />
+            <View style={[s.goldDivider, isSmall && { width: 40, marginVertical: 10 }, isTablet && { width: 64, marginVertical: 16 }]} />
 
-            <TextR style={s.completedMeaning}>{verse.meaning}</TextR>
+            <TextR
+              style={[
+                s.completedMeaning,
+                isSmall && { fontSize: 14.5, lineHeight: 22 },
+                isTablet && { fontSize: 18, lineHeight: 28 },
+              ]}
+            >
+              {verse.meaning}
+            </TextR>
 
             {/* Daily Morning Sankalpa / Sacred Action Ray */}
-            <View style={s.takeawayCard}>
-              <View style={s.takeawayIconWrap}>
-                <Sparkles size={16} color="#D97706" />
+            <View
+              style={[
+                s.takeawayCard,
+                isSmall && { paddingHorizontal: 11, paddingVertical: 10, gap: 10, marginTop: 12 },
+                isTablet && { paddingHorizontal: 18, paddingVertical: 16, gap: 14, marginTop: 20 },
+              ]}
+            >
+              <View style={[s.takeawayIconWrap, isSmall && { width: 28, height: 28 }, isTablet && { width: 36, height: 36 }]}>
+                <Sparkles size={isSmall ? 13 : isTablet ? 18 : 16} color="#D97706" />
               </View>
               <View style={s.takeawayContent}>
                 <View style={s.takeawayKickerRow}>
-                  <TextR style={s.takeawayKicker}>TODAY’S SANKALPA · ACTION</TextR>
+                  <TextR style={[s.takeawayKicker, isSmall && { fontSize: 8.5 }, isTablet && { fontSize: 11 }]}>
+                    TODAY’S SANKALPA · ACTION
+                  </TextR>
                 </View>
-                <TextR style={s.takeawayText}>{verse.takeaway}</TextR>
+                <TextR style={[s.takeawayText, isSmall && { fontSize: 12.5, lineHeight: 18 }, isTablet && { fontSize: 16, lineHeight: 23 }]}>
+                  {verse.takeaway}
+                </TextR>
               </View>
             </View>
           </View>
@@ -933,20 +1076,34 @@ function GitaContent({ today }: { today: string }) {
               accessibilityLabel="Listen to recitation again"
               accessibilityRole="button"
               onPress={playFromStart}
-              style={({ pressed }) => [s.relistenBtn, pressed && s.pressed]}
+              style={({ pressed }) => [
+                s.relistenBtn,
+                isSmall && { paddingHorizontal: 14, paddingVertical: 8 },
+                isTablet && { paddingHorizontal: 26, paddingVertical: 13 },
+                pressed && s.pressed,
+              ]}
             >
-              <RotateCcw size={15} color={C.saffron} />
-              <TextR style={s.relistenText}>Listen to recitation again</TextR>
+              <RotateCcw size={isSmall ? 13 : isTablet ? 16 : 14.5} color={C.saffron} />
+              <TextR style={[s.relistenText, isSmall && { fontSize: 12.5 }, isTablet && { fontSize: 15 }]}>
+                Listen to recitation again
+              </TextR>
             </Pressable>
           ) : (
             <Pressable
               accessibilityLabel="Review today’s verse"
               accessibilityRole="button"
               onPress={() => setSessionComplete(false)}
-              style={({ pressed }) => [s.relistenBtn, pressed && s.pressed]}
+              style={({ pressed }) => [
+                s.relistenBtn,
+                isSmall && { paddingHorizontal: 14, paddingVertical: 8 },
+                isTablet && { paddingHorizontal: 26, paddingVertical: 13 },
+                pressed && s.pressed,
+              ]}
             >
-              <RotateCcw size={15} color={C.saffron} />
-              <TextR style={s.relistenText}>Review today’s verse</TextR>
+              <RotateCcw size={isSmall ? 13 : isTablet ? 16 : 14.5} color={C.saffron} />
+              <TextR style={[s.relistenText, isSmall && { fontSize: 12.5 }, isTablet && { fontSize: 15 }]}>
+                Review today’s verse
+              </TextR>
             </Pressable>
           )}
         </Animated.View>
@@ -959,6 +1116,9 @@ function GitaContent({ today }: { today: string }) {
 const s = StyleSheet.create({
   screenContent: {
     paddingBottom: 36,
+    maxWidth: 600,
+    width: "100%",
+    alignSelf: "center",
   },
   loading: {
     minHeight: 500,
@@ -1009,8 +1169,11 @@ const s = StyleSheet.create({
     paddingHorizontal: 2,
   },
   chapterPill: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 8,
     gap: 7,
     paddingHorizontal: 13,
     paddingVertical: 7,
@@ -1250,12 +1413,12 @@ const s = StyleSheet.create({
 
   // ─── Sacred Chanting Stage ─────────────────────────────────────────────────
   wordStage: {
-    minHeight: 150,
+    minHeight: 140,
     justifyContent: "center",
     paddingVertical: 8,
   },
   sanskritList: {
-    gap: 18,
+    gap: 16,
     paddingVertical: 4,
     alignItems: "center",
   },
@@ -1493,7 +1656,6 @@ const s = StyleSheet.create({
     fontStyle: "italic",
   },
 
-
   // ─── Completed Screen Styles ───────────────────────────────────────────────
   completedScreen: {
     paddingTop: 2,
@@ -1531,7 +1693,7 @@ const s = StyleSheet.create({
   completedTranslation: {
     color: "#574236",
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 20.5,
     fontStyle: "italic",
     textAlign: "center",
   },
@@ -1539,13 +1701,13 @@ const s = StyleSheet.create({
     width: 50,
     height: 2.5,
     borderRadius: 1.5,
-    backgroundColor: "rgba(244, 185, 66, 0.6)",
+    backgroundColor: "rgba(244, 185, 66, 0.7)",
     marginVertical: 12,
   },
   completedMeaning: {
     color: C.ink,
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 24.5,
     textAlign: "center",
   },
   takeawayCard: {
@@ -1636,8 +1798,16 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    alignSelf: "center",
     gap: 7,
+    paddingHorizontal: 20,
     paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: "rgba(254, 240, 226, 0.75)",
+    borderWidth: 1,
+    borderColor: "rgba(229, 107, 39, 0.22)",
+    marginTop: 4,
+    marginBottom: 12,
   },
   relistenText: {
     color: C.saffron,

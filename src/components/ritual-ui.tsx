@@ -339,9 +339,9 @@ export function Screen({
   const bottomClearance = Math.max(dockHeight + insets.bottom + 24, 130);
 
   const content = (
-    <View style={[styles.content, night && { backgroundColor: nightBg }, contentStyle]}>
+    <View style={[styles.content, night && { backgroundColor: nightBg }, !scroll && { flex: 1, paddingBottom: insets.bottom + 12 }, contentStyle]}>
       <DawnMeshBackdrop night={night} />
-      <View style={styles.responsiveWrapper}>
+      <View style={[styles.responsiveWrapper, !scroll && { flex: 1 }]}>
         {children}
       </View>
     </View>

@@ -11,6 +11,7 @@ import {
   SectionList,
   StyleSheet,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { usePathname, useRouter } from "expo-router";
@@ -19,10 +20,12 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
   Clock3,
   Dumbbell,
   Leaf,
   Moon,
+  Pencil,
   PenLine,
   Plus,
   Repeat2,
@@ -72,12 +75,13 @@ const TaskRow = memo(
     onToggle: (id: string) => void;
     onEdit: (task: Task) => void;
   }) {
-    const Icon = CATEGORY_ICONS[task.category];
+    const CategoryIcon = CATEGORY_ICONS[task.category];
     const pressed = useSharedValue(1);
     const reduced = useReducedMotion();
     const motion = useAnimatedStyle(() => ({
       transform: [{ scale: pressed.value }],
     }));
+
     return (
       <View style={s.taskCard}>
         <AnimatedPressable
@@ -95,31 +99,41 @@ const TaskRow = memo(
         >
           <View style={[s.checkbox, task.done && s.checkboxDone]}>
             {task.done ? (
-              <Check size={17} color="white" strokeWidth={3} />
+              <Check size={16} color="white" strokeWidth={3} />
             ) : null}
           </View>
           <View style={s.taskCopy}>
-            <TextR style={[s.taskTitle, task.done && s.taskDone]}>
+            <TextR style={[s.taskTitle, task.done && s.taskDone]} numberOfLines={2}>
               {task.title}
             </TextR>
             <View style={s.meta}>
               <Clock3 size={12} color={C.muted} />
               <TextR style={s.metaText}>{task.time}</TextR>
-              <TextR style={s.category}>{task.category}</TextR>
+              <View style={s.categoryTag}>
+                <CategoryIcon size={11} color={C.greenDark} strokeWidth={2.2} />
+                <TextR style={s.categoryText}>{task.category}</TextR>
+              </View>
               {task.recurrence === "daily" ? (
-                <Repeat2 size={12} color={C.muted} />
+                <View style={s.recurrenceTag}>
+                  <Repeat2 size={11} color={C.muted} />
+                  <TextR style={s.recurrenceText}>Daily</TextR>
+                </View>
               ) : null}
             </View>
           </View>
         </AnimatedPressable>
+
+        {/* Explicit and Prominent Edit Button */}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Edit ${task.title}`}
           onPress={() => onEdit(task)}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           style={({ pressed }) => [s.editButton, pressed && s.pressed]}
         >
-          <Icon size={19} color={task.done ? C.greenDark : C.primary} />
-          <PenLine size={10} color={C.muted} />
+          <View style={s.editPencilBadge}>
+            <Pencil size={15} color={C.primary} strokeWidth={2.4} />
+          </View>
         </Pressable>
       </View>
     );
@@ -158,6 +172,142 @@ function Choice({
   );
 }
 
+function TimeSelector({
+  hour,
+  minute,
+  meridiem,
+  onHourChange,
+  onMinuteChange,
+  onMeridiemChange,
+  onPresetSelect,
+}: {
+  hour: number;
+  minute: number;
+  meridiem: "AM" | "PM";
+  onHourChange: (h: number) => void;
+  onMinuteChange: (m: number) => void;
+  onMeridiemChange: (m: "AM" | "PM") => void;
+  onPresetSelect: (h: number, m: number, med: "AM" | "PM") => void;
+}) {
+  const PRESETS = [
+    { label: "Dawn 6:00 AM", h: 6, m: 0, med: "AM" as const },
+    { label: "Morning 8:30 AM", h: 8, m: 30, med: "AM" as const },
+    { label: "Noon 12:00 PM", h: 12, m: 0, med: "PM" as const },
+    { label: "Evening 5:30 PM", h: 5, m: 30, med: "PM" as const },
+    { label: "Night 9:00 PM", h: 9, m: 0, med: "PM" as const },
+  ];
+
+  const updateHour = (dir: 1 | -1) => {
+    const next = dir === 1 ? (hour === 12 ? 1 : hour + 1) : (hour === 1 ? 12 : hour - 1);
+    onHourChange(next);
+  };
+
+  const updateMinute = (dir: 1 | -1) => {
+    const step = 5;
+    const next = (minute + dir * step + 60) % 60;
+    onMinuteChange(next);
+  };
+
+  return (
+    <View style={s.timePickerCard}>
+      <View style={s.timePickerRow}>
+        {/* Hour Stepper */}
+        <View style={s.timeStepCol}>
+          <Pressable
+            accessibilityLabel="Increase hour"
+            onPress={() => updateHour(1)}
+            hitSlop={{ top: 8, bottom: 8, left: 10, right: 10 }}
+            style={({ pressed }) => [s.timeChevron, pressed && s.pressed]}
+          >
+            <ChevronUp size={20} color={C.primary} strokeWidth={2.5} />
+          </Pressable>
+          <View style={s.timeDisplayBox}>
+            <TextR serif style={s.timeDisplayText}>
+              {String(hour).padStart(2, "0")}
+            </TextR>
+          </View>
+          <Pressable
+            accessibilityLabel="Decrease hour"
+            onPress={() => updateHour(-1)}
+            hitSlop={{ top: 8, bottom: 8, left: 10, right: 10 }}
+            style={({ pressed }) => [s.timeChevron, pressed && s.pressed]}
+          >
+            <ChevronDown size={20} color={C.primary} strokeWidth={2.5} />
+          </Pressable>
+        </View>
+
+        <TextR serif style={s.timeColon}>
+          :
+        </TextR>
+
+        {/* Minute Stepper */}
+        <View style={s.timeStepCol}>
+          <Pressable
+            accessibilityLabel="Increase minute"
+            onPress={() => updateMinute(1)}
+            hitSlop={{ top: 8, bottom: 8, left: 10, right: 10 }}
+            style={({ pressed }) => [s.timeChevron, pressed && s.pressed]}
+          >
+            <ChevronUp size={20} color={C.primary} strokeWidth={2.5} />
+          </Pressable>
+          <View style={s.timeDisplayBox}>
+            <TextR serif style={s.timeDisplayText}>
+              {String(minute).padStart(2, "0")}
+            </TextR>
+          </View>
+          <Pressable
+            accessibilityLabel="Decrease minute"
+            onPress={() => updateMinute(-1)}
+            hitSlop={{ top: 8, bottom: 8, left: 10, right: 10 }}
+            style={({ pressed }) => [s.timeChevron, pressed && s.pressed]}
+          >
+            <ChevronDown size={20} color={C.primary} strokeWidth={2.5} />
+          </Pressable>
+        </View>
+
+        {/* AM / PM Selector */}
+        <View style={s.modalMeridiemTrack}>
+          {(["AM", "PM"] as const).map((v) => {
+            const active = meridiem === v;
+            return (
+              <Pressable
+                key={v}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: active }}
+                onPress={() => onMeridiemChange(v)}
+                style={[s.modalMeridiemBtn, active && s.modalMeridiemBtnActive]}
+              >
+                <TextR style={[s.modalMeridiemTxt, active && s.modalMeridiemTxtActive]}>
+                  {v}
+                </TextR>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Preset Chips */}
+      <View style={s.presetWrap}>
+        {PRESETS.map((p) => {
+          const isSelected =
+            hour === p.h && minute === p.m && meridiem === p.med;
+          return (
+            <Pressable
+              key={p.label}
+              onPress={() => onPresetSelect(p.h, p.m, p.med)}
+              style={[s.presetChip, isSelected && s.presetChipActive]}
+            >
+              <TextR style={[s.presetText, isSelected && s.presetTextActive]}>
+                {p.label}
+              </TextR>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function TaskEditor({
   task,
   onClose,
@@ -174,33 +324,48 @@ function TaskEditor({
     task?.recurrence ?? "once",
   );
   const [anytime, setAnytime] = useState(task?.timeMinutes === undefined);
-  const [time, setTime] = useState(
-    task?.timeMinutes === undefined
-      ? "09:00"
-      : `${String(Math.floor(task.timeMinutes / 60)).padStart(2, "0")}:${String(task.timeMinutes % 60).padStart(2, "0")}`,
+
+  // Time picker state (hours, minutes, AM/PM)
+  const initialMins = task?.timeMinutes ?? 540; // 9:00 AM
+  const initialH24 = Math.floor(initialMins / 60);
+  const [hour, setHour] = useState(
+    initialH24 > 12 ? initialH24 - 12 : initialH24 === 0 ? 12 : initialH24,
   );
+  const [minute, setMinute] = useState(initialMins % 60);
+  const [meridiem, setMeridiem] = useState<"AM" | "PM">(
+    initialH24 >= 12 ? "PM" : "AM",
+  );
+
   const [error, setError] = useState("");
   const insets = useSafeAreaInsets();
+
+  const handlePresetSelect = (h: number, m: number, med: "AM" | "PM") => {
+    setHour(h);
+    setMinute(m);
+    setMeridiem(med);
+  };
+
   const save = () => {
     const trimmed = title.trim();
     if (!trimmed || trimmed.length > 120) {
       setError("Enter an intention between 1 and 120 characters.");
       return;
     }
-    if (!anytime && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(time.trim())) {
-      setError("Enter a valid 24-hour time, such as 06:45.");
-      return;
-    }
-    const [hour, minute] = time.trim().split(":").map(Number);
+
+    let finalHour24 = hour % 12;
+    if (meridiem === "PM") finalHour24 += 12;
+    const timeMinutes = anytime ? undefined : finalHour24 * 60 + minute;
+
     const input: TaskInput = {
       title: trimmed,
       category,
       recurrence,
-      timeMinutes: anytime ? undefined : hour * 60 + minute,
+      timeMinutes,
     };
     if (task ? updateTask(task.id, input) : createTask(input)) onClose();
     else setError("This intention could not be saved. Please try again.");
   };
+
   const remove = () =>
     Alert.alert(
       task?.recurrence === "daily"
@@ -219,6 +384,7 @@ function TaskEditor({
         },
       ],
     );
+
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView
@@ -232,7 +398,11 @@ function TaskEditor({
             { paddingBottom: Math.max(insets.bottom, 20), maxHeight: "90%" },
           ]}
         >
-          <ScrollView keyboardShouldPersistTaps="handled">
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={s.editorScrollContent}
+          >
             <TextR style={s.editorTitle}>
               {task ? "Edit intention" : "A mindful intention"}
             </TextR>
@@ -276,6 +446,7 @@ function TaskEditor({
                 ? "A fresh completion each day."
                 : "Stays on your list until completed."}
             </TextR>
+
             <TextR style={s.label}>Time</TextR>
             <View style={s.choices}>
               <Choice
@@ -289,17 +460,20 @@ function TaskEditor({
                 onPress={() => setAnytime(false)}
               />
             </View>
+
+            {/* Seamless Interactive Time Selector (No manual typing) */}
             {!anytime ? (
-              <TextInput
-                accessibilityLabel="Scheduled time in 24-hour format"
-                value={time}
-                onChangeText={setTime}
-                keyboardType="numbers-and-punctuation"
-                maxLength={5}
-                placeholder="06:45"
-                style={s.input}
+              <TimeSelector
+                hour={hour}
+                minute={minute}
+                meridiem={meridiem}
+                onHourChange={setHour}
+                onMinuteChange={setMinute}
+                onMeridiemChange={setMeridiem}
+                onPresetSelect={handlePresetSelect}
               />
             ) : null}
+
             <TextR style={s.help}>
               Times help organize your day. They do not create reminders.
             </TextR>
@@ -348,13 +522,18 @@ export default function Today() {
   const [editor, setEditor] = useState<{ task: Task | null } | null>(null);
   const dockHeight = useDockHeight();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const isSmall = width < 360;
+  const isTablet = width >= 768;
   const router = useRouter();
+
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) =>
       setActive(state === "active"),
     );
     return () => subscription.remove();
   }, []);
+
   const edit = useCallback((task: Task) => setEditor({ task }), []);
   const renderTask = useCallback(
     ({ item }: { item: Task }) => (
@@ -362,6 +541,7 @@ export default function Today() {
     ),
     [edit, toggleCompletion],
   );
+
   const sections = useMemo(
     () => [
       {
@@ -377,10 +557,12 @@ export default function Today() {
     ],
     [tasks, done, expanded],
   );
+
   const [year, month, day] = today.split("-").map(Number);
   const date = new Date(year, month - 1, day);
   const { practice: verse } = useContent();
   const ratio = tasks.length ? done / tasks.length : 0;
+
   const confirmReset = () =>
     Alert.alert(
       "Reset saved intentions?",
@@ -394,13 +576,14 @@ export default function Today() {
         },
       ],
     );
+
   const header = (
-    <View>
+    <View style={s.headerWrap}>
       <Header eyebrow="Today" showActions={false} />
       <View style={s.hero}>
         <View style={s.heroCopy}>
-          <TextR style={s.title}>Today</TextR>
-          <TextR style={s.subtitle}>
+          <TextR style={[s.title, isSmall && s.titleSmall]}>Today</TextR>
+          <TextR style={[s.subtitle, isSmall && s.subtitleSmall]}>
             {date.toLocaleDateString(undefined, {
               weekday: "long",
               month: "short",
@@ -414,20 +597,21 @@ export default function Today() {
         </View>
         <AruMascot
           clip="tasks_pointing"
-          size={106}
+          size={isSmall ? 88 : isTablet ? 116 : 104}
           glow="day"
           animated={focused && active && !reduceMotion}
         />
       </View>
-      <View style={s.teaching}>
-        <TextR serif style={s.teachingText}>
+
+      <View style={[s.teaching, isSmall && s.teachingSmall]}>
+        <TextR serif style={[s.teachingText, isSmall && s.teachingTextSmall]}>
           {verse.takeaway}
         </TextR>
         <TextR style={s.source}>
-          {verse.referenceLabel ?? `GITA ${verse.chapter}.${verse.verse}`} ·
-          DAILY TEACHING
+          {verse.referenceLabel ?? `GITA ${verse.chapter}.${verse.verse}`} · DAILY TEACHING
         </TextR>
       </View>
+
       {store.loadError ? (
         <View style={s.notice}>
           <TextR style={s.taskTitle}>
@@ -511,6 +695,9 @@ export default function Today() {
       )}
     </View>
   );
+
+  const bottomPadding = Math.max(dockHeight + insets.bottom + 36, 140);
+
   return (
     <SafeAreaView style={s.screen} edges={["top"]}>
       <DawnMeshBackdrop />
@@ -525,8 +712,11 @@ export default function Today() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingBottom: dockHeight + Math.max(insets.bottom + 8, 18) + 24,
+          paddingHorizontal: isSmall ? 14 : isTablet ? 32 : 20,
+          paddingBottom: bottomPadding,
+          maxWidth: 640,
+          alignSelf: "center",
+          width: "100%",
         }}
         ListHeaderComponent={header}
         renderSectionHeader={({ section }) =>
@@ -558,15 +748,21 @@ export default function Today() {
         }
         ListFooterComponent={
           store.ready ? (
-            <View>
+            <View style={s.footerContainer}>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Add mindful task"
                 onPress={() => setEditor({ task: null })}
-                style={({ pressed }) => [s.primaryButton, pressed && s.pressed]}
+                style={({ pressed }) => [
+                  s.primaryButton,
+                  isSmall && s.primaryButtonSmall,
+                  pressed && s.pressed,
+                ]}
               >
-                <Plus size={20} color="white" />
-                <TextR style={s.primaryText}>Add mindful task</TextR>
+                <Plus size={20} color="white" strokeWidth={2.5} />
+                <TextR style={[s.primaryText, isSmall && s.primaryTextSmall]}>
+                  Add mindful task
+                </TextR>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -574,14 +770,16 @@ export default function Today() {
                 onPress={() => router.navigate("/night")}
                 style={({ pressed }) => [s.evening, pressed && s.pressed]}
               >
-                <Moon size={20} color={C.primary} />
+                <View style={s.eveningIconWrap}>
+                  <Moon size={20} color={C.primary} strokeWidth={2.2} />
+                </View>
                 <View style={s.taskCopy}>
                   <TextR style={s.taskTitle}>Evening reflection</TextR>
                   <TextR style={s.help}>
                     Close your day with a little gratitude.
                   </TextR>
                 </View>
-                <ChevronRight size={18} color={C.primary} />
+                <ChevronRight size={18} color={C.primary} strokeWidth={2.4} />
               </Pressable>
             </View>
           ) : null
@@ -596,10 +794,20 @@ export default function Today() {
 
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.surface },
-  hero: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  heroCopy: { flex: 1 },
-  title: { color: C.ink, fontSize: 28, fontWeight: "800" },
-  subtitle: { color: C.inkSoft, fontSize: 14, marginTop: 4 },
+  headerWrap: {
+    width: "100%",
+  },
+  hero: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  heroCopy: { flex: 1, minWidth: 0, paddingRight: 8 },
+  title: { color: C.ink, fontSize: 28, fontWeight: "800", letterSpacing: -0.6 },
+  titleSmall: { fontSize: 24 },
+  subtitle: { color: C.inkSoft, fontSize: 14, marginTop: 4, fontWeight: "500" },
+  subtitleSmall: { fontSize: 12.5 },
   dailyPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -607,30 +815,42 @@ const s = StyleSheet.create({
     alignSelf: "flex-start",
     backgroundColor: "#FFF0E0",
     borderRadius: 20,
-    paddingVertical: 6,
+    paddingVertical: 5,
     paddingHorizontal: 10,
     marginTop: 10,
+    borderWidth: 1,
+    borderColor: "rgba(235,120,60,0.15)",
   },
   dailyText: {
     fontSize: 9,
-    letterSpacing: 1,
+    letterSpacing: 1.1,
     color: C.primary,
-    fontWeight: "800",
+    fontWeight: "900",
   },
   teaching: {
     backgroundColor: "#FFF9F2",
     borderRadius: 22,
-    padding: 17,
+    padding: 18,
     marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#F6DBC7",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(215, 150, 100, 0.25)",
+    borderBottomWidth: 2,
+    shadowColor: "#8C4010",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
-  teachingText: { color: C.ink, fontSize: 18, lineHeight: 26 },
+  teachingSmall: { padding: 14, borderRadius: 18 },
+  teachingText: { color: C.ink, fontSize: 17, lineHeight: 25, letterSpacing: -0.2 },
+  teachingTextSmall: { fontSize: 15, lineHeight: 22 },
   source: {
     color: C.primary,
-    fontSize: 9,
-    fontWeight: "700",
-    letterSpacing: 0.6,
+    fontSize: 9.5,
+    fontWeight: "800",
+    letterSpacing: 0.8,
     marginTop: 8,
   },
   progressCard: {
@@ -638,26 +858,35 @@ const s = StyleSheet.create({
     borderRadius: 22,
     padding: 16,
     marginBottom: 8,
-    borderWidth: 1,
-    borderColor: "#F4DDCC",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(215, 150, 100, 0.2)",
+    borderBottomWidth: 2,
+    shadowColor: "#8C4010",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
   progressTop: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
+    alignItems: "center",
     gap: 8,
   },
   progressTitle: { color: C.ink, fontSize: 16, fontWeight: "800" },
-  progressCount: { color: C.primary, fontSize: 12, fontWeight: "700" },
+  progressCount: { color: C.primary, fontSize: 12.5, fontWeight: "800" },
   track: {
-    height: 6,
-    borderRadius: 3,
+    height: 7,
+    borderRadius: 4,
     backgroundColor: "#EEDCCC",
     overflow: "hidden",
     marginTop: 12,
     marginBottom: 6,
   },
-  fill: { height: "100%", backgroundColor: C.saffron, borderRadius: 3 },
+  fill: { height: "100%", backgroundColor: C.saffron, borderRadius: 4 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -671,12 +900,15 @@ const s = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#FFFCF8",
     borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#F3DECE",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(215, 150, 100, 0.25)",
+    borderBottomWidth: 2,
     marginBottom: 10,
     shadowColor: "#8C4010",
-    shadowOpacity: 0.07,
-    shadowRadius: 5,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
@@ -684,51 +916,88 @@ const s = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 11,
-    paddingVertical: 16,
+    gap: 12,
+    paddingVertical: 14,
     paddingLeft: 14,
     paddingRight: 4,
+    minWidth: 0,
   },
   checkbox: {
-    width: 25,
-    height: 25,
+    width: 26,
+    height: 26,
     borderRadius: 13,
     borderWidth: 1.5,
     borderColor: "#D6BAA4",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#FFF8F2",
+    flexShrink: 0,
   },
   checkboxDone: { backgroundColor: "#5C9D68", borderColor: "#5C9D68" },
-  taskCopy: { flex: 1 },
-  taskTitle: { color: C.ink, fontSize: 14, fontWeight: "700", lineHeight: 20 },
+  taskCopy: { flex: 1, minWidth: 0 },
+  taskTitle: { color: C.ink, fontSize: 14.5, fontWeight: "700", lineHeight: 20 },
   taskDone: { textDecorationLine: "line-through", color: C.muted },
   meta: {
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: 5,
-    marginTop: 6,
+    gap: 6,
+    marginTop: 5,
   },
-  metaText: { color: C.muted, fontSize: 11 },
-  category: {
-    color: C.greenDark,
-    fontSize: 10,
+  metaText: { color: C.muted, fontSize: 11.5, fontWeight: "500" },
+  categoryTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     backgroundColor: "#EAF3E7",
     borderRadius: 8,
     paddingHorizontal: 7,
-    paddingVertical: 3,
+    paddingVertical: 2.5,
+  },
+  categoryText: {
+    color: C.greenDark,
+    fontSize: 10.5,
+    fontWeight: "700",
+  },
+  recurrenceTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(0,0,0,0.04)",
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2.5,
+  },
+  recurrenceText: {
+    color: C.muted,
+    fontSize: 10.5,
+    fontWeight: "600",
   },
   editButton: {
-    minWidth: 48,
-    minHeight: 52,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
+  },
+  editPencilBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(235, 120, 60, 0.1)",
+    borderWidth: 1.2,
+    borderColor: "rgba(235, 120, 60, 0.22)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  footerContainer: {
+    width: "100%",
+    paddingTop: 4,
   },
   primaryButton: {
-    minHeight: 52,
-    padding: 14,
-    borderRadius: 26,
+    minHeight: 54,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 27,
     backgroundColor: C.saffron,
     flexDirection: "row",
     alignItems: "center",
@@ -736,14 +1005,33 @@ const s = StyleSheet.create({
     gap: 8,
     marginTop: 14,
     marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(160, 50, 10, 0.4)",
+    borderBottomWidth: 3,
+    shadowColor: C.saffron,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  primaryButtonSmall: {
+    minHeight: 48,
+    borderRadius: 24,
+    paddingVertical: 11,
   },
   primaryText: {
     color: "white",
-    fontSize: 15,
-    fontWeight: "800",
+    fontSize: 16,
+    fontWeight: "900",
     textAlign: "center",
+    letterSpacing: 0.2,
   },
-  pressed: { opacity: 0.75 },
+  primaryTextSmall: {
+    fontSize: 14,
+  },
+  pressed: { opacity: 0.8, transform: [{ scale: 0.985 }] },
   evening: {
     flexDirection: "row",
     alignItems: "center",
@@ -751,7 +1039,25 @@ const s = StyleSheet.create({
     padding: 16,
     borderRadius: 20,
     backgroundColor: "#FFF1E5",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(215, 150, 100, 0.2)",
+    borderBottomWidth: 2,
     marginTop: 4,
+    shadowColor: "#8C4010",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  eveningIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#FCE1CE",
+    alignItems: "center",
+    justifyContent: "center",
   },
   help: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
   notice: {
@@ -771,13 +1077,25 @@ const s = StyleSheet.create({
   modalBackdrop: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(43, 27, 18, 0.4)",
+    backgroundColor: "rgba(43, 27, 18, 0.45)",
   },
   editor: {
     backgroundColor: C.surface,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    padding: 22,
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    maxWidth: 580,
+    width: "100%",
+    alignSelf: "center",
+    shadowColor: "#2B1B12",
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 8,
+  },
+  editorScrollContent: {
+    paddingBottom: 16,
   },
   editorTitle: {
     color: C.ink,
@@ -816,4 +1134,113 @@ const s = StyleSheet.create({
   choiceSelected: { backgroundColor: C.saffron, borderColor: C.saffron },
   choiceText: { color: C.inkSoft, fontSize: 13, fontWeight: "700" },
   choiceTextSelected: { color: "white" },
+  timePickerCard: {
+    backgroundColor: "#FFFCF8",
+    borderRadius: 20,
+    padding: 14,
+    marginTop: 8,
+    marginBottom: 4,
+    borderWidth: 1.2,
+    borderColor: "#EBD4C2",
+  },
+  timePickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  timeStepCol: {
+    alignItems: "center",
+    width: 60,
+  },
+  timeChevron: {
+    height: 28,
+    width: 48,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  timeDisplayBox: {
+    width: 58,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: "#FFF5EC",
+    borderWidth: 1,
+    borderColor: "#ECD5C2",
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 2,
+  },
+  timeDisplayText: {
+    fontSize: 26,
+    lineHeight: 30,
+    fontWeight: "700",
+    color: C.ink,
+  },
+  timeColon: {
+    fontSize: 28,
+    lineHeight: 32,
+    color: C.primary,
+    fontWeight: "700",
+    marginHorizontal: 2,
+  },
+  modalMeridiemTrack: {
+    marginLeft: 10,
+    padding: 3,
+    borderRadius: 18,
+    backgroundColor: "#F7E9DD",
+    borderWidth: 1,
+    borderColor: "#ECD5C2",
+  },
+  modalMeridiemBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalMeridiemBtnActive: {
+    backgroundColor: C.primary,
+    shadowColor: C.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  modalMeridiemTxt: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: C.muted,
+  },
+  modalMeridiemTxtActive: {
+    color: "white",
+  },
+  presetWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "#ECD5C2",
+  },
+  presetChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: "#F8EFE7",
+    borderWidth: 1,
+    borderColor: "#EBD4C2",
+  },
+  presetChipActive: {
+    backgroundColor: "#FFE5D6",
+    borderColor: C.saffron,
+  },
+  presetText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: C.inkSoft,
+  },
+  presetTextActive: {
+    color: C.primary,
+    fontWeight: "800",
+  },
 });

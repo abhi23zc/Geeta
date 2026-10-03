@@ -17,11 +17,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Alert,
   AppState,
-  FlatList,
   Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
+  ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
@@ -279,8 +279,8 @@ function SetupContent() {
   const [mode, setMode] = useState<ModeKey>(
     modes.find((item) => item.tone === alarmTone)?.key ?? "gita",
   );
-  const [gradual, setGradual] = useState(true);
-  const [haptics, setHaptics] = useState(true);
+  const [gradual] = useState(true);
+  const [haptics] = useState(true);
   const [initializing, setInitializing] = useState(true);
   const [saving, setSaving] = useState(false);
   const [capabilities, setCapabilities] = useState<AlarmCapabilityStatus | null>(null);
@@ -299,6 +299,7 @@ function SetupContent() {
 
   const countdownText = useMemo(
     () => getAlarmCountdownText(hour, minute, meridiem, days),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [hour, minute, meridiem, days, ticker]
   );
 
@@ -321,10 +322,6 @@ function SetupContent() {
       AsyncStorage.getItem(OEM_CONFIRMED_KEY).catch(() => null),
     ]).then(([config, status, oemValue]) => {
       if (!active) return;
-      if (config) {
-        setGradual(config.gradualVolume);
-        setHaptics(config.vibration);
-      }
       setCapabilities(status);
       try { setConfirmations(JSON.parse(oemValue ?? "{}")); } catch { setConfirmations({}); }
       if (status) {
@@ -716,21 +713,22 @@ function SmoothWheelColumn({
   isSmall?: boolean;
 }) {
   const itemHeight = isSmall ? 48 : 54;
-  const flatListRef = useRef<FlatList<number>>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   const isScrollingRef = useRef(false);
 
   useEffect(() => {
     if (!isScrollingRef.current) {
       const idx = data.indexOf(value);
       if (idx >= 0) {
-        try {
-          flatListRef.current?.scrollToIndex({ index: idx, animated: true });
-        } catch {}
+        scrollViewRef.current?.scrollTo({
+          y: idx * itemHeight,
+          animated: true,
+        });
       }
     }
-  }, [value, data]);
+  }, [value, data, itemHeight]);
 
-  const onMomentumEnd = useCallback(
+  const handleScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       isScrollingRef.current = false;
       const offsetY = e.nativeEvent.contentOffset.y;
@@ -757,10 +755,8 @@ function SmoothWheelColumn({
         pointerEvents="none"
       />
 
-      <FlatList
-        ref={flatListRef}
-        data={data}
-        keyExtractor={(item) => String(item)}
+      <ScrollView
+        ref={scrollViewRef}
         showsVerticalScrollIndicator={false}
         snapToInterval={itemHeight}
         snapToAlignment="center"
@@ -768,41 +764,24 @@ function SmoothWheelColumn({
         nestedScrollEnabled={true}
         bounces={false}
         overScrollMode="never"
-        getItemLayout={(_, index) => ({
-          length: itemHeight,
-          offset: itemHeight * index,
-          index,
-        })}
-        initialScrollIndex={Math.max(0, data.indexOf(value))}
         onScrollBeginDrag={() => {
           isScrollingRef.current = true;
         }}
-        onScrollEndDrag={(e) => {
-          const offsetY = e.nativeEvent.contentOffset.y;
-          const idx = Math.round(offsetY / itemHeight);
-          const clamped = Math.max(0, Math.min(data.length - 1, idx));
-          if (data[clamped] !== value) {
-            onChange(data[clamped]);
-          }
-        }}
-        onMomentumScrollEnd={onMomentumEnd}
-        onScrollToIndexFailed={(info) => {
-          setTimeout(() => {
-            flatListRef.current?.scrollToIndex({
-              index: Math.max(0, Math.min(data.length - 1, info.index)),
-              animated: false,
-            });
-          }, 60);
-        }}
-        ListHeaderComponent={<View style={{ height: itemHeight }} />}
-        ListFooterComponent={<View style={{ height: itemHeight }} />}
-        renderItem={({ item }) => {
+        onScrollEndDrag={handleScrollEnd}
+        onMomentumScrollEnd={handleScrollEnd}
+        contentOffset={{ x: 0, y: Math.max(0, data.indexOf(value)) * itemHeight }}
+      >
+        <View style={{ height: itemHeight }} />
+        {data.map((item, idx) => {
           const isSelected = item === value;
           return (
             <Pressable
+              key={item}
               onPress={() => {
-                const idx = data.indexOf(item);
-                flatListRef.current?.scrollToIndex({ index: idx, animated: true });
+                scrollViewRef.current?.scrollTo({
+                  y: idx * itemHeight,
+                  animated: true,
+                });
                 onChange(item);
               }}
               style={[s.wheelItem, { height: itemHeight }]}
@@ -819,8 +798,9 @@ function SmoothWheelColumn({
               </TextR>
             </Pressable>
           );
-        }}
-      />
+        })}
+        <View style={{ height: itemHeight }} />
+      </ScrollView>
     </View>
   );
 }
