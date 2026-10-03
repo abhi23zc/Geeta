@@ -1,3 +1,4 @@
+import * as Haptics from "expo-haptics";
 import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
 import {
   CheckCircle2,
@@ -154,6 +155,7 @@ export default function Breathe() {
   const isSmall = width < 360;
   const isTablet = width >= 768;
   const isCompact = height < 750;
+  const isTall = height >= 820;
 
   const { completeBreathing } = useGitaProgress();
   const { entry } = useLocalSearchParams<{ entry?: "alarm" | "manual" }>();
@@ -186,12 +188,36 @@ export default function Breathe() {
     Math.floor(elapsedTotalSeconds / ROUND_DURATION_SEC) + 1,
   );
 
-  // Responsive ring & stage sizing for single-viewport fit
-  const ringSize = isSmall ? 154 : isCompact ? 168 : isTablet ? 210 : 180;
+  // Responsive ring & stage sizing for rich, non-blank, zero-scroll single-viewport
+  const ringSize = isSmall
+    ? 168
+    : isCompact
+      ? 185
+      : isTablet
+        ? 280
+        : isTall
+          ? 250
+          : 220;
   const rInner = Math.round(ringSize * 0.40);
   const circlePerimeter = 2 * Math.PI * rInner;
-  const mascotSize = isSmall ? 116 : isCompact ? 128 : isTablet ? 165 : 138;
-  const orbStageHeight = isSmall ? 170 : isCompact ? 185 : isTablet ? 235 : 200;
+  const mascotSize = isSmall
+    ? 128
+    : isCompact
+      ? 142
+      : isTablet
+        ? 220
+        : isTall
+          ? 195
+          : 172;
+  const orbStageHeight = isSmall
+    ? 180
+    : isCompact
+      ? 200
+      : isTablet
+        ? 300
+        : isTall
+          ? 270
+          : 236;
   const ringCenter = ringSize / 2;
 
   // 60 FPS Reanimated Shared Values
@@ -288,17 +314,27 @@ export default function Breathe() {
     return () => clearInterval(id);
   }, [active]);
 
-  // Preparation seconds countdown.
+  // Preparation seconds countdown with tactile pulses.
   useEffect(() => {
     if (!preparing || !focused || !foreground) return;
     let remaining = PREPARATION_SECONDS;
+    try {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+
     const timer = setInterval(() => {
       if (appState.current !== "active" || !focusedRef.current) return;
       remaining -= 1;
       if (remaining === 0) {
         clearInterval(timer);
+        try {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        } catch {}
         setLifecycle("active");
       } else {
+        try {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        } catch {}
         setPreparationSecondsLeft(remaining);
       }
     }, 1_000);
@@ -328,10 +364,39 @@ export default function Breathe() {
     return () => subscription.remove();
   }, []);
 
+  // Distinct Sensory Tactile Haptics on Breath Phase Transitions
+  const prevPhaseKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!active) {
+      prevPhaseKeyRef.current = null;
+      return;
+    }
+
+    if (prevPhaseKeyRef.current !== phase.key) {
+      prevPhaseKeyRef.current = phase.key;
+      try {
+        if (phase.key === "inhale") {
+          // Inhale: Medium crisp pulse to begin drawing the deep breath
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        } else if (phase.key === "hold") {
+          // Hold: Rigid/firm tactile stop at the crest of the breath
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
+        } else if (phase.key === "exhale") {
+          // Exhale: Soft releasing pulse to signal the slow breath release
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+      } catch {}
+    }
+  }, [active, phase.key]);
+
   // Completion handler
   useEffect(() => {
     if (!complete || completionHandled.current) return;
     completionHandled.current = true;
+
+    try {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {}
 
     completeBreathing();
 
@@ -523,16 +588,47 @@ export default function Breathe() {
                 pointerEvents="none"
               />
 
-              {/* Aru meditating inside the ring */}
+              {/* Aru meditating inside the ring OR Big Countdown Numeral while preparing */}
               <View style={s.aruInOrb}>
-                <AruMascot
-                  clip="breathing_loop"
-                  size={mascotSize}
-                  loop
-                  muted
-                  glow={false}
-                  interactive={false}
-                />
+                {preparing ? (
+                  <Animated.View
+                    key={`prep-stage-${preparationSecondsLeft}`}
+                    entering={FadeIn.duration(220)}
+                    style={s.countdownHeroStage}
+                  >
+                    <TextR
+                      serif
+                      style={[
+                        s.countdownBigNumber,
+                        isSmall && { fontSize: 58, lineHeight: 64 },
+                        isTablet && { fontSize: 94, lineHeight: 102 },
+                        isTall && { fontSize: 82, lineHeight: 90 },
+                      ]}
+                    >
+                      {preparationSecondsLeft}
+                    </TextR>
+                    <TextR
+                      style={[
+                        s.countdownBigSub,
+                        isSmall && { fontSize: 10.5 },
+                        isTall && { fontSize: 13 },
+                      ]}
+                    >
+                      GET READY
+                    </TextR>
+                  </Animated.View>
+                ) : (
+                  <Animated.View entering={FadeIn.duration(400)}>
+                    <AruMascot
+                      clip="breathing_loop"
+                      size={mascotSize}
+                      loop
+                      muted
+                      glow={false}
+                      interactive={false}
+                    />
+                  </Animated.View>
+                )}
               </View>
             </Animated.View>
           </View>
@@ -546,15 +642,47 @@ export default function Breathe() {
             ]}
             accessibilityLiveRegion="polite"
           >
-            <View style={[s.phaseDot, { backgroundColor: phase.accentColor }]} />
-            <TextR style={[s.phaseText, isSmall && { fontSize: 11.5 }, isTablet && { fontSize: 14.5 }, { color: phase.accentColor }]}>
-              {preparing ? "GET READY" : phase.label.toUpperCase()}
+            <View
+              style={[
+                s.phaseDot,
+                { backgroundColor: preparing ? C.saffron : phase.accentColor },
+              ]}
+            />
+            <TextR
+              style={[
+                s.phaseText,
+                isSmall && { fontSize: 11.5 },
+                isTablet && { fontSize: 14.5 },
+                { color: preparing ? C.saffron : phase.accentColor },
+              ]}
+            >
+              {preparing ? "PREPARE YOUR BREATH" : phase.label.toUpperCase()}
             </TextR>
-            <TextR style={s.phaseBadgeSep}>·</TextR>
-            <TextR serif style={[s.phaseBadgeSec, isSmall && { fontSize: 19 }, isTablet && { fontSize: 25 }, { color: phase.accentColor }]}>
-              {preparing ? preparationSecondsLeft : String(secondsLeft).padStart(2, "0")}
-            </TextR>
-            <TextR style={[s.phaseBadgeUnit, isSmall && { fontSize: 11.5 }, isTablet && { fontSize: 14 }]}>s</TextR>
+            {!preparing && (
+              <>
+                <TextR style={s.phaseBadgeSep}>·</TextR>
+                <TextR
+                  serif
+                  style={[
+                    s.phaseBadgeSec,
+                    isSmall && { fontSize: 19 },
+                    isTablet && { fontSize: 25 },
+                    { color: phase.accentColor },
+                  ]}
+                >
+                  {String(secondsLeft).padStart(2, "0")}
+                </TextR>
+                <TextR
+                  style={[
+                    s.phaseBadgeUnit,
+                    isSmall && { fontSize: 11.5 },
+                    isTablet && { fontSize: 14 },
+                  ]}
+                >
+                  s
+                </TextR>
+              </>
+            )}
           </View>
 
           {/* Guided Instruction Prompt Pill */}
@@ -734,14 +862,14 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   beadTrackerPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    gap: 9,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 999,
     backgroundColor: "rgba(255, 248, 240, 0.95)",
     borderWidth: 1.2,
@@ -757,19 +885,19 @@ const s = StyleSheet.create({
   },
   beadTrackerText: {
     color: "#9A3C08",
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "800",
     letterSpacing: 0.8,
   },
   beadsRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4.5,
+    gap: 5,
   },
   beadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
     backgroundColor: "rgba(216, 144, 64, 0.2)",
     borderWidth: 1,
     borderColor: "rgba(216, 144, 64, 0.35)",
@@ -785,23 +913,23 @@ const s = StyleSheet.create({
     elevation: 2,
   },
   beadDotCurrent: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 11,
+    height: 11,
+    borderRadius: 5.5,
     backgroundColor: "rgba(254, 236, 220, 0.95)",
     borderColor: C.saffron,
     borderWidth: 1.5,
   },
   beadSpark: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
+    width: 3.5,
+    height: 3.5,
+    borderRadius: 1.75,
     backgroundColor: "#FFFFFF",
   },
   beadActiveCore: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
+    width: 4.5,
+    height: 4.5,
+    borderRadius: 2.25,
     backgroundColor: C.saffron,
   },
 
@@ -851,7 +979,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
-    marginBottom: 4,
+    marginBottom: 6,
   },
   glowOuter: {
     position: "absolute",
@@ -880,9 +1008,9 @@ const s = StyleSheet.create({
     position: "absolute",
     top: 0,
     left: 0,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 13,
+    height: 13,
+    borderRadius: 6.5,
     backgroundColor: C.gold,
     borderWidth: 1.5,
     borderColor: "#FFFFFF",
@@ -897,16 +1025,37 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  countdownHeroStage: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
+  countdownBigNumber: {
+    fontSize: 72,
+    lineHeight: 78,
+    fontWeight: "300",
+    color: C.saffron,
+    letterSpacing: -2,
+    textAlign: "center",
+  },
+  countdownBigSub: {
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 2,
+    color: "#9A3C08",
+    textAlign: "center",
+    marginTop: -2,
+  },
   phaseBadge: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 5.5,
+    gap: 7,
+    paddingHorizontal: 20,
+    paddingVertical: 7,
     borderRadius: 999,
     backgroundColor: "rgba(255, 250, 245, 0.95)",
-    marginBottom: 8,
+    marginBottom: 10,
     borderWidth: 1.2,
     borderColor: "rgba(255, 255, 255, 0.95)",
     borderTopColor: "#FFFFFF",
@@ -920,35 +1069,35 @@ const s = StyleSheet.create({
     elevation: 2,
   },
   phaseDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   phaseText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "900",
     letterSpacing: 1.4,
   },
   phaseBadgeSep: {
-    fontSize: 14,
+    fontSize: 15,
     color: C.muted,
     fontWeight: "300",
   },
   phaseBadgeSec: {
-    fontSize: 22,
-    lineHeight: 26,
+    fontSize: 26,
+    lineHeight: 30,
     fontWeight: "300",
   },
   phaseBadgeUnit: {
-    fontSize: 13,
+    fontSize: 14,
     color: C.inkSoft,
     fontWeight: "700",
     marginTop: 2,
   },
   prompt: {
-    marginHorizontal: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    marginHorizontal: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 999,
     backgroundColor: "rgba(254, 244, 234, 0.85)",
     borderWidth: 1,
@@ -961,18 +1110,18 @@ const s = StyleSheet.create({
     elevation: 1,
   },
   promptText: {
-    fontSize: 12.5,
-    lineHeight: 18,
+    fontSize: 13.5,
+    lineHeight: 19,
     color: "#5C3826",
     textAlign: "center",
-    fontWeight: "500",
+    fontWeight: "600",
   },
 
   // ─── Connected 3-Phase Flow Ribbon ──────────────────────────────────────────
   flowRibbonCard: {
     backgroundColor: "rgba(255, 252, 248, 0.98)",
-    borderRadius: 22,
-    padding: 12,
+    borderRadius: 24,
+    padding: 14,
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.95)",
     borderTopColor: "#FFFFFF",
@@ -994,9 +1143,9 @@ const s = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 7,
+    paddingVertical: 9,
     paddingHorizontal: 8,
-    borderRadius: 14,
+    borderRadius: 15,
   },
   flowStepItemActive: {
     backgroundColor: C.saffron,
@@ -1016,7 +1165,7 @@ const s = StyleSheet.create({
     borderColor: "rgba(255, 255, 255, 0.8)",
   },
   flowStepTitle: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: "800",
     color: "#7D5036",
     marginTop: 2,
@@ -1026,7 +1175,7 @@ const s = StyleSheet.create({
     fontWeight: "900",
   },
   flowStepSec: {
-    fontSize: 11,
+    fontSize: 11.5,
     color: C.muted,
     marginTop: 1,
     fontWeight: "600",
@@ -1054,7 +1203,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginTop: 10,
-    paddingTop: 8,
+    paddingTop: 9,
     borderTopWidth: 1,
     borderTopColor: "rgba(216, 144, 64, 0.15)",
     paddingHorizontal: 4,
@@ -1062,10 +1211,10 @@ const s = StyleSheet.create({
   flowFooterItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 6,
   },
   flowFooterText: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: "800",
     color: "#7D4A26",
   },
@@ -1075,7 +1224,7 @@ const s = StyleSheet.create({
     gap: 4,
   },
   flowPatternKicker: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: "800",
     color: "#C2410C",
     letterSpacing: 1.1,

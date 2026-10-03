@@ -15,13 +15,15 @@ import { GitaProvider } from '@/state/gita-store';
 import { TasksProvider } from '@/state/tasks-store';
 import { ContentProvider } from '@/state/content-store';
 
-const TAB_ROUTES = new Set(['/', '/today', '/night']);
+const TAB_ROUTES = new Set(['/', '/index', '/today', '/night']);
 
 function AppChrome() {
   const pathname = usePathname();
   const router = useRouter();
   const rootNavigationState = useRootNavigationState();
-  const showTabs = TAB_ROUTES.has(pathname);
+  const normalizedPath = pathname ? (pathname.startsWith('/') ? pathname : `/${pathname}`) : '/';
+  const isExcluded = normalizedPath.startsWith('/alarm') || normalizedPath === '/breathe' || normalizedPath === '/gita' || normalizedPath === '/downloads' || normalizedPath === '/saved';
+  const showTabs = !isExcluded && TAB_ROUTES.has(normalizedPath);
 
   useEffect(() => {
     const refresh = () => configureAlarmNotifications().then(reconcileAlarm).catch(() => undefined);
@@ -36,10 +38,20 @@ function AppChrome() {
     // REPLACE action even though the file route is present.
     if (!rootNavigationState?.key) return;
 
+    const navigateToWake = () => {
+      if (pathname !== '/alarm/wake') {
+        requestAnimationFrame(() => {
+          try {
+            router.replace('/alarm/wake');
+          } catch {}
+        });
+      }
+    };
+
     const enforceWakeScreen = () => {
       getAlarmPlaybackState()
         .then((state) => {
-          if (state.ringing && pathname !== '/alarm/wake') router.replace('/alarm/wake');
+          if (state.ringing) navigateToWake();
         })
         .catch(() => undefined);
     };
@@ -48,7 +60,7 @@ function AppChrome() {
       if (state === 'active') enforceWakeScreen();
     });
     const alarm = addAlarmTriggeredListener(() => {
-      if (pathname !== '/alarm/wake') router.replace('/alarm/wake');
+      navigateToWake();
     });
     return () => {
       appState.remove();

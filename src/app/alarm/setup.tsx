@@ -714,31 +714,110 @@ function SmoothWheelColumn({
 }) {
   const itemHeight = isSmall ? 48 : 54;
   const scrollViewRef = useRef<ScrollView>(null);
-  const isScrollingRef = useRef(false);
+  const isUserInteractingRef = useRef(false);
+  const lastReportedValueRef = useRef(value);
+  const hasMountedRef = useRef(false);
+  const settleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Sync external changes ONLY (e.g., initial load or external preset reset)
   useEffect(() => {
-    if (!isScrollingRef.current) {
-      const idx = data.indexOf(value);
-      if (idx >= 0) {
-        scrollViewRef.current?.scrollTo({
-          y: idx * itemHeight,
-          animated: true,
-        });
+    if (value !== lastReportedValueRef.current) {
+      lastReportedValueRef.current = value;
+      if (!isUserInteractingRef.current) {
+        const idx = data.indexOf(value);
+        if (idx >= 0) {
+          scrollViewRef.current?.scrollTo({
+            y: idx * itemHeight,
+            animated: true,
+          });
+        }
       }
     }
   }, [value, data, itemHeight]);
 
-  const handleScrollEnd = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      isScrollingRef.current = false;
-      const offsetY = e.nativeEvent.contentOffset.y;
+  const settleToIndex = useCallback(
+    (offsetY: number, animateSnap = true) => {
       const idx = Math.round(offsetY / itemHeight);
       const clamped = Math.max(0, Math.min(data.length - 1, idx));
-      if (data[clamped] !== value) {
-        onChange(data[clamped]);
+      const targetY = clamped * itemHeight;
+
+      if (animateSnap && Math.abs(offsetY - targetY) > 0.5) {
+        scrollViewRef.current?.scrollTo({
+          y: targetY,
+          animated: true,
+        });
+      }
+
+      const selectedItem = data[clamped];
+      if (selectedItem !== lastReportedValueRef.current) {
+        lastReportedValueRef.current = selectedItem;
+        onChange(selectedItem);
+      }
+
+      if (settleTimeoutRef.current) clearTimeout(settleTimeoutRef.current);
+      settleTimeoutRef.current = setTimeout(() => {
+        isUserInteractingRef.current = false;
+      }, 120);
+    },
+    [data, itemHeight, onChange]
+  );
+
+  const handleScrollBeginDrag = useCallback(() => {
+    isUserInteractingRef.current = true;
+    if (settleTimeoutRef.current) {
+      clearTimeout(settleTimeoutRef.current);
+      settleTimeoutRef.current = null;
+    }
+  }, []);
+
+  const handleScrollEndDrag = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const velocityY = Math.abs(e.nativeEvent.velocity?.y ?? 0);
+      // Settle immediately only if drag ended with practically zero momentum velocity
+      if (velocityY < 0.1) {
+        settleToIndex(e.nativeEvent.contentOffset.y, true);
       }
     },
-    [data, itemHeight, value, onChange]
+    [settleToIndex]
+  );
+
+  const handleMomentumScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      settleToIndex(e.nativeEvent.contentOffset.y, false);
+    },
+    [settleToIndex]
+  );
+
+  const handleLayout = useCallback(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      const idx = data.indexOf(value);
+      if (idx >= 0) {
+        scrollViewRef.current?.scrollTo({
+          y: idx * itemHeight,
+          animated: false,
+        });
+      }
+    }
+  }, [data, itemHeight, value]);
+
+  const handleItemPress = useCallback(
+    (idx: number, item: number) => {
+      isUserInteractingRef.current = true;
+      scrollViewRef.current?.scrollTo({
+        y: idx * itemHeight,
+        animated: true,
+      });
+      if (item !== lastReportedValueRef.current) {
+        lastReportedValueRef.current = item;
+        onChange(item);
+      }
+      if (settleTimeoutRef.current) clearTimeout(settleTimeoutRef.current);
+      settleTimeoutRef.current = setTimeout(() => {
+        isUserInteractingRef.current = false;
+      }, 150);
+    },
+    [itemHeight, onChange]
   );
 
   return (
@@ -762,13 +841,13 @@ function SmoothWheelColumn({
         snapToAlignment="center"
         decelerationRate="fast"
         nestedScrollEnabled={true}
+        scrollEventThrottle={16}
         bounces={false}
         overScrollMode="never"
-        onScrollBeginDrag={() => {
-          isScrollingRef.current = true;
-        }}
-        onScrollEndDrag={handleScrollEnd}
-        onMomentumScrollEnd={handleScrollEnd}
+        onLayout={handleLayout}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        onScrollEndDrag={handleScrollEndDrag}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
         contentOffset={{ x: 0, y: Math.max(0, data.indexOf(value)) * itemHeight }}
       >
         <View style={{ height: itemHeight }} />
@@ -777,13 +856,7 @@ function SmoothWheelColumn({
           return (
             <Pressable
               key={item}
-              onPress={() => {
-                scrollViewRef.current?.scrollTo({
-                  y: idx * itemHeight,
-                  animated: true,
-                });
-                onChange(item);
-              }}
+              onPress={() => handleItemPress(idx, item)}
               style={[s.wheelItem, { height: itemHeight }]}
             >
               <TextR
