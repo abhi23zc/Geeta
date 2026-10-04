@@ -9,8 +9,16 @@ object AlarmController {
     // Update shared state before resolving the JS call so the global route guard
     // cannot bounce a completed alarm back to the wake screen.
     AlarmStore.setRinging(context, false)
-    context.startService(AlarmService.stopIntent(context, "start-my-day"))
-    if (finishActivity) AlarmActivity.finishVisible() else AlarmActivity.releaseVisibleStrictMode()
+    runCatching { context.startService(AlarmService.stopIntent(context, "start-my-day")) }
+      .onFailure {
+        AlarmLog.event("stop_service_request_failed", it.javaClass.simpleName)
+        // A stale notification must not start a forbidden background service.
+        context.stopService(AlarmService.stopIntent(context, "start-my-day"))
+      }
+    if (finishActivity) {
+      AlarmPresentation.end(context)
+      AlarmActivity.finishVisible()
+    }
     AlarmLog.event("dismiss_complete", "next=$next")
     return next
   }

@@ -1,4 +1,4 @@
-import { Stack, usePathname, useRootNavigationState, useRouter } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AppState, View } from 'react-native';
@@ -7,23 +7,26 @@ import { DockLayoutProvider, TabBar } from '@/components/ritual-ui';
 import {
   configureAlarmNotifications,
   reconcileAlarm,
-  addAlarmTriggeredListener,
-  getAlarmPlaybackState,
 } from '@/services/alarm';
 import { RitualProvider } from '@/state/ritual-store';
 import { GitaProvider } from '@/state/gita-store';
 import { TasksProvider } from '@/state/tasks-store';
 import { ContentProvider } from '@/state/content-store';
+import { AlarmNavigationGuard } from '@/navigation/alarm-navigation-guard';
+import { useAlarmPresentation } from '@/navigation/alarm-presentation';
+import { LanguageProvider } from '@/i18n/provider';
+
+const alarmScreenLayout: NonNullable<React.ComponentProps<typeof Stack>['screenLayout']> =
+  ({ children }) => <AlarmNavigationGuard>{children}</AlarmNavigationGuard>;
 
 const TAB_ROUTES = new Set(['/', '/index', '/today', '/night']);
 
 function AppChrome() {
+  const presentation = useAlarmPresentation();
   const pathname = usePathname();
-  const router = useRouter();
-  const rootNavigationState = useRootNavigationState();
   const normalizedPath = pathname ? (pathname.startsWith('/') ? pathname : `/${pathname}`) : '/';
   const isExcluded = normalizedPath.startsWith('/alarm') || normalizedPath === '/breathe' || normalizedPath === '/gita' || normalizedPath === '/downloads' || normalizedPath === '/saved';
-  const showTabs = !isExcluded && TAB_ROUTES.has(normalizedPath);
+  const showTabs = !presentation.active && !isExcluded && TAB_ROUTES.has(normalizedPath);
 
   useEffect(() => {
     const refresh = () => configureAlarmNotifications().then(reconcileAlarm).catch(() => undefined);
@@ -32,51 +35,17 @@ function AppChrome() {
     return () => subscription.remove();
   }, []);
 
-  useEffect(() => {
-    // Native alarm events can arrive before Expo Router has registered the
-    // root stack. Dispatching before this key exists produces an unhandled
-    // REPLACE action even though the file route is present.
-    if (!rootNavigationState?.key) return;
-
-    const navigateToWake = () => {
-      if (pathname !== '/alarm/wake') {
-        requestAnimationFrame(() => {
-          try {
-            router.replace('/alarm/wake');
-          } catch {}
-        });
-      }
-    };
-
-    const enforceWakeScreen = () => {
-      getAlarmPlaybackState()
-        .then((state) => {
-          if (state.ringing) navigateToWake();
-        })
-        .catch(() => undefined);
-    };
-    enforceWakeScreen();
-    const appState = AppState.addEventListener('change', (state) => {
-      if (state === 'active') enforceWakeScreen();
-    });
-    const alarm = addAlarmTriggeredListener(() => {
-      navigateToWake();
-    });
-    return () => {
-      appState.remove();
-      alarm?.remove();
-    };
-  }, [pathname, rootNavigationState?.key, router]);
-
   return (
     <View style={{ flex: 1 }}>
       <StatusBar style="dark" hidden={pathname === '/alarm/wake'} />
-      <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
+      <Stack screenLayout={alarmScreenLayout} screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="gita" />
         <Stack.Screen name="breathe" />
         <Stack.Screen name="today" />
         <Stack.Screen name="night" />
+        <Stack.Screen name="quiz" />
+        <Stack.Screen name="language" />
         <Stack.Screen name="alarm/setup" options={{ presentation: 'card' }} />
         <Stack.Screen name="alarm/wake" options={{ presentation: 'fullScreenModal' }} />
       </Stack>
@@ -88,17 +57,19 @@ function AppChrome() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <DockLayoutProvider>
-      <RitualProvider>
-        <TasksProvider>
-        <GitaProvider>
-        <ContentProvider>
-          <AppChrome />
-        </ContentProvider>
-        </GitaProvider>
-        </TasksProvider>
-      </RitualProvider>
-      </DockLayoutProvider>
+      <LanguageProvider>
+        <DockLayoutProvider>
+          <RitualProvider>
+            <TasksProvider>
+              <GitaProvider>
+                <ContentProvider>
+                  <AppChrome />
+                </ContentProvider>
+              </GitaProvider>
+            </TasksProvider>
+          </RitualProvider>
+        </DockLayoutProvider>
+      </LanguageProvider>
     </GestureHandlerRootView>
   );
 }

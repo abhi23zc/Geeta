@@ -12,12 +12,24 @@ No brand is certified from compilation or unit tests. Record model, Android vers
 
 | Brand | Required coverage | Status |
 | --- | --- | --- |
-| Xiaomi / Redmi / POCO | Release runtime | Pending |
+| Xiaomi / Redmi / POCO | Release runtime | Partial: Xiaomi M2101K7BI / Android 13 locked ritual tested; see [ritual validation](alarm-lockscreen-ritual.md). Full reliability matrix pending. |
 | Samsung | Release runtime | Untested; hardware unavailable |
 | Pixel / generic | Release runtime and API 24–25 minimum | Untested; hardware unavailable |
 | Oppo / Realme / OnePlus | At least one release device | Untested; hardware unavailable |
 | Vivo / iQOO | At least one release device | Untested; hardware unavailable |
 | Huawei / Honor | Guidance and fallback | Untested; hardware unavailable |
+
+## Production recheck — October 4, 2026
+
+Repository-wide ESLint passes with zero errors/warnings; TypeScript passes. All seven Node test files pass, including manufacturer aliases/generic guidance, navigation races, destination gating, startup exit cleanup, content/cache contracts, task models, and serialized persistence. Seven native scheduler/content-file tests pass. The audit fixed premature presentation cleanup during alarm restoration, handled failed foreground promotion and stale stop-service requests, moved task writer creation to effect lifecycle, corrected web hydration, and cleaned up animation effects.
+
+The audited release APK built successfully and was installed without clearing app data. Its SHA-256 is `23d444c90624587b8f33ad6ef786fa9aa7a3195cf7c97decfeb23dfdd55f22c4`. A separate test delivered real wake after ordinary background process termination; the complete repeat locked transition remains pending because the phone was concurrently in use. The saved recurring alarm remained at 14:26, with its next occurrence reconciled for the following day.
+
+Full Android lint has **not passed**: its dependency analyzer crashed in `react-native-worklets` with `Cannot find a KaModule for the VirtualFile`. An isolated retry also needed uncached Android test model artifacts and did not complete. This tool failure is a validation gap, not a confirmed runtime crash in the app. Release compilation/unit tests are checked separately.
+
+The local `assembleRelease` APK uses `signingConfigs.debug` in the generated app Gradle file. It is a release-runtime test artifact, not a store-ready signed production artifact. Configure production signing through the intended release pipeline before publication. Do not replace the app ID or signing identity without planning migration of existing installs.
+
+Support for API 24+ and version guards does not certify every phone/ROM. Remaining release acceptance includes Android 7/8 and Android 14–16, Samsung, Pixel, Oppo/Realme/OnePlus, Vivo/iQOO, Huawei/Honor, revoked permissions, denied full-screen access, Doze/battery saver, reboot before first unlock, and successful authentication continuity. Low-memory devices and frame/memory performance profiling are also untested. Exact alarm access and notification permission remain required; Android controls full-screen eligibility.
 
 ## Manual acceptance checks
 
@@ -25,7 +37,7 @@ For each available release device:
 
 1. Fresh install: deny notifications and exact access. Saving retains the configuration and reports Needs action without scheduling the reliable path.
 2. Grant required access and return from Settings. Verify automatic recurrence recovery. Revoke each required access, return, and verify saved settings remain. Restore and verify recovery.
-3. Deny Android 14+ full-screen access. Verify the alarm notification remains usable, opens the native wake screen, and Stop ends playback. Restoring access does not imply guaranteed full-screen presentation.
+3. Deny Android 14+ full-screen access. Verify the alarm notification remains usable, opens the real wake screen with native startup fallback, and Stop ends playback. Restoring access does not imply guaranteed full-screen presentation.
 4. Check background restriction and battery exemption independently. Confirm each phone setting separately; reopen setup and verify confirmations persist under the appropriate profile.
 5. Test known manufacturer destinations, plus ROMs where components are missing, unexported, or blocked. Verify app details or Android settings opens and the UI reports the actual fallback with manual guidance.
 6. Save an enabled alarm, run the short test, stop it, and verify the saved configuration and next recurring occurrence are unchanged. Repeat with a disabled saved alarm and with no saved alarm.

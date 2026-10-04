@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n/provider';
 import * as Haptics from "expo-haptics";
 import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
 import {
@@ -31,13 +32,13 @@ import Animated, {
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 
 import { AruMascot } from "@/components/aru-mascot";
 import { Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
 import { replaceAppRoute } from "@/navigation/route-actions";
+import { getAlarmPresentationState, setAlarmRitualStage } from "@/services/alarm";
 import { useGitaProgress } from "@/state/gita-store";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -93,6 +94,7 @@ function TactileRoundButton({
   style?: any;
   accessibilityLabel?: string;
 }) {
+  const { text: translateText } = useLanguage();
   const pressed = useSharedValue(0);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -126,7 +128,7 @@ function TactileRoundButton({
   return (
     <AnimatedPressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={translateText(accessibilityLabel)}
       onPress={onPress}
       onPressIn={() => {
         pressed.value = 1;
@@ -149,8 +151,8 @@ function TactileRoundButton({
 }
 
 export default function Breathe() {
+  const { t: translate, text: translateText } = useLanguage();
   const navigation = useNavigation("/");
-  const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const isSmall = width < 360;
   const isTablet = width >= 768;
@@ -162,6 +164,7 @@ export default function Breathe() {
 
   const [lifecycle, setLifecycle] = useState<BreathingLifecycle>("preparing");
   const [preparationSecondsLeft, setPreparationSecondsLeft] = useState(PREPARATION_SECONDS);
+  const preparationRemaining = useRef(PREPARATION_SECONDS);
   const [elapsedTotalSeconds, setElapsedTotalSeconds] = useState(0);
   const elapsed = useRef(0);
   const [focused, setFocused] = useState(false);
@@ -169,6 +172,7 @@ export default function Breathe() {
   const [foreground, setForeground] = useState(AppState.currentState === "active");
   const completionHandled = useRef(false);
   const appState = useRef(AppState.currentState);
+  const resumeOnForeground = useRef(false);
 
   const preparing = lifecycle === "preparing";
   const active = lifecycle === "active" && focused && foreground;
@@ -317,7 +321,7 @@ export default function Breathe() {
   // Preparation seconds countdown with tactile pulses.
   useEffect(() => {
     if (!preparing || !focused || !foreground) return;
-    let remaining = PREPARATION_SECONDS;
+    let remaining = preparationRemaining.current;
     try {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {}
@@ -325,6 +329,7 @@ export default function Breathe() {
     const timer = setInterval(() => {
       if (appState.current !== "active" || !focusedRef.current) return;
       remaining -= 1;
+      preparationRemaining.current = remaining;
       if (remaining === 0) {
         clearInterval(timer);
         try {
@@ -347,6 +352,7 @@ export default function Breathe() {
     return () => {
       focusedRef.current = false;
       setFocused(false);
+      preparationRemaining.current = PREPARATION_SECONDS;
       setPreparationSecondsLeft(PREPARATION_SECONDS);
       setLifecycle((current) => current === "active" ? "paused" : current);
     };
@@ -354,15 +360,20 @@ export default function Breathe() {
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
+      const wasActive = appState.current === 'active';
       appState.current = nextState;
       setForeground(nextState === "active");
-      if (nextState !== "active") {
-        setPreparationSecondsLeft(PREPARATION_SECONDS);
-        setLifecycle((current) => (current === "active" ? "paused" : current));
+      if (nextState !== 'active') {
+        if (wasActive) resumeOnForeground.current = lifecycle === 'active' && getAlarmPresentationState().active;
+        setLifecycle(current => current === 'active' ? 'paused' : current);
+      } else {
+        const resume = resumeOnForeground.current && focusedRef.current;
+        resumeOnForeground.current = false;
+        setLifecycle(current => resume && current === 'paused' ? 'active' : current);
       }
     });
     return () => subscription.remove();
-  }, []);
+  }, [lifecycle]);
 
   // Distinct Sensory Tactile Haptics on Breath Phase Transitions
   const prevPhaseKeyRef = useRef<string | null>(null);
@@ -441,6 +452,7 @@ export default function Breathe() {
 
   const handleRestart = useCallback(() => {
     setLifecycle("preparing");
+    preparationRemaining.current = PREPARATION_SECONDS;
     setPreparationSecondsLeft(PREPARATION_SECONDS);
     elapsed.current = 0;
     setElapsedTotalSeconds(0);
@@ -451,12 +463,13 @@ export default function Breathe() {
 
   const handleContinueToGita = useCallback(() => {
     setLifecycle("paused");
-    requestAnimationFrame(() =>
+    void setAlarmRitualStage('gita').then(() => {
+      if (!navigation.isFocused()) return;
       replaceAppRoute(navigation, "/gita", {
         entry: entry === "alarm" ? "alarm" : "manual",
-      }),
-    );
-  }, [entry, navigation]);
+      });
+    }).catch(error => console.error(translate("Could not open Gita practice"), error));
+  }, [entry, navigation, translate]);
 
   const exitToHome = useCallback(() => {
     if (navigation.canGoBack()) {
@@ -482,7 +495,7 @@ export default function Breathe() {
         <View style={s.topHeaderRow}>
           <TactileRoundButton
             onPress={exitToHome}
-            accessibilityLabel="Back to Home"
+            accessibilityLabel={translate("Back to Home")}
             size={headerBtnSize}
           >
             <ChevronLeft size={headerIconSize} color={C.ink} />
@@ -491,7 +504,7 @@ export default function Breathe() {
           {/* 5-Bead Glowing Sadhana Round Flow Altar */}
           <View style={[s.beadTrackerPill, isSmall && { paddingHorizontal: 9, paddingVertical: 5 }]}>
             <TextR style={[s.beadTrackerText, isSmall && { fontSize: 10 }]}>
-              Round {currentRound}/{TOTAL_ROUNDS}
+               {translate("Round")} {currentRound}/{TOTAL_ROUNDS}
             </TextR>
             <View style={s.beadsRow}>
               {Array.from({ length: TOTAL_ROUNDS }).map((_, i) => {
@@ -614,8 +627,7 @@ export default function Breathe() {
                         isTall && { fontSize: 13 },
                       ]}
                     >
-                      GET READY
-                    </TextR>
+                       {translate("GET READY")} </TextR>
                   </Animated.View>
                 ) : (
                   <Animated.View entering={FadeIn.duration(400)}>
@@ -656,7 +668,7 @@ export default function Breathe() {
                 { color: preparing ? C.saffron : phase.accentColor },
               ]}
             >
-              {preparing ? "PREPARE YOUR BREATH" : phase.label.toUpperCase()}
+              {preparing ? translate("PREPARE YOUR BREATH") : translateText(phase.label).toUpperCase()}
             </TextR>
             {!preparing && (
               <>
@@ -701,8 +713,8 @@ export default function Breathe() {
               ]}
             >
               {preparing
-                ? "Sit comfortably. Follow Aru: inhale 4, hold 4, exhale 6."
-                : phase.prompt}
+                ? translate("Sit comfortably. Follow Aru: inhale 4, hold 4, exhale 6.")
+                : translateText(phase.prompt)}
             </TextR>
           </View>
         </View>
@@ -733,7 +745,7 @@ export default function Breathe() {
                         isActive && s.flowStepTitleActive,
                       ]}
                     >
-                      {item.label}
+                      {translateText(item.label)}
                     </TextR>
                     <TextR
                       style={[
@@ -773,8 +785,7 @@ export default function Breathe() {
             <View style={s.flowPatternBadge}>
               <Sparkles size={isSmall ? 9 : 11} color="#C2410C" />
               <TextR style={[s.flowPatternKicker, isSmall && { fontSize: 9 }, isTablet && { fontSize: 11.5 }]}>
-                4 · 4 · 6 PRANAYAMA
-              </TextR>
+                 {translate("4 · 4 · 6 PRANAYAMA")} </TextR>
             </View>
           </View>
         </View>
@@ -801,12 +812,10 @@ export default function Breathe() {
                   <CheckCircle2 size={isSmall ? 30 : 36} color={C.white} strokeWidth={2.5} />
                 </View>
                 <TextR style={[s.celebrationTitle, isSmall && { fontSize: 19 }, isTablet && { fontSize: 25 }]}>
-                  Prana Awakened
-                </TextR>
+                   {translate("Prana Awakened")} </TextR>
                 <TextR style={[s.celebrationSub, isSmall && { fontSize: 12.5, marginBottom: 16 }, isTablet && { fontSize: 15.5 }]}>
-                  {TOTAL_ROUNDS} rounds completed · {formatMinSec(TOTAL_SESSION_SEC)}{" "}
-                  of mindful breathing
-                </TextR>
+                  {TOTAL_ROUNDS}  {translate("rounds completed ·")} {formatMinSec(TOTAL_SESSION_SEC)}{" "}
+                   {translate("of mindful breathing")} </TextR>
 
                 {/* Continue to Gita (primary action) */}
                 <Pressable
@@ -819,8 +828,7 @@ export default function Breathe() {
                   ]}
                 >
                   <TextR style={[s.continueText, isSmall && { fontSize: 14.5 }, isTablet && { fontSize: 17 }]}>
-                    Continue to Gita
-                  </TextR>
+                     {translate("Continue to Gita")} </TextR>
                 </Pressable>
 
                 {/* Restart (secondary action) */}
@@ -833,8 +841,7 @@ export default function Breathe() {
                 >
                   <RotateCcw size={15} color={C.inkSoft} />
                   <TextR style={[s.restartText, isSmall && { fontSize: 13 }, isTablet && { fontSize: 15 }]}>
-                    Breathe Again
-                  </TextR>
+                     {translate("Breathe Again")} </TextR>
                 </Pressable>
               </Animated.View>
             </Animated.View>

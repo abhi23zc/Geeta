@@ -1,0 +1,678 @@
+{
+  "ids": ["mahabharata-001","mahabharata-002","mahabharata-003","mahabharata-004","mahabharata-005","mahabharata-006","mahabharata-007","mahabharata-008","mahabharata-009","mahabharata-010","mahabharata-011","mahabharata-012","mahabharata-013","mahabharata-014","mahabharata-015","mahabharata-016","mahabharata-017","mahabharata-018","mahabharata-019","mahabharata-020","mahabharata-021","mahabharata-022","mahabharata-023","mahabharata-024","mahabharata-025","mahabharata-026","mahabharata-027","mahabharata-028","mahabharata-029","mahabharata-030","mahabharata-031","mahabharata-032","mahabharata-033","mahabharata-034","mahabharata-035","mahabharata-036","mahabharata-037","mahabharata-038","mahabharata-039","mahabharata-040","mahabharata-041","mahabharata-042","mahabharata-043","mahabharata-044","mahabharata-045","mahabharata-046","mahabharata-047","mahabharata-048","mahabharata-049","mahabharata-050","mahabharata-051","mahabharata-052","mahabharata-053","mahabharata-054","mahabharata-055","mahabharata-056","mahabharata-057","mahabharata-058","mahabharata-059","mahabharata-060","mahabharata-061","mahabharata-062","mahabharata-063","mahabharata-064","mahabharata-065","mahabharata-066","mahabharata-067","mahabharata-068","mahabharata-069","mahabharata-070","mahabharata-071","mahabharata-072","mahabharata-073","mahabharata-074","mahabharata-075","mahabharata-076","mahabharata-077","mahabharata-078","mahabharata-079","mahabharata-080","mahabharata-081","mahabharata-082","mahabharata-083","mahabharata-084","mahabharata-085","mahabharata-086","mahabharata-087","mahabharata-088","mahabharata-089","mahabharata-090","mahabharata-091","mahabharata-092","mahabharata-093","mahabharata-094","mahabharata-095","mahabharata-096","mahabharata-097","mahabharata-098","mahabharata-099","mahabharata-100"],
+  "reviewedIds": [],
+  "groups": [
+    {
+      "en": "Who is the father of {s} in the Mahabharata?",
+      "hi": "महाभारत में {s} के पिता कौन हैं?",
+      "exEn": "The epic identifies {a} as the father of {s}.",
+      "exHi": "महाकाव्य में {s} के पिता {a} हैं।",
+      "ref": "Adi Parva",
+      "rows": [
+        [
+          "Bhishma",
+          "भीष्म",
+          "Shantanu",
+          "शांतनु"
+        ],
+        [
+          "Duryodhana",
+          "दुर्योधन",
+          "Dhritarashtra",
+          "धृतराष्ट्र"
+        ],
+        [
+          "Dushasana",
+          "दुःशासन",
+          "Dhritarashtra",
+          "धृतराष्ट्र"
+        ],
+        [
+          "Ashvatthama",
+          "अश्वत्थामा",
+          "Drona",
+          "द्रोण"
+        ],
+        [
+          "Draupadi",
+          "द्रौपदी",
+          "Drupada",
+          "द्रुपद"
+        ],
+        [
+          "Dhrishtadyumna",
+          "धृष्टद्युम्न",
+          "Drupada",
+          "द्रुपद"
+        ],
+        [
+          "Abhimanyu",
+          "अभिमन्यु",
+          "Arjuna",
+          "अर्जुन"
+        ],
+        [
+          "Ghatotkacha",
+          "घटोत्कच",
+          "Bhima",
+          "भीम"
+        ],
+        [
+          "Parikshit",
+          "परीक्षित",
+          "Abhimanyu",
+          "अभिमन्यु"
+        ],
+        [
+          "Janamejaya",
+          "जनमेजय",
+          "Parikshit",
+          "परीक्षित"
+        ],
+        [
+          "Iravan",
+          "इरावान",
+          "Arjuna",
+          "अर्जुन"
+        ],
+        [
+          "Vichitravirya",
+          "विचित्रवीर्य",
+          "Shantanu",
+          "शांतनु"
+        ],
+        [
+          "Chitrangada, Shantanu's son",
+          "शांतनु के पुत्र चित्रांगद",
+          "Shantanu",
+          "शांतनु"
+        ],
+        [
+          "Shakuntala's son Bharata",
+          "शकुंतला के पुत्र भरत",
+          "Dushyanta",
+          "दुष्यंत"
+        ],
+        [
+          "Virata's son Uttara",
+          "विराट के पुत्र उत्तर",
+          "Virata",
+          "विराट"
+        ]
+      ]
+    },
+    {
+      "en": "Who is the mother of {s} in the Mahabharata?",
+      "hi": "महाभारत में {s} की माता कौन हैं?",
+      "exEn": "{a} is the mother of {s} in the epic.",
+      "exHi": "महाकाव्य में {s} की माता {a} हैं।",
+      "ref": "Adi Parva",
+      "rows": [
+        [
+          "Yudhishthira",
+          "युधिष्ठिर",
+          "Kunti",
+          "कुंती"
+        ],
+        [
+          "Bhima",
+          "भीम",
+          "Kunti",
+          "कुंती"
+        ],
+        [
+          "Arjuna",
+          "अर्जुन",
+          "Kunti",
+          "कुंती"
+        ],
+        [
+          "Nakula",
+          "नकुल",
+          "Madri",
+          "माद्री"
+        ],
+        [
+          "Sahadeva",
+          "सहदेव",
+          "Madri",
+          "माद्री"
+        ],
+        [
+          "Karna",
+          "कर्ण",
+          "Kunti",
+          "कुंती"
+        ],
+        [
+          "Duryodhana",
+          "दुर्योधन",
+          "Gandhari",
+          "गांधारी"
+        ],
+        [
+          "Bhishma",
+          "भीष्म",
+          "Ganga",
+          "गंगा"
+        ],
+        [
+          "Abhimanyu",
+          "अभिमन्यु",
+          "Subhadra",
+          "सुभद्रा"
+        ],
+        [
+          "Ghatotkacha",
+          "घटोत्कच",
+          "Hidimbi",
+          "हिडिंबा"
+        ],
+        [
+          "Parikshit",
+          "परीक्षित",
+          "Uttara",
+          "उत्तरा"
+        ],
+        [
+          "Dhritarashtra",
+          "धृतराष्ट्र",
+          "Ambika",
+          "अंबिका"
+        ],
+        [
+          "Pandu",
+          "पांडु",
+          "Ambalika",
+          "अंबालिका"
+        ],
+        [
+          "Vyasa",
+          "व्यास",
+          "Satyavati",
+          "सत्यवती"
+        ],
+        [
+          "Iravan",
+          "इरावान",
+          "Ulupi",
+          "उलूपी"
+        ]
+      ]
+    },
+    {
+      "en": "Which place is associated with {s} in the Mahabharata?",
+      "hi": "महाभारत में {s} किस स्थान से संबंधित है?",
+      "exEn": "The epic connects {s} with {a}.",
+      "exHi": "महाकाव्य में {s} का संबंध {a} से है।",
+      "ref": "Adi Parva; Sabha Parva; Virata Parva; Bhishma Parva",
+      "rows": [
+        [
+          "the Kuru royal capital",
+          "कुरु राजवंश की राजधानी",
+          "Hastinapura",
+          "हस्तिनापुर"
+        ],
+        [
+          "the Pandavas' newly built capital",
+          "पांडवों की नई राजधानी",
+          "Indraprastha",
+          "इंद्रप्रस्थ"
+        ],
+        [
+          "the great war's battlefield",
+          "महायुद्ध का रणक्षेत्र",
+          "Kurukshetra",
+          "कुरुक्षेत्र"
+        ],
+        [
+          "Krishna's coastal city",
+          "कृष्ण की समुद्रतटीय नगरी",
+          "Dvaraka",
+          "द्वारका"
+        ],
+        [
+          "Drupada's kingdom",
+          "द्रुपद का राज्य",
+          "Panchala",
+          "पांचाल"
+        ],
+        [
+          "Shakuni's kingdom of origin",
+          "शकुनि का मूल राज्य",
+          "Gandhara",
+          "गांधार"
+        ],
+        [
+          "the Pandavas' incognito year",
+          "पांडवों का अज्ञातवास",
+          "Matsya kingdom",
+          "मत्स्य राज्य"
+        ],
+        [
+          "the house of lac",
+          "लाक्षागृह",
+          "Varanavata",
+          "वारणावत"
+        ],
+        [
+          "Karna's kingship granted by Duryodhana",
+          "दुर्योधन द्वारा कर्ण को दिया गया राज्य",
+          "Anga",
+          "अंग"
+        ],
+        [
+          "Jarasandha's kingdom",
+          "जरासंध का राज्य",
+          "Magadha",
+          "मगध"
+        ]
+      ]
+    },
+    {
+      "en": "Who {s} in the Mahabharata?",
+      "hi": "महाभारत में किसने {s}?",
+      "exEn": "{a} performs this action in the epic: {s}.",
+      "exHi": "महाकाव्य में यह कार्य {a} ने किया: {s}।",
+      "ref": "Adi Parva; Sabha Parva; Vana Parva; Virata Parva; Udyoga Parva; Drona Parva; Karna Parva; Shalya Parva",
+      "rows": [
+        [
+          "is traditionally credited with compiling the epic",
+          "महाकाव्य का संकलन किया माना जाता है",
+          "Vyasa",
+          "व्यास"
+        ],
+        [
+          "taught archery to the Kuru princes",
+          "कुरु राजकुमारों को धनुर्विद्या सिखाई",
+          "Drona",
+          "द्रोण"
+        ],
+        [
+          "took a vow of lifelong celibacy for his father",
+          "पिता के लिए आजीवन ब्रह्मचर्य की प्रतिज्ञा की",
+          "Bhishma",
+          "भीष्म"
+        ],
+        [
+          "won Draupadi's archery contest",
+          "द्रौपदी के स्वयंवर की धनुर्विद्या प्रतियोगिता जीती",
+          "Arjuna",
+          "अर्जुन"
+        ],
+        [
+          "built the Pandavas' magnificent assembly hall",
+          "पांडवों की भव्य सभा बनाई",
+          "Maya",
+          "मय"
+        ],
+        [
+          "played dice on behalf of Duryodhana",
+          "दुर्योधन की ओर से पासे खेले",
+          "Shakuni",
+          "शकुनि"
+        ],
+        [
+          "answered the Yaksha's questions",
+          "यक्ष के प्रश्नों के उत्तर दिए",
+          "Yudhishthira",
+          "युधिष्ठिर"
+        ],
+        [
+          "served as Arjuna's charioteer",
+          "अर्जुन के सारथी बने",
+          "Krishna",
+          "कृष्ण"
+        ],
+        [
+          "narrated the battle to Dhritarashtra",
+          "धृतराष्ट्र को युद्ध का वर्णन सुनाया",
+          "Sanjaya",
+          "संजय"
+        ],
+        [
+          "went to the Kaurava court as a peace envoy",
+          "शांति दूत बनकर कौरव सभा में गए",
+          "Krishna",
+          "कृष्ण"
+        ],
+        [
+          "gave wise counsel as the Kuru minister",
+          "कुरु मंत्री के रूप में बुद्धिमत्तापूर्ण सलाह दी",
+          "Vidura",
+          "विदुर"
+        ],
+        [
+          "killed Kichaka during the incognito year",
+          "अज्ञातवास में कीचक का वध किया",
+          "Bhima",
+          "भीम"
+        ],
+        [
+          "entered the Chakravyuha",
+          "चक्रव्यूह में प्रवेश किया",
+          "Abhimanyu",
+          "अभिमन्यु"
+        ],
+        [
+          "was used by Arjuna as a shield against Bhishma's resistance",
+          "भीष्म के विरुद्ध अर्जुन के सामने खड़े हुए",
+          "Shikhandi",
+          "शिखंडी"
+        ],
+        [
+          "killed Drona after the deception about Ashvatthama",
+          "अश्वत्थामा संबंधी छल के बाद द्रोण का वध किया",
+          "Dhrishtadyumna",
+          "धृष्टद्युम्न"
+        ],
+        [
+          "killed Karna in the final battle",
+          "अंतिम युद्ध में कर्ण का वध किया",
+          "Arjuna",
+          "अर्जुन"
+        ],
+        [
+          "killed Shakuni",
+          "शकुनि का वध किया",
+          "Sahadeva",
+          "सहदेव"
+        ],
+        [
+          "defeated Duryodhana in the mace duel",
+          "गदायुद्ध में दुर्योधन को हराया",
+          "Bhima",
+          "भीम"
+        ],
+        [
+          "killed Shalya",
+          "शल्य का वध किया",
+          "Yudhishthira",
+          "युधिष्ठिर"
+        ],
+        [
+          "killed Jayadratha before sunset",
+          "सूर्यास्त से पहले जयद्रथ का वध किया",
+          "Arjuna",
+          "अर्जुन"
+        ]
+      ]
+    },
+    {
+      "en": "What name did {s} use during the incognito year?",
+      "hi": "अज्ञातवास में {s} ने कौन सा नाम रखा?",
+      "exEn": "{s} concealed their identity using the name {a}.",
+      "exHi": "{s} ने पहचान छिपाने के लिए {a} नाम रखा।",
+      "ref": "Virata Parva",
+      "rows": [
+        [
+          "Yudhishthira",
+          "युधिष्ठिर",
+          "Kanka",
+          "कंक"
+        ],
+        [
+          "Bhima",
+          "भीम",
+          "Ballava",
+          "बल्लव"
+        ],
+        [
+          "Arjuna",
+          "अर्जुन",
+          "Brihannala",
+          "बृहन्नला"
+        ],
+        [
+          "Nakula",
+          "नकुल",
+          "Granthika",
+          "ग्रंथिक"
+        ],
+        [
+          "Sahadeva",
+          "सहदेव",
+          "Tantipala",
+          "तंतिपाल"
+        ],
+        [
+          "Draupadi",
+          "द्रौपदी",
+          "Sairandhri",
+          "सैरंध्री"
+        ]
+      ]
+    },
+    {
+      "en": "Which object is associated with {s} in the Mahabharata?",
+      "hi": "महाभारत में {s} से कौन सी वस्तु जुड़ी है?",
+      "exEn": "{a} is the object associated with {s}.",
+      "exHi": "{s} से जुड़ी वस्तु {a} है।",
+      "ref": "Vana Parva; Bhishma Parva; Drona Parva",
+      "rows": [
+        [
+          "Arjuna's famous bow",
+          "अर्जुन का प्रसिद्ध धनुष",
+          "Gandiva",
+          "गांडीव"
+        ],
+        [
+          "Krishna's conch",
+          "कृष्ण का शंख",
+          "Panchajanya",
+          "पांचजन्य"
+        ],
+        [
+          "Arjuna's conch",
+          "अर्जुन का शंख",
+          "Devadatta",
+          "देवदत्त"
+        ],
+        [
+          "Bhima's conch",
+          "भीम का शंख",
+          "Paundra",
+          "पौण्ड्र"
+        ],
+        [
+          "Yudhishthira's conch",
+          "युधिष्ठिर का शंख",
+          "Anantavijaya",
+          "अनंतविजय"
+        ],
+        [
+          "Nakula's conch",
+          "नकुल का शंख",
+          "Sughosha",
+          "सुघोष"
+        ],
+        [
+          "Sahadeva's conch",
+          "सहदेव का शंख",
+          "Manipushpaka",
+          "मणिपुष्पक"
+        ],
+        [
+          "Arjuna's chariot flag",
+          "अर्जुन के रथ की ध्वजा",
+          "Hanuman emblem",
+          "हनुमान चिह्न"
+        ],
+        [
+          "Karna's natural protection at birth",
+          "जन्म के समय कर्ण की प्राकृतिक रक्षा",
+          "Armour and earrings",
+          "कवच और कुंडल"
+        ],
+        [
+          "Draupadi's vessel sustaining the forest household",
+          "वन में द्रौपदी के परिवार को भोजन देने वाला पात्र",
+          "Akshaya Patra",
+          "अक्षय पात्र"
+        ]
+      ]
+    },
+    {
+      "en": "Which figure is {s} in the Mahabharata?",
+      "hi": "महाभारत में {s} कौन हैं?",
+      "exEn": "The description refers to {a}: {s}.",
+      "exHi": "यह विवरण {a} का है: {s}।",
+      "ref": "Adi Parva; Vana Parva; Udyoga Parva; Shanti Parva",
+      "rows": [
+        [
+          "the eldest Pandava",
+          "सबसे बड़े पांडव",
+          "Yudhishthira",
+          "युधिष्ठिर"
+        ],
+        [
+          "the youngest Pandava",
+          "सबसे छोटे पांडव",
+          "Sahadeva",
+          "सहदेव"
+        ],
+        [
+          "the Kauravas' only sister",
+          "कौरवों की एकमात्र बहन",
+          "Duhshala",
+          "दुःशला"
+        ],
+        [
+          "Karna's foster mother",
+          "कर्ण की पालक माता",
+          "Radha",
+          "राधा"
+        ],
+        [
+          "Karna's foster father",
+          "कर्ण के पालक पिता",
+          "Adhiratha",
+          "अधिरथ"
+        ],
+        [
+          "Gandhari's brother",
+          "गांधारी के भाई",
+          "Shakuni",
+          "शकुनि"
+        ],
+        [
+          "the sister of Krishna married to Arjuna",
+          "अर्जुन से विवाहित कृष्ण की बहन",
+          "Subhadra",
+          "सुभद्रा"
+        ],
+        [
+          "the hunter's son who practiced before Drona's image",
+          "द्रोण की प्रतिमा के सामने अभ्यास करने वाले निषाद पुत्र",
+          "Ekalavya",
+          "एकलव्य"
+        ],
+        [
+          "the sage who cursed Pandu after a hunt",
+          "शिकार के बाद पांडु को शाप देने वाले ऋषि",
+          "Kindama",
+          "किंदम"
+        ],
+        [
+          "the king married to Damayanti",
+          "दमयंती से विवाहित राजा",
+          "Nala",
+          "नल"
+        ],
+        [
+          "the woman who won her husband's life back from Yama",
+          "यम से अपने पति का जीवन वापस पाने वाली स्त्री",
+          "Savitri",
+          "सावित्री"
+        ],
+        [
+          "Savitri's husband",
+          "सावित्री के पति",
+          "Satyavan",
+          "सत्यवान"
+        ],
+        [
+          "the king who married Shakuntala",
+          "शकुंतला से विवाह करने वाले राजा",
+          "Dushyanta",
+          "दुष्यंत"
+        ],
+        [
+          "the teacher who survived and later instructed Parikshit",
+          "जीवित बचे और बाद में परीक्षित को शिक्षा देने वाले गुरु",
+          "Kripa",
+          "कृप"
+        ],
+        [
+          "the elder who instructed Yudhishthira from a bed of arrows",
+          "बाणशय्या से युधिष्ठिर को उपदेश देने वाले बुजुर्ग",
+          "Bhishma",
+          "भीष्म"
+        ]
+      ]
+    },
+    {
+      "en": "How many {s} are described in the Mahabharata?",
+      "hi": "महाभारत में {s} कितने बताए गए हैं?",
+      "exEn": "The narrative gives the number {a} for {s}.",
+      "exHi": "कथा में {s} की संख्या {a} है।",
+      "ref": "Adi Parva; Sabha Parva; Bhishma Parva",
+      "rows": [
+        [
+          "Pandava brothers",
+          "पांडव भाई",
+          "Five",
+          "पांच"
+        ],
+        [
+          "sons of Dhritarashtra and Gandhari",
+          "धृतराष्ट्र और गांधारी के पुत्र",
+          "One hundred",
+          "एक सौ"
+        ],
+        [
+          "days of the Kurukshetra war",
+          "कुरुक्षेत्र युद्ध के दिन",
+          "Eighteen",
+          "अठारह"
+        ],
+        [
+          "years of forest exile stipulated after the dice game",
+          "द्यूतक्रीड़ा के बाद निर्धारित वनवास के वर्ष",
+          "Twelve",
+          "बारह"
+        ],
+        [
+          "years of incognito exile stipulated after the forest exile",
+          "वनवास के बाद निर्धारित अज्ञातवास के वर्ष",
+          "One",
+          "एक"
+        ],
+        [
+          "armies in akshauhinis on both sides combined",
+          "दोनों पक्षों की कुल अक्षौहिणी सेनाएं",
+          "Eighteen",
+          "अठारह"
+        ],
+        [
+          "akshauhinis on the Pandava side",
+          "पांडव पक्ष की अक्षौहिणी सेनाएं",
+          "Seven",
+          "सात"
+        ],
+        [
+          "akshauhinis on the Kaurava side",
+          "कौरव पक्ष की अक्षौहिणी सेनाएं",
+          "Eleven",
+          "ग्यारह"
+        ],
+        [
+          "principal books or parvas of the epic",
+          "महाकाव्य के प्रमुख पर्व",
+          "Eighteen",
+          "अठारह"
+        ]
+      ]
+    }
+  ]
+}

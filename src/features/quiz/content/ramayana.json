@@ -1,0 +1,687 @@
+{
+  "ids": ["ramayana-001","ramayana-002","ramayana-003","ramayana-004","ramayana-005","ramayana-006","ramayana-007","ramayana-008","ramayana-009","ramayana-010","ramayana-011","ramayana-012","ramayana-013","ramayana-014","ramayana-015","ramayana-016","ramayana-017","ramayana-018","ramayana-019","ramayana-020","ramayana-021","ramayana-022","ramayana-023","ramayana-024","ramayana-025","ramayana-026","ramayana-027","ramayana-028","ramayana-029","ramayana-030","ramayana-031","ramayana-032","ramayana-033","ramayana-034","ramayana-035","ramayana-036","ramayana-037","ramayana-038","ramayana-039","ramayana-040","ramayana-041","ramayana-042","ramayana-043","ramayana-044","ramayana-045","ramayana-046","ramayana-047","ramayana-048","ramayana-049","ramayana-050","ramayana-051","ramayana-052","ramayana-053","ramayana-054","ramayana-055","ramayana-056","ramayana-057","ramayana-058","ramayana-059","ramayana-060","ramayana-061","ramayana-062","ramayana-063","ramayana-064","ramayana-065","ramayana-066","ramayana-067","ramayana-068","ramayana-069","ramayana-070","ramayana-071","ramayana-072","ramayana-073","ramayana-074","ramayana-075","ramayana-076","ramayana-077","ramayana-078","ramayana-079","ramayana-080","ramayana-081","ramayana-082","ramayana-083","ramayana-084","ramayana-085","ramayana-086","ramayana-087","ramayana-088","ramayana-089","ramayana-090","ramayana-091","ramayana-092","ramayana-093","ramayana-094","ramayana-095","ramayana-096","ramayana-097","ramayana-098","ramayana-099","ramayana-100"],
+  "reviewedIds": [],
+  "groups": [
+    {
+      "en": "Who is the father of {s} in the Valmiki Ramayana?",
+      "hi": "वाल्मीकि रामायण में {s} के पिता कौन हैं?",
+      "exEn": "{a} is the father of {s} in this narrative.",
+      "exHi": "इस कथा में {s} के पिता {a} हैं।",
+      "ref": "Bala Kanda; Ayodhya Kanda; Kishkindha Kanda",
+      "rows": [
+        [
+          "Rama",
+          "राम",
+          "Dasharatha",
+          "दशरथ"
+        ],
+        [
+          "Bharata",
+          "भरत",
+          "Dasharatha",
+          "दशरथ"
+        ],
+        [
+          "Lakshmana",
+          "लक्ष्मण",
+          "Dasharatha",
+          "दशरथ"
+        ],
+        [
+          "Shatrughna",
+          "शत्रुघ्न",
+          "Dasharatha",
+          "दशरथ"
+        ]
+      ]
+    },
+    {
+      "en": "Who adopted {s} as his daughter in the Ramayana?",
+      "hi": "रामायण में {s} को अपनी पुत्री के रूप में किसने अपनाया?",
+      "exEn": "King {a} found {s} while ploughing and raised her as his daughter.",
+      "exHi": "राजा {a} को हल चलाते समय {s} मिलीं और उन्होंने उन्हें पुत्री के रूप में पाला।",
+      "ref": "Bala Kanda, Sarga 66",
+      "rows": [
+        [
+          "Sita",
+          "सीता",
+          "Janaka",
+          "जनक"
+        ]
+      ]
+    },
+    {
+      "en": "Who is the father of {s} in the Valmiki Ramayana?",
+      "hi": "वाल्मीकि रामायण में {s} के पिता कौन हैं?",
+      "exEn": "{a} is the father of {s} in this narrative.",
+      "exHi": "इस कथा में {s} के पिता {a} हैं।",
+      "ref": "Uttara Kanda; Kishkindha Kanda; Aranya Kanda",
+      "rows": [
+        [
+          "Ravana",
+          "रावण",
+          "Vishrava",
+          "विश्रवा"
+        ],
+        [
+          "Kubera",
+          "कुबेर",
+          "Vishrava",
+          "विश्रवा"
+        ],
+        [
+          "Angada",
+          "अंगद",
+          "Vali",
+          "वालि"
+        ],
+        [
+          "Indrajit",
+          "इंद्रजित",
+          "Ravana",
+          "रावण"
+        ],
+        [
+          "Jatayu",
+          "जटायु",
+          "Aruna",
+          "अरुण"
+        ]
+      ]
+    },
+    {
+      "en": "Who is the mother of {s} in the Ramayana?",
+      "hi": "रामायण में {s} की माता कौन हैं?",
+      "exEn": "{s} is the child of {a}.",
+      "exHi": "{s} की माता {a} हैं।",
+      "ref": "Bala Kanda; Ayodhya Kanda; Kishkindha Kanda; Sundara Kanda; Uttara Kanda",
+      "rows": [
+        [
+          "Rama",
+          "राम",
+          "Kausalya",
+          "कौशल्या"
+        ],
+        [
+          "Bharata",
+          "भरत",
+          "Kaikeyi",
+          "कैकेयी"
+        ],
+        [
+          "Lakshmana",
+          "लक्ष्मण",
+          "Sumitra",
+          "सुमित्रा"
+        ],
+        [
+          "Shatrughna",
+          "शत्रुघ्न",
+          "Sumitra",
+          "सुमित्रा"
+        ],
+        [
+          "Hanuman",
+          "हनुमान",
+          "Anjana",
+          "अंजना"
+        ],
+        [
+          "Indrajit",
+          "इंद्रजित",
+          "Mandodari",
+          "मंदोदरी"
+        ],
+        [
+          "Lava",
+          "लव",
+          "Sita",
+          "सीता"
+        ],
+        [
+          "Kusha",
+          "कुश",
+          "Sita",
+          "सीता"
+        ]
+      ]
+    },
+    {
+      "en": "Who is the spouse of {s} in the Ramayana?",
+      "hi": "रामायण में {s} के जीवनसाथी कौन हैं?",
+      "exEn": "The narrative identifies {a} as the spouse of {s}.",
+      "exHi": "कथा में {s} के जीवनसाथी {a} हैं।",
+      "ref": "Bala Kanda; Kishkindha Kanda; Sundara Kanda",
+      "rows": [
+        [
+          "Rama",
+          "राम",
+          "Sita",
+          "सीता"
+        ],
+        [
+          "Lakshmana",
+          "लक्ष्मण",
+          "Urmila",
+          "उर्मिला"
+        ],
+        [
+          "Bharata",
+          "भरत",
+          "Mandavi",
+          "मांडवी"
+        ],
+        [
+          "Shatrughna",
+          "शत्रुघ्न",
+          "Shrutakirti",
+          "श्रुतकीर्ति"
+        ],
+        [
+          "Vali",
+          "वालि",
+          "Tara",
+          "तारा"
+        ],
+        [
+          "Sugriva",
+          "सुग्रीव",
+          "Ruma",
+          "रुमा"
+        ],
+        [
+          "Ravana",
+          "रावण",
+          "Mandodari",
+          "मंदोदरी"
+        ],
+        [
+          "Atri",
+          "अत्रि",
+          "Anasuya",
+          "अनसूया"
+        ],
+        [
+          "Gautama",
+          "गौतम",
+          "Ahalya",
+          "अहल्या"
+        ],
+        [
+          "Rishyasringa",
+          "ऋष्यशृंग",
+          "Shanta",
+          "शांता"
+        ]
+      ]
+    },
+    {
+      "en": "Which place is associated with {s} in the Ramayana?",
+      "hi": "रामायण में {s} का संबंध किस स्थान से है?",
+      "exEn": "{s} is associated with {a} in the story.",
+      "exHi": "कथा में {s} का संबंध {a} से है।",
+      "ref": "Bala Kanda; Ayodhya Kanda; Aranya Kanda; Kishkindha Kanda; Sundara Kanda",
+      "rows": [
+        [
+          "Dasharatha's capital",
+          "दशरथ की राजधानी",
+          "Ayodhya",
+          "अयोध्या"
+        ],
+        [
+          "Janaka's kingdom",
+          "जनक का राज्य",
+          "Mithila",
+          "मिथिला"
+        ],
+        [
+          "Ravana's kingdom",
+          "रावण का राज्य",
+          "Lanka",
+          "लंका"
+        ],
+        [
+          "Sugriva's kingdom",
+          "सुग्रीव का राज्य",
+          "Kishkindha",
+          "किष्किंधा"
+        ],
+        [
+          "Sita's captivity garden",
+          "सीता के बंदी रहने का उद्यान",
+          "Ashoka grove",
+          "अशोक वाटिका"
+        ],
+        [
+          "Rama's early forest stay with Bharata's visit",
+          "भरत की भेंट के समय राम का वन निवास",
+          "Chitrakuta",
+          "चित्रकूट"
+        ],
+        [
+          "the dwelling near the Godavari",
+          "गोदावरी के निकट निवास",
+          "Panchavati",
+          "पंचवटी"
+        ],
+        [
+          "Guha's settlement",
+          "गुह की बस्ती",
+          "Shringaverapura",
+          "श्रृंगवेरपुर"
+        ],
+        [
+          "Bharata's rule while awaiting Rama",
+          "राम की प्रतीक्षा में भरत का निवास",
+          "Nandigrama",
+          "नंदीग्राम"
+        ],
+        [
+          "Sugriva's refuge from Vali",
+          "वालि से बचकर सुग्रीव का आश्रय",
+          "Rishyamukha",
+          "ऋष्यमूक"
+        ]
+      ]
+    },
+    {
+      "en": "Who {s} in the Ramayana?",
+      "hi": "रामायण में किसने {s}?",
+      "exEn": "{a} performs this action: {s}.",
+      "exHi": "यह कार्य {a} ने किया: {s}।",
+      "ref": "Bala Kanda; Ayodhya Kanda; Aranya Kanda; Kishkindha Kanda; Sundara Kanda; Yuddha Kanda",
+      "rows": [
+        [
+          "composed the Sanskrit Ramayana",
+          "संस्कृत रामायण की रचना की",
+          "Valmiki",
+          "वाल्मीकि"
+        ],
+        [
+          "took Rama to protect a sacrifice",
+          "यज्ञ की रक्षा के लिए राम को साथ लिया",
+          "Vishvamitra",
+          "विश्वामित्र"
+        ],
+        [
+          "broke Shiva's bow at Sita's wedding",
+          "सीता के विवाह में शिव का धनुष तोड़ा",
+          "Rama",
+          "राम"
+        ],
+        [
+          "asked Dasharatha for two boons",
+          "दशरथ से दो वर मांगे",
+          "Kaikeyi",
+          "कैकेयी"
+        ],
+        [
+          "urged Kaikeyi to demand the boons",
+          "कैकेयी को वर मांगने के लिए उकसाया",
+          "Manthara",
+          "मंथरा"
+        ],
+        [
+          "placed Rama's sandals on the throne",
+          "राम की चरणपादुकाएं सिंहासन पर रखीं",
+          "Bharata",
+          "भरत"
+        ],
+        [
+          "drove Rama's chariot out of Ayodhya",
+          "अयोध्या से राम का रथ चलाया",
+          "Sumantra",
+          "सुमंत्र"
+        ],
+        [
+          "welcomed Rama near the Ganga",
+          "गंगा के पास राम का स्वागत किया",
+          "Guha",
+          "गुह"
+        ],
+        [
+          "disguised himself as a golden deer",
+          "स्वर्ण मृग का रूप लिया",
+          "Maricha",
+          "मारीच"
+        ],
+        [
+          "abducted Sita",
+          "सीता का हरण किया",
+          "Ravana",
+          "रावण"
+        ],
+        [
+          "fought Ravana while protecting Sita",
+          "सीता की रक्षा करते हुए रावण से युद्ध किया",
+          "Jatayu",
+          "जटायु"
+        ],
+        [
+          "offered hospitality to Rama at her hermitage",
+          "अपने आश्रम में राम का आतिथ्य किया",
+          "Shabari",
+          "शबरी"
+        ],
+        [
+          "introduced Rama to Sugriva",
+          "राम का परिचय सुग्रीव से कराया",
+          "Hanuman",
+          "हनुमान"
+        ],
+        [
+          "killed Vali",
+          "वालि का वध किया",
+          "Rama",
+          "राम"
+        ],
+        [
+          "reminded Hanuman of his strength before the leap",
+          "छलांग से पहले हनुमान को उनकी शक्ति याद दिलाई",
+          "Jambavan",
+          "जाम्बवान"
+        ],
+        [
+          "leapt across the sea in search of Sita",
+          "सीता की खोज में समुद्र लांघा",
+          "Hanuman",
+          "हनुमान"
+        ],
+        [
+          "revealed Sita's location to the search party",
+          "खोज दल को सीता का स्थान बताया",
+          "Sampati",
+          "संपाति"
+        ],
+        [
+          "gave Rama's ring to Sita",
+          "सीता को राम की अंगूठी दी",
+          "Hanuman",
+          "हनुमान"
+        ],
+        [
+          "gave a reassuring dream account to the captive Sita",
+          "बंदी सीता को आश्वस्त करने वाला स्वप्न सुनाया",
+          "Trijata",
+          "त्रिजटा"
+        ],
+        [
+          "burned parts of Lanka with his tail",
+          "अपनी पूंछ से लंका के भागों में आग लगाई",
+          "Hanuman",
+          "हनुमान"
+        ],
+        [
+          "advised Ravana to return Sita and later joined Rama",
+          "रावण को सीता लौटाने को कहा और बाद में राम का साथ दिया",
+          "Vibhishana",
+          "विभीषण"
+        ],
+        [
+          "led the building of the sea bridge",
+          "समुद्र सेतु निर्माण का नेतृत्व किया",
+          "Nala",
+          "नल"
+        ],
+        [
+          "went as Rama's envoy to Ravana before battle",
+          "युद्ध से पहले राम के दूत बनकर रावण के पास गए",
+          "Angada",
+          "अंगद"
+        ],
+        [
+          "defeated Indrajit in battle",
+          "युद्ध में इंद्रजित को हराया",
+          "Lakshmana",
+          "लक्ष्मण"
+        ],
+        [
+          "brought a mountain of medicinal plants",
+          "औषधियों वाला पर्वत लाया",
+          "Hanuman",
+          "हनुमान"
+        ],
+        [
+          "slew Ravana at the end of the war",
+          "युद्ध के अंत में रावण का वध किया",
+          "Rama",
+          "राम"
+        ],
+        [
+          "became king of Lanka after Ravana",
+          "रावण के बाद लंका का राजा बना",
+          "Vibhishana",
+          "विभीषण"
+        ],
+        [
+          "taught Rama the Aditya Hridayam before battle",
+          "युद्ध से पहले राम को आदित्य हृदय का उपदेश दिया",
+          "Agastya",
+          "अगस्त्य"
+        ],
+        [
+          "served as Rama's family priest",
+          "राम के कुलगुरु की भूमिका निभाई",
+          "Vasishtha",
+          "वसिष्ठ"
+        ],
+        [
+          "was defeated by Rama at Vishvamitra's sacrifice",
+          "विश्वामित्र के यज्ञ में राम द्वारा मारा गया",
+          "Subahu",
+          "सुबाहु"
+        ]
+      ]
+    },
+    {
+      "en": "What is {s} in the Ramayana?",
+      "hi": "रामायण में {s} क्या है?",
+      "exEn": "{s}: {a}. This detail belongs to the cited narrative.",
+      "exHi": "{s}: {a}। यह विवरण संदर्भित कथा का भाग है।",
+      "ref": "Bala Kanda; Ayodhya Kanda; Aranya Kanda; Sundara Kanda; Yuddha Kanda",
+      "rows": [
+        [
+          "the duration of Rama's exile",
+          "राम के वनवास की अवधि",
+          "Fourteen years",
+          "चौदह वर्ष"
+        ],
+        [
+          "the number of Dasharatha's sons",
+          "दशरथ के पुत्रों की संख्या",
+          "Four",
+          "चार"
+        ],
+        [
+          "the meaning of Sundara Kanda's central mission",
+          "सुंदरकांड के मुख्य अभियान का उद्देश्य",
+          "Finding Sita",
+          "सीता की खोज"
+        ],
+        [
+          "the object Bharata received from Rama",
+          "भरत को राम से मिली वस्तु",
+          "Sandals",
+          "चरणपादुकाएं"
+        ],
+        [
+          "the token Sita sent back through Hanuman",
+          "सीता द्वारा हनुमान के साथ भेजा गया चिह्न",
+          "Chudamani jewel",
+          "चूड़ामणि"
+        ],
+        [
+          "the flying vehicle used on Rama's return",
+          "राम की वापसी में प्रयुक्त विमान",
+          "Pushpaka",
+          "पुष्पक"
+        ],
+        [
+          "the creature Jatayu is described as",
+          "जटायु का वर्णित पक्षी रूप",
+          "Vulture",
+          "गिद्ध"
+        ],
+        [
+          "the creature Jambavan leads",
+          "जाम्बवान से जुड़ा पशु समुदाय",
+          "Bears",
+          "भालू"
+        ],
+        [
+          "the water body crossed to reach Lanka",
+          "लंका पहुंचने के लिए पार किया गया जल क्षेत्र",
+          "Sea",
+          "समुद्र"
+        ],
+        [
+          "the relationship of Sampati to Jatayu",
+          "संपाति का जटायु से संबंध",
+          "Brother",
+          "भाई"
+        ],
+        [
+          "the relationship of Shurpanakha to Ravana",
+          "शूर्पणखा का रावण से संबंध",
+          "Sister",
+          "बहन"
+        ],
+        [
+          "the relationship of Kumbhakarna to Ravana",
+          "कुंभकर्ण का रावण से संबंध",
+          "Brother",
+          "भाई"
+        ],
+        [
+          "the relationship of Mandavi to Sita",
+          "मांडवी का सीता से संबंध",
+          "Cousin",
+          "चचेरी बहन"
+        ],
+        [
+          "the relationship of Urmila to Sita",
+          "उर्मिला का सीता से संबंध",
+          "Sister",
+          "बहन"
+        ],
+        [
+          "the weapon used in Sita's marriage contest",
+          "सीता के विवाह की प्रतियोगिता का शस्त्र",
+          "Shiva's bow",
+          "शिव का धनुष"
+        ],
+        [
+          "the king's rite for obtaining children",
+          "संतान प्राप्ति के लिए राजा का यज्ञ",
+          "Putrakameshti",
+          "पुत्रकामेष्टि"
+        ],
+        [
+          "the first book of the epic",
+          "महाकाव्य का पहला कांड",
+          "Bala Kanda",
+          "बालकांड"
+        ],
+        [
+          "the book focused on Ayodhya and exile",
+          "अयोध्या और वनवास से जुड़ा कांड",
+          "Ayodhya Kanda",
+          "अयोध्याकांड"
+        ],
+        [
+          "the book centered on forest events",
+          "वन की घटनाओं का कांड",
+          "Aranya Kanda",
+          "अरण्यकांड"
+        ],
+        [
+          "the book centered on the vanara alliance",
+          "वानर मैत्री का कांड",
+          "Kishkindha Kanda",
+          "किष्किंधाकांड"
+        ],
+        [
+          "the book describing Hanuman's Lanka mission",
+          "हनुमान के लंका अभियान का कांड",
+          "Sundara Kanda",
+          "सुंदरकांड"
+        ],
+        [
+          "the book describing the Lanka war",
+          "लंका युद्ध का कांड",
+          "Yuddha Kanda",
+          "युद्धकांड"
+        ]
+      ]
+    },
+    {
+      "en": "Which character is described as {s} in the Ramayana?",
+      "hi": "रामायण में {s} किस पात्र का वर्णन है?",
+      "exEn": "{a} is the character described here: {s}.",
+      "exHi": "यह वर्णन {a} का है: {s}।",
+      "ref": "Aranya Kanda; Kishkindha Kanda; Sundara Kanda; Yuddha Kanda",
+      "rows": [
+        [
+          "the ocean deity approached for a crossing",
+          "समुद्र पार करने के लिए जिन समुद्र देवता से प्रार्थना की गई",
+          "Samudra",
+          "समुद्र"
+        ],
+        [
+          "the guardian encountered at Lanka's entrance",
+          "लंका के प्रवेश पर मिली रक्षिका",
+          "Lankini",
+          "लंकिनी"
+        ],
+        [
+          "the serpent-mother who tested Hanuman's passage",
+          "हनुमान का मार्ग पर परीक्षण लेने वाली नागमाता",
+          "Surasa",
+          "सुरसा"
+        ],
+        [
+          "the being who caught Hanuman's shadow over the sea",
+          "समुद्र पर हनुमान की छाया पकड़ने वाली",
+          "Simhika",
+          "सिंहिका"
+        ],
+        [
+          "the mountain offering Hanuman rest during his leap",
+          "छलांग में हनुमान को विश्राम देने वाला पर्वत",
+          "Mainaka",
+          "मैनाक"
+        ],
+        [
+          "the physician consulted for Lakshmana's recovery",
+          "लक्ष्मण के उपचार के लिए बुलाए गए वैद्य",
+          "Sushena",
+          "सुषेण"
+        ],
+        [
+          "the warrior who hurled his mighty spear in the final war",
+          "अंतिम युद्ध में विशाल शूल चलाने वाला राक्षस योद्धा",
+          "Kumbhakarna",
+          "कुंभकर्ण"
+        ],
+        [
+          "the bird killed by a hunter that moved Valmiki to verse",
+          "शिकारी द्वारा मारा गया पक्षी जिससे वाल्मीकि को श्लोक की प्रेरणा मिली",
+          "Krauncha bird",
+          "क्रौंच पक्षी"
+        ],
+        [
+          "the celestial charioteer sent to Rama by Indra",
+          "इंद्र द्वारा राम के पास भेजे गए दिव्य सारथी",
+          "Matali",
+          "मातलि"
+        ],
+        [
+          "the hermit who received Rama near Prayaga",
+          "प्रयाग के निकट राम का स्वागत करने वाले ऋषि",
+          "Bharadvaja",
+          "भरद्वाज"
+        ]
+      ]
+    }
+  ]
+}

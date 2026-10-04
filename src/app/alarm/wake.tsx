@@ -1,13 +1,10 @@
+import { useLanguage } from '@/i18n/provider';
 import { useNavigation } from "expo-router";
 import {
-  Compass,
-  Flame,
   Leaf,
   Music2,
-  Sparkles,
   Sun,
   Sunrise,
-  Wind,
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -32,17 +29,15 @@ import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer"
 import { Interactive3DCard } from "@/components/interactive-3d-card";
 import { Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
-import { GITA_VERSES } from "@/data/gita-verses";
 import { replaceAppRoute } from "@/navigation/route-actions";
 import {
   addAlarmStoppedListener,
   addAlarmTriggeredListener,
   dismissAlarmAndScheduleNext,
   getAlarmPlaybackState,
-  getNativeAlarmConfig,
   notifyWakeScreenReady,
+  setAlarmRitualStage,
   type AlarmPlaybackState,
-  type NativeAlarmConfig,
 } from "@/services/alarm";
 import * as Haptics from "expo-haptics";
 import { useContent } from "@/state/content-store";
@@ -62,6 +57,7 @@ function formatAlarm(value: string) {
 }
 
 export default function Wake() {
+  const { t: translate } = useLanguage();
   const navigation = useNavigation("/");
   const { width, height } = useWindowDimensions();
   const isSmall = width < 360;
@@ -79,7 +75,6 @@ export default function Wake() {
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hapticPulseTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const [nativeConfig, setNativeConfig] = useState<NativeAlarmConfig | null>(null);
   const [playback, setPlayback] = useState<AlarmPlaybackState>({
     ringing: true,
     triggeredAt: 0,
@@ -92,7 +87,6 @@ export default function Wake() {
 
   useEffect(() => {
     mounted.current = true;
-    getNativeAlarmConfig().then(setNativeConfig).catch(() => undefined);
     const refresh = () => getAlarmPlaybackState().then(setPlayback).catch(() => undefined);
     refresh();
     const timer = setInterval(refresh, 1_000);
@@ -123,17 +117,18 @@ export default function Wake() {
 
     try {
       await dismissAlarmAndScheduleNext();
+      await setAlarmRitualStage('breathe');
       if (!mounted.current) return;
       if (!replaceAppRoute(navigation, "/breathe", { entry: "alarm" })) {
-        throw new Error("The breathing screen is not ready. Please try again.");
+        throw new Error(translate("The breathing screen is not ready. Please try again."));
       }
     } catch (error) {
       if (!mounted.current) return;
       dismissing.current = false;
       setStarted(false);
       Alert.alert(
-        "Could not stop alarm",
-        error instanceof Error ? error.message : "Please try again.",
+        translate("Could not stop alarm"),
+        error instanceof Error ? error.message : translate("Please try again."),
       );
     }
   };
@@ -203,11 +198,11 @@ export default function Wake() {
   const playing = playback.ringing;
   const ragaTitle =
     playback.actualTone === "system" || playback.actualTone === "notification"
-      ? "Dawn Chimes"
+      ? translate("Dawn Chimes")
       : playback.actualTone === "silent"
-        ? "Silent Awakening"
+        ? translate("Silent Awakening")
         : alarmTone === "Raag Bhairav & Sacred Flute"
-          ? "Raag Bhairav"
+          ? translate("Raag Bhairav")
           : alarmTone.split("&")[0].trim();
 
   // Responsive sizes for zero-scroll viewport
@@ -243,8 +238,7 @@ export default function Wake() {
           <View style={[s.sunriseChip, isSmall && { height: 28, paddingHorizontal: 12 }]}>
             <Sunrise size={isSmall ? 14 : 16} color="#8A5D18" strokeWidth={2.4} />
             <TextR style={[s.sunriseText, isSmall && { fontSize: 10 }]}>
-              BRAHMA MUHURTA · SACRED DAWN
-            </TextR>
+               {translate("BRAHMA MUHURTA · SACRED DAWN")} </TextR>
           </View>
 
           <View style={s.timeRow}>
@@ -270,8 +264,7 @@ export default function Wake() {
           </View>
 
           <TextR style={[s.subtitle, isSmall && { fontSize: 11.5 }]}>
-            Softly illuminated · Kartik Shukla · Awaken with Dharma
-          </TextR>
+             {translate("Softly illuminated · Kartik Shukla · Awaken with Dharma")} </TextR>
         </View>
 
         {/* ─── 2. Aru Mascot — Meditative Awakening Dais ─────────────────────── */}
@@ -297,10 +290,10 @@ export default function Wake() {
                 height={12}
               />
               <Music2 size={12} color="#8C4010" />
-              <TextR style={s.ragaText}>{ragaTitle} · Sacred Dawn</TextR>
+              <TextR style={s.ragaText}>{ragaTitle}  {translate("· Sacred Dawn")}</TextR>
             </View>
             <TextR style={s.gitaRefText}>
-              GITA CH. {currentVerse.chapter} · {currentVerse.verse}
+               {translate("GITA CH.")} {currentVerse.chapter} · {currentVerse.verse}
             </TextR>
           </View>
 
@@ -320,7 +313,7 @@ export default function Wake() {
           <Animated.View style={animatedScaleStyle}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Hold for 1.5 seconds to start morning ritual"
+              accessibilityLabel={translate("Hold for 1.5 seconds to start morning ritual")}
               disabled={started}
               onPressIn={onPressIn}
               onPressOut={onPressOut}
@@ -334,10 +327,10 @@ export default function Wake() {
                 <Sun size={isSmall ? 19 : 22} color={C.white} strokeWidth={2.4} />
                 <TextR style={[s.primaryText, isSmall && { fontSize: 15 }]}>
                   {started
-                    ? "Awakening your day…"
+                    ? translate("Awakening your day…")
                     : isHolding
-                      ? "Keep holding to awaken…"
-                      : "Hold to start my day"}
+                      ? translate("Keep holding to awaken…")
+                      : translate("Hold to start my day")}
                 </TextR>
               </View>
 
@@ -349,8 +342,7 @@ export default function Wake() {
           <View style={s.footerInfo}>
             <Leaf size={13} color="#8C7467" strokeWidth={2} />
             <TextR style={[s.strictNote, isSmall && { fontSize: 10.5 }]}>
-              Keep holding for 1.5s to awaken mind & body
-            </TextR>
+               {translate("Keep holding for 1.5s to awaken mind & body")} </TextR>
           </View>
         </View>
       </View>

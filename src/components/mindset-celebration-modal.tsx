@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n/provider';
 import React, { useEffect } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
@@ -20,6 +21,7 @@ interface MindsetCelebrationModalProps {
 }
 
 function FloatingPetal({ index }: { index: number }) {
+
   const startX = (index - 6) * 28;
   const translateY = useSharedValue(50);
   const translateX = useSharedValue(startX);
@@ -96,6 +98,7 @@ export function MindsetCelebrationModal({
   visible,
   onClose,
 }: MindsetCelebrationModalProps) {
+  const { t: translate } = useLanguage();
   const cardScale = useSharedValue(0.7);
   const cardOpacity = useSharedValue(0);
 
@@ -125,7 +128,7 @@ export function MindsetCelebrationModal({
 
         {/* Celebration Dialog Plaque */}
         <Animated.View style={[styles.celebrationCard, animatedCardStyle]}>
-          <Pressable accessibilityLabel="Close completion message" style={styles.closeBtn} onPress={onClose}>
+          <Pressable accessibilityLabel={translate("Close completion message")} style={styles.closeBtn} onPress={onClose}>
             <X size={20} color={C.inkSoft} />
           </Pressable>
 
@@ -133,21 +136,20 @@ export function MindsetCelebrationModal({
             <CheckCircle2 size={42} color={C.white} fill={C.green} />
           </View>
 
-          <TextR style={styles.title}>Reflection Complete</TextR>
+          <TextR style={styles.title}>{translate("Reflection Complete")}</TextR>
           <TextR style={styles.subtitle}>
-            Your thought is saved. Carry today’s Gita teaching gently into your day.
-          </TextR>
+             {translate("Your thought is saved. Carry today’s Gita teaching gently into your day.")} </TextR>
 
           <View style={styles.clarityBadge}>
             <Sparkles size={18} color={C.goldDark} />
-            <TextR style={styles.clarityText}>Today’s practice is complete</TextR>
+            <TextR style={styles.clarityText}>{translate("Today’s practice is complete")}</TextR>
           </View>
 
           <Pressable
             style={styles.doneBtn}
             onPress={onClose}
           >
-            <TextR style={styles.doneBtnText}>Continue my morning</TextR>
+            <TextR style={styles.doneBtnText}>{translate("Continue my morning")}</TextR>
           </Pressable>
         </Animated.View>
       </View>

@@ -1,3 +1,5 @@
+import { useLanguage } from '@/i18n/provider';
+import { taskDisplayTitle } from '@/i18n/task-copy';
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -75,6 +77,7 @@ const TaskRow = memo(
     onToggle: (id: string) => void;
     onEdit: (task: Task) => void;
   }) {
+    const { t: translate, text: translateText, language } = useLanguage();
     const CategoryIcon = CATEGORY_ICONS[task.category];
     const pressed = useSharedValue(1);
     const reduced = useReducedMotion();
@@ -87,7 +90,7 @@ const TaskRow = memo(
         <AnimatedPressable
           accessibilityRole="checkbox"
           accessibilityState={{ checked: task.done }}
-          accessibilityLabel={`${task.title}, ${task.time}, ${task.recurrence === "daily" ? "daily habit" : "one-time intention"}`}
+          accessibilityLabel={`${taskDisplayTitle(task, language)}, ${translateText(task.time)}, ${task.recurrence === "daily" ? translate("daily habit") : translate("one-time intention")}`}
           onPress={() => onToggle(task.id)}
           onPressIn={() =>
             pressed.set(reduced ? 1 : withTiming(0.985, { duration: 90 }))
@@ -104,19 +107,19 @@ const TaskRow = memo(
           </View>
           <View style={s.taskCopy}>
             <TextR style={[s.taskTitle, task.done && s.taskDone]} numberOfLines={2}>
-              {task.title}
+              {taskDisplayTitle(task, language)}
             </TextR>
             <View style={s.meta}>
               <Clock3 size={12} color={C.muted} />
-              <TextR style={s.metaText}>{task.time}</TextR>
+              <TextR style={s.metaText}>{translateText(task.time)}</TextR>
               <View style={s.categoryTag}>
                 <CategoryIcon size={11} color={C.greenDark} strokeWidth={2.2} />
-                <TextR style={s.categoryText}>{task.category}</TextR>
+                <TextR style={s.categoryText}>{translateText(task.category)}</TextR>
               </View>
               {task.recurrence === "daily" ? (
                 <View style={s.recurrenceTag}>
                   <Repeat2 size={11} color={C.muted} />
-                  <TextR style={s.recurrenceText}>Daily</TextR>
+                  <TextR style={s.recurrenceText}>{translate("Daily")}</TextR>
                 </View>
               ) : null}
             </View>
@@ -126,7 +129,7 @@ const TaskRow = memo(
         {/* Explicit and Prominent Edit Button */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Edit ${task.title}`}
+          accessibilityLabel={translate('editTask', { title: taskDisplayTitle(task, language) })}
           onPress={() => onEdit(task)}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           style={({ pressed }) => [s.editButton, pressed && s.pressed]}
@@ -143,6 +146,7 @@ const TaskRow = memo(
     previous.onEdit === next.onEdit &&
     previous.task.id === next.task.id &&
     previous.task.title === next.task.title &&
+    previous.task.templateId === next.task.templateId &&
     previous.task.category === next.task.category &&
     previous.task.done === next.task.done &&
     previous.task.timeMinutes === next.task.timeMinutes &&
@@ -158,6 +162,7 @@ function Choice({
   selected: boolean;
   onPress: () => void;
 }) {
+
   return (
     <Pressable
       accessibilityRole="radio"
@@ -189,12 +194,13 @@ function TimeSelector({
   onMeridiemChange: (m: "AM" | "PM") => void;
   onPresetSelect: (h: number, m: number, med: "AM" | "PM") => void;
 }) {
+  const { t: translate, text: translateText } = useLanguage();
   const PRESETS = [
-    { label: "Dawn 6:00 AM", h: 6, m: 0, med: "AM" as const },
-    { label: "Morning 8:30 AM", h: 8, m: 30, med: "AM" as const },
-    { label: "Noon 12:00 PM", h: 12, m: 0, med: "PM" as const },
-    { label: "Evening 5:30 PM", h: 5, m: 30, med: "PM" as const },
-    { label: "Night 9:00 PM", h: 9, m: 0, med: "PM" as const },
+    { label: translate("Dawn 6:00 AM"), h: 6, m: 0, med: "AM" as const },
+    { label: translate("Morning 8:30 AM"), h: 8, m: 30, med: "AM" as const },
+    { label: translate("Noon 12:00 PM"), h: 12, m: 0, med: "PM" as const },
+    { label: translate("Evening 5:30 PM"), h: 5, m: 30, med: "PM" as const },
+    { label: translate("Night 9:00 PM"), h: 9, m: 0, med: "PM" as const },
   ];
 
   const updateHour = (dir: 1 | -1) => {
@@ -214,7 +220,7 @@ function TimeSelector({
         {/* Hour Stepper */}
         <View style={s.timeStepCol}>
           <Pressable
-            accessibilityLabel="Increase hour"
+            accessibilityLabel={translate("Increase hour")}
             onPress={() => updateHour(1)}
             hitSlop={{ top: 8, bottom: 8, left: 10, right: 10 }}
             style={({ pressed }) => [s.timeChevron, pressed && s.pressed]}
@@ -227,7 +233,7 @@ function TimeSelector({
             </TextR>
           </View>
           <Pressable
-            accessibilityLabel="Decrease hour"
+            accessibilityLabel={translate("Decrease hour")}
             onPress={() => updateHour(-1)}
             hitSlop={{ top: 8, bottom: 8, left: 10, right: 10 }}
             style={({ pressed }) => [s.timeChevron, pressed && s.pressed]}
@@ -243,7 +249,7 @@ function TimeSelector({
         {/* Minute Stepper */}
         <View style={s.timeStepCol}>
           <Pressable
-            accessibilityLabel="Increase minute"
+            accessibilityLabel={translate("Increase minute")}
             onPress={() => updateMinute(1)}
             hitSlop={{ top: 8, bottom: 8, left: 10, right: 10 }}
             style={({ pressed }) => [s.timeChevron, pressed && s.pressed]}
@@ -256,7 +262,7 @@ function TimeSelector({
             </TextR>
           </View>
           <Pressable
-            accessibilityLabel="Decrease minute"
+            accessibilityLabel={translate("Decrease minute")}
             onPress={() => updateMinute(-1)}
             hitSlop={{ top: 8, bottom: 8, left: 10, right: 10 }}
             style={({ pressed }) => [s.timeChevron, pressed && s.pressed]}
@@ -298,7 +304,7 @@ function TimeSelector({
               style={[s.presetChip, isSelected && s.presetChipActive]}
             >
               <TextR style={[s.presetText, isSelected && s.presetTextActive]}>
-                {p.label}
+                {translateText(p.label)}
               </TextR>
             </Pressable>
           );
@@ -315,8 +321,9 @@ function TaskEditor({
   task: Task | null;
   onClose: () => void;
 }) {
+  const { t: translate, text: translateText, language } = useLanguage();
   const { createTask, updateTask, archiveTask } = useTasks();
-  const [title, setTitle] = useState(task?.title ?? "");
+  const [title, setTitle] = useState(task ? taskDisplayTitle(task, language) : "");
   const [category, setCategory] = useState<TaskCategory>(
     task?.category ?? "Mind",
   );
@@ -369,13 +376,13 @@ function TaskEditor({
   const remove = () =>
     Alert.alert(
       task?.recurrence === "daily"
-        ? "Stop this daily habit?"
-        : "Remove this intention?",
-      "Previous completion records will be kept.",
+        ? translate("Stop this daily habit?")
+        : translate("Remove this intention?"),
+      translate("Previous completion records will be kept."),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: translate("Cancel"), style: "cancel" },
         {
-          text: "Remove",
+          text: translate("Remove"),
           style: "destructive",
           onPress: () => {
             if (task) archiveTask(task.id);
@@ -404,58 +411,58 @@ function TaskEditor({
             contentContainerStyle={s.editorScrollContent}
           >
             <TextR style={s.editorTitle}>
-              {task ? "Edit intention" : "A mindful intention"}
+              {task ? translate("Edit intention") : translate("A mindful intention")}
             </TextR>
-            <TextR style={s.label}>What would you like to do?</TextR>
+            <TextR style={s.label}>{translate("What would you like to do?")}</TextR>
             <TextInput
-              accessibilityLabel="Intention title"
+              accessibilityLabel={translate("Intention title")}
               value={title}
               onChangeText={setTitle}
               maxLength={120}
               multiline
-              placeholder="Give your attention to…"
+              placeholder={translate("Give your attention to…")}
               placeholderTextColor={C.muted}
               style={s.input}
             />
-            <TextR style={s.label}>Category</TextR>
+            <TextR style={s.label}>{translate("Category")}</TextR>
             <View style={s.choices}>
               {TASK_CATEGORIES.map((item) => (
                 <Choice
                   key={item}
-                  label={item}
+                  label={translateText(item)}
                   selected={item === category}
                   onPress={() => setCategory(item)}
                 />
               ))}
             </View>
-            <TextR style={s.label}>Repeat</TextR>
+            <TextR style={s.label}>{translate("Repeat")}</TextR>
             <View style={s.choices}>
               <Choice
-                label="One-time"
+                label={translate("One-time")}
                 selected={recurrence === "once"}
                 onPress={() => setRecurrence("once")}
               />
               <Choice
-                label="Daily habit"
+                label={translate("Daily habit")}
                 selected={recurrence === "daily"}
                 onPress={() => setRecurrence("daily")}
               />
             </View>
             <TextR style={s.help}>
               {recurrence === "daily"
-                ? "A fresh completion each day."
-                : "Stays on your list until completed."}
+                ? translate("A fresh completion each day.")
+                : translate("Stays on your list until completed.")}
             </TextR>
 
-            <TextR style={s.label}>Time</TextR>
+            <TextR style={s.label}>{translate("Time")}</TextR>
             <View style={s.choices}>
               <Choice
-                label="Anytime"
+                label={translate("Anytime")}
                 selected={anytime}
                 onPress={() => setAnytime(true)}
               />
               <Choice
-                label="Set time"
+                label={translate("Set time")}
                 selected={!anytime}
                 onPress={() => setAnytime(false)}
               />
@@ -475,11 +482,10 @@ function TaskEditor({
             ) : null}
 
             <TextR style={s.help}>
-              Times help organize your day. They do not create reminders.
-            </TextR>
+               {translate("Times help organize your day. They do not create reminders.")} </TextR>
             {error ? (
               <TextR accessibilityLiveRegion="polite" style={s.error}>
-                {error}
+                {translateText(error)}
               </TextR>
             ) : null}
             <Pressable
@@ -487,14 +493,14 @@ function TaskEditor({
               onPress={save}
               style={({ pressed }) => [s.primaryButton, pressed && s.pressed]}
             >
-              <TextR style={s.primaryText}>Save intention</TextR>
+              <TextR style={s.primaryText}>{translate("Save intention")}</TextR>
             </Pressable>
             <Pressable
               accessibilityRole="button"
               onPress={onClose}
               style={s.textButton}
             >
-              <TextR style={s.link}>Cancel</TextR>
+              <TextR style={s.link}>{translate("Cancel")}</TextR>
             </Pressable>
             {task ? (
               <Pressable
@@ -502,7 +508,7 @@ function TaskEditor({
                 onPress={remove}
                 style={s.textButton}
               >
-                <TextR style={s.error}>Remove intention</TextR>
+                <TextR style={s.error}>{translate("Remove intention")}</TextR>
               </Pressable>
             ) : null}
           </ScrollView>
@@ -513,6 +519,7 @@ function TaskEditor({
 }
 
 export default function Today() {
+  const { formatDate, t: translate, text: translateText } = useLanguage();
   const store = useTasks();
   const { tasks, today, done, toggleCompletion } = store;
   const focused = usePathname() === "/today";
@@ -545,17 +552,17 @@ export default function Today() {
   const sections = useMemo(
     () => [
       {
-        title: "Your intentions",
+        title: translate("Your intentions"),
         completed: false,
         data: tasks.filter((task) => !task.done),
       },
       {
-        title: `Completed · ${done}`,
+        title: translate('completedSection', { count: done }),
         completed: true,
         data: expanded ? tasks.filter((task) => task.done) : [],
       },
     ],
-    [tasks, done, expanded],
+    [tasks, done, expanded, translate],
   );
 
   const [year, month, day] = today.split("-").map(Number);
@@ -565,12 +572,12 @@ export default function Today() {
 
   const confirmReset = () =>
     Alert.alert(
-      "Reset saved intentions?",
-      "Unreadable task data will be replaced with the four starter intentions. This cannot be undone.",
+      translate("Reset saved intentions?"),
+      translate("Unreadable task data will be replaced with the four starter intentions. This cannot be undone."),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: translate("Cancel"), style: "cancel" },
         {
-          text: "Reset intentions",
+          text: translate("Reset intentions"),
           style: "destructive",
           onPress: store.reset,
         },
@@ -579,12 +586,12 @@ export default function Today() {
 
   const header = (
     <View style={s.headerWrap}>
-      <Header eyebrow="Today" showActions={false} />
+      <Header eyebrow={translate("Today")} showActions={false} />
       <View style={s.hero}>
         <View style={s.heroCopy}>
-          <TextR style={[s.title, isSmall && s.titleSmall]}>Today</TextR>
+          <TextR style={[s.title, isSmall && s.titleSmall]}>{translate("Today")}</TextR>
           <TextR style={[s.subtitle, isSmall && s.subtitleSmall]}>
-            {date.toLocaleDateString(undefined, {
+            {formatDate(date, {
               weekday: "long",
               month: "short",
               day: "numeric",
@@ -592,7 +599,7 @@ export default function Today() {
           </TextR>
           <View style={s.dailyPill}>
             <Leaf size={11} color={C.primary} />
-            <TextR style={s.dailyText}>DAILY INTENTIONS</TextR>
+            <TextR style={s.dailyText}>{translate("DAILY INTENTIONS")}</TextR>
           </View>
         </View>
         <AruMascot
@@ -608,62 +615,58 @@ export default function Today() {
           {verse.takeaway}
         </TextR>
         <TextR style={s.source}>
-          {verse.referenceLabel ?? `GITA ${verse.chapter}.${verse.verse}`} · DAILY TEACHING
-        </TextR>
+          {verse.referenceLabel ?? `GITA ${verse.chapter}.${verse.verse}`}  {translate("· DAILY TEACHING")} </TextR>
       </View>
 
       {store.loadError ? (
         <View style={s.notice}>
           <TextR style={s.taskTitle}>
-            Saved intentions couldn’t be opened.
-          </TextR>
+             {translate("Saved intentions couldn’t be opened.")} </TextR>
           <TextR style={s.help}>
-            Your saved data has been kept. Retry, or reset to starter
-            intentions.
-          </TextR>
+             {translate("Your saved data has been kept. Retry, or reset to starter intentions.")} </TextR>
           <View style={s.choices}>
             <Pressable
               accessibilityRole="button"
               onPress={store.retry}
               style={s.textButton}
             >
-              <TextR style={s.link}>Retry</TextR>
+              <TextR style={s.link}>{translate("Retry")}</TextR>
             </Pressable>
             <Pressable
               accessibilityRole="button"
               onPress={confirmReset}
               style={s.textButton}
             >
-              <TextR style={s.error}>Reset</TextR>
+              <TextR style={s.error}>{translate("Reset")}</TextR>
             </Pressable>
           </View>
         </View>
       ) : !store.ready ? (
         <View style={s.notice}>
           <ActivityIndicator color={C.saffron} />
-          <TextR style={s.help}>Preparing your intentions…</TextR>
+          <TextR style={s.help}>{translate("Preparing your intentions…")}</TextR>
         </View>
       ) : (
         <>
           <View style={s.progressCard}>
             <View style={s.progressTop}>
-              <TextR style={s.progressTitle}>Daily rhythm</TextR>
+              <TextR style={s.progressTitle}>{translate("Daily rhythm")}</TextR>
               <TextR accessibilityLiveRegion="polite" style={s.progressCount}>
                 {tasks.length
-                  ? `${done} of ${tasks.length} complete`
-                  : "No intentions yet"}
+                  ? translate('completedCount', { done, total: tasks.length })
+                  : translate("No intentions yet")}
               </TextR>
             </View>
             <View
               accessibilityRole="progressbar"
-              accessibilityLabel="Today's intentions"
+              accessibilityLabel={translate("Today's intentions")}
               accessibilityValue={{
                 min: 0,
                 max: tasks.length || 1,
                 now: done,
                 text: tasks.length
                   ? `${done} of ${tasks.length} complete`
-                  : "No intentions yet",
+                  : translate("No intentions yet"),
               }}
               style={s.track}
             >
@@ -671,23 +674,22 @@ export default function Today() {
             </View>
             <TextR style={s.help}>
               {tasks.length === 0
-                ? "Make room for one meaningful action."
+                ? translate("Make room for one meaningful action.")
                 : done === tasks.length
-                  ? "All intentions fulfilled for today."
-                  : "One thoughtful action at a time."}
+                  ? translate("All intentions fulfilled for today.")
+                  : translate("One thoughtful action at a time.")}
             </TextR>
           </View>
           {store.saveError ? (
             <View style={s.notice}>
               <TextR style={s.error}>
-                Changes haven’t been saved on this device yet.
-              </TextR>
+                 {translate("Changes haven’t been saved on this device yet.")} </TextR>
               <Pressable
                 accessibilityRole="button"
                 onPress={store.retry}
                 style={s.textButton}
               >
-                <TextR style={s.link}>Retry save</TextR>
+                <TextR style={s.link}>{translate("Retry save")}</TextR>
               </Pressable>
             </View>
           ) : null}
@@ -725,11 +727,11 @@ export default function Today() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ expanded }}
-                accessibilityLabel={`${section.title}, ${expanded ? "collapse" : "expand"}`}
+                accessibilityLabel={translateText(`${section.title}, ${expanded ? translate("collapse") : translate("expand")}`)}
                 onPress={() => setExpanded((value) => !value)}
                 style={s.sectionHeader}
               >
-                <TextR style={s.sectionTitle}>{section.title}</TextR>
+                <TextR style={s.sectionTitle}>{translateText(section.title)}</TextR>
                 <ChevronDown
                   size={18}
                   color={C.primary}
@@ -741,8 +743,8 @@ export default function Today() {
             ) : null
           ) : (
             <View style={s.sectionHeader}>
-              <TextR style={s.sectionTitle}>{section.title}</TextR>
-              <TextR style={s.help}>{tasks.length - done} pending</TextR>
+              <TextR style={s.sectionTitle}>{translateText(section.title)}</TextR>
+              <TextR style={s.help}>{translate('pendingCount', { count: tasks.length - done })}</TextR>
             </View>
           )
         }
@@ -751,7 +753,7 @@ export default function Today() {
             <View style={s.footerContainer}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Add mindful task"
+                accessibilityLabel={translate("Add mindful task")}
                 onPress={() => setEditor({ task: null })}
                 style={({ pressed }) => [
                   s.primaryButton,
@@ -761,12 +763,11 @@ export default function Today() {
               >
                 <Plus size={20} color="white" strokeWidth={2.5} />
                 <TextR style={[s.primaryText, isSmall && s.primaryTextSmall]}>
-                  Add mindful task
-                </TextR>
+                   {translate("Add mindful task")} </TextR>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Open evening reflection"
+                accessibilityLabel={translate("Open evening reflection")}
                 onPress={() => router.navigate("/night")}
                 style={({ pressed }) => [s.evening, pressed && s.pressed]}
               >
@@ -774,10 +775,9 @@ export default function Today() {
                   <Moon size={20} color={C.primary} strokeWidth={2.2} />
                 </View>
                 <View style={s.taskCopy}>
-                  <TextR style={s.taskTitle}>Evening reflection</TextR>
+                  <TextR style={s.taskTitle}>{translate("Evening reflection")}</TextR>
                   <TextR style={s.help}>
-                    Close your day with a little gratitude.
-                  </TextR>
+                     {translate("Close your day with a little gratitude.")} </TextR>
                 </View>
                 <ChevronRight size={18} color={C.primary} strokeWidth={2.4} />
               </Pressable>

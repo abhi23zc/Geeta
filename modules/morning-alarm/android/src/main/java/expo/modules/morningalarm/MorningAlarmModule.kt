@@ -9,6 +9,8 @@ import expo.modules.core.arguments.ReadableArguments
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.kotlin.Promise
+import expo.modules.kotlin.functions.Queues
 
 class MorningAlarmModule : Module() {
   private val context: Context
@@ -16,7 +18,23 @@ class MorningAlarmModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("MorningAlarm")
-    Events("alarmTriggered", "alarmStopped")
+    Events("alarmTriggered", "alarmStopped", "alarmPresentationChanged")
+    AsyncFunction("setAppLanguage") { language: String -> AlarmStrings.setLanguage(context, language) }
+    Function("getPresentationState") { AlarmPresentation.state(context) }
+    AsyncFunction("setRitualStage") { stage: String ->
+      appContext.currentActivity?.let { AlarmPresentation.setStage(it, stage) }
+    }.runOnQueue(Queues.MAIN)
+    AsyncFunction("notifyRitualScreenReady") { route: String ->
+      appContext.currentActivity?.let { AlarmPresentation.rendered(it, route) }
+    }.runOnQueue(Queues.MAIN)
+    AsyncFunction("endRitualPresentation") { AlarmPresentation.end(context) }.runOnQueue(Queues.MAIN)
+    AsyncFunction("setRitualScreenAwake") { awake: Boolean ->
+      appContext.currentActivity?.let { AlarmPresentation.setAwake(it, awake) }
+    }.runOnQueue(Queues.MAIN)
+    AsyncFunction("requestRitualUnlock") { promise: Promise ->
+      val activity = appContext.currentActivity
+      if (activity == null) promise.resolve(false) else AlarmPresentation.requestUnlock(activity, promise)
+    }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("hashContentFile") { uri: String -> ContentFiles.hash(ContentFiles.source(context, uri)) }
     AsyncFunction("getInstalledAlarmTone") { ContentFiles.installed(context) }
@@ -141,7 +159,6 @@ class MorningAlarmModule : Module() {
 
     AsyncFunction("notifyWakeScreenReady") {
       AlarmLog.event("react_wake_ready")
-      AlarmActivity.hideVisibleFallback()
     }
   }
 

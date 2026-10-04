@@ -1,0 +1,495 @@
+{
+  "ids": ["gita-001","gita-002","gita-003","gita-004","gita-005","gita-006","gita-007","gita-008","gita-009","gita-010","gita-011","gita-012","gita-013","gita-014","gita-015","gita-016","gita-017","gita-018","gita-019","gita-020","gita-021","gita-022","gita-023","gita-024","gita-025","gita-026","gita-027","gita-028","gita-029","gita-030","gita-031","gita-032","gita-033","gita-034","gita-035","gita-036","gita-037","gita-038","gita-039","gita-040","gita-041","gita-042","gita-043","gita-044","gita-045","gita-046","gita-047","gita-048","gita-049","gita-050","gita-051","gita-052","gita-053","gita-054","gita-055","gita-056","gita-057","gita-058","gita-059","gita-060","gita-061","gita-062","gita-063","gita-064","gita-065","gita-066","gita-067","gita-068","gita-069","gita-070","gita-071","gita-072","gita-073","gita-074","gita-075","gita-076","gita-077","gita-078","gita-079","gita-080"],
+  "reviewedIds": [],
+  "groups": [
+    {
+      "en": "Which teaching or event appears in Bhagavad Gita {s}?",
+      "hi": "भगवद्गीता {s} में कौन सा उपदेश या प्रसंग है?",
+      "exEn": "Bhagavad Gita {s}: {a}. Read this idea within its dialogue between Krishna and Arjuna.",
+      "exHi": "भगवद्गीता {s}: {a}। इसे कृष्ण और अर्जुन के संवाद के संदर्भ में समझें।",
+      "ref": "Bhagavad Gita, verse {s}; IIT Kanpur Gita Supersite",
+      "rows": [
+        [
+          "1.1",
+          "1.1",
+          "Dhritarashtra asks about the armies at Kurukshetra",
+          "धृतराष्ट्र कुरुक्षेत्र की सेनाओं के बारे में पूछते हैं"
+        ],
+        [
+          "1.20",
+          "1.20",
+          "Arjuna's banner bears Hanuman's emblem",
+          "अर्जुन की ध्वजा पर हनुमान का चिह्न है"
+        ],
+        [
+          "1.21–22",
+          "1.21–22",
+          "Arjuna asks Krishna to place the chariot between the armies",
+          "अर्जुन कृष्ण से रथ दोनों सेनाओं के बीच रखने को कहते हैं"
+        ],
+        [
+          "1.28–29",
+          "1.28–29",
+          "Arjuna describes trembling and distress on seeing his relatives",
+          "स्वजनों को देखकर अर्जुन कंपन और व्याकुलता बताते हैं"
+        ],
+        [
+          "2.7",
+          "2.7",
+          "Arjuna asks for guidance as Krishna's disciple",
+          "अर्जुन शिष्य बनकर कृष्ण से मार्गदर्शन मांगते हैं"
+        ],
+        [
+          "2.11",
+          "2.11",
+          "Wisdom is distinguished from grief over the living and dead",
+          "ज्ञान को जीवित और मृत के शोक से अलग बताया गया है"
+        ],
+        [
+          "2.13",
+          "2.13",
+          "The embodied self passes through childhood, youth, and old age",
+          "देहधारी आत्मा बाल्यावस्था, युवावस्था और वृद्धावस्था से गुजरती है"
+        ],
+        [
+          "2.14",
+          "2.14",
+          "Pleasure and pain come and go; meet them patiently",
+          "सुख-दुःख आते-जाते हैं; उन्हें धैर्य से सहें"
+        ],
+        [
+          "2.20",
+          "2.20",
+          "The self is described as unborn and undying",
+          "आत्मा को अजन्मा और अमर बताया गया है"
+        ],
+        [
+          "2.22",
+          "2.22",
+          "Changing bodies is compared to changing worn-out clothes",
+          "देह बदलने की तुलना पुराने वस्त्र बदलने से है"
+        ],
+        [
+          "2.23",
+          "2.23",
+          "Weapons, fire, water, and wind cannot destroy the self",
+          "शस्त्र, अग्नि, जल और वायु आत्मा को नष्ट नहीं कर सकते"
+        ],
+        [
+          "2.47",
+          "2.47",
+          "Attend to action without making its reward your sole motive",
+          "फल को एकमात्र उद्देश्य बनाए बिना कर्म करें"
+        ],
+        [
+          "2.48",
+          "2.48",
+          "Equanimity in success and failure is called yoga",
+          "सफलता-असफलता में समभाव को योग कहा गया है"
+        ],
+        [
+          "2.50",
+          "2.50",
+          "Yoga is described as skillfulness in action",
+          "योग को कर्मों में कुशलता कहा गया है"
+        ],
+        [
+          "2.58",
+          "2.58",
+          "Sense restraint is compared to a tortoise drawing in its limbs",
+          "इंद्रिय संयम की तुलना कछुए के अंग समेटने से है"
+        ],
+        [
+          "2.62",
+          "2.62",
+          "Dwelling on sense objects leads to attachment and desire",
+          "विषयों का चिंतन आसक्ति और इच्छा को जन्म देता है"
+        ],
+        [
+          "2.63",
+          "2.63",
+          "Anger can lead to delusion and loss of judgment",
+          "क्रोध मोह और विवेक के नाश का कारण बन सकता है"
+        ],
+        [
+          "2.70",
+          "2.70",
+          "Peace is compared to an ocean remaining steady as rivers enter",
+          "शांति की तुलना नदियों के आने पर भी स्थिर समुद्र से है"
+        ],
+        [
+          "3.5",
+          "3.5",
+          "No one remains entirely without action even for a moment",
+          "कोई भी क्षणभर पूर्णतः कर्मरहित नहीं रह सकता"
+        ],
+        [
+          "3.8",
+          "3.8",
+          "Perform your prescribed action; action is better than inaction",
+          "नियत कर्म करें; कर्म अकर्म से श्रेष्ठ है"
+        ],
+        [
+          "3.9",
+          "3.9",
+          "Action offered as sacrifice is distinguished from binding action",
+          "यज्ञभाव से किए कर्म को बंधनकारी कर्म से अलग बताया है"
+        ],
+        [
+          "3.19",
+          "3.19",
+          "Perform duty without attachment",
+          "आसक्ति छोड़कर कर्तव्य करें"
+        ],
+        [
+          "3.21",
+          "3.21",
+          "Others follow the example set by respected people",
+          "लोग श्रेष्ठ व्यक्तियों के आचरण का अनुसरण करते हैं"
+        ],
+        [
+          "3.27",
+          "3.27",
+          "Ego can mistake nature's activity for its own independent doing",
+          "अहंकार प्रकृति के कर्मों को अपना स्वतंत्र कर्म मान सकता है"
+        ],
+        [
+          "3.35",
+          "3.35",
+          "One's own duty is preferable to another's duty well performed",
+          "अपना धर्म दूसरे के सुचारु धर्म से भी श्रेष्ठ है"
+        ],
+        [
+          "3.37",
+          "3.37",
+          "Desire and anger are identified as arising from rajas",
+          "काम और क्रोध को रजोगुण से उत्पन्न बताया गया है"
+        ],
+        [
+          "4.7",
+          "4.7",
+          "The Divine manifests when dharma declines",
+          "धर्म की हानि होने पर ईश्वर प्रकट होते हैं"
+        ],
+        [
+          "4.8",
+          "4.8",
+          "Divine manifestation protects the good and establishes dharma",
+          "दिव्य अवतरण साधुओं की रक्षा और धर्म स्थापना करता है"
+        ],
+        [
+          "4.11",
+          "4.11",
+          "The Divine responds according to how people approach",
+          "लोग जिस प्रकार ईश्वर की ओर आते हैं, उसी प्रकार प्रत्युत्तर मिलता है"
+        ],
+        [
+          "4.18",
+          "4.18",
+          "Wisdom discerns action in inaction and inaction in action",
+          "ज्ञान कर्म में अकर्म और अकर्म में कर्म देखता है"
+        ],
+        [
+          "4.34",
+          "4.34",
+          "Learn through respectful inquiry, humility, and service",
+          "विनम्रता, प्रश्न और सेवा से ज्ञान प्राप्त करें"
+        ],
+        [
+          "4.38",
+          "4.38",
+          "Knowledge is praised as a great purifier",
+          "ज्ञान को महान पवित्र करने वाला बताया गया है"
+        ],
+        [
+          "4.39",
+          "4.39",
+          "Faith, commitment, and sense restraint support knowledge",
+          "श्रद्धा, तत्परता और इंद्रिय संयम ज्ञान में सहायक हैं"
+        ],
+        [
+          "5.10",
+          "5.10",
+          "Unattached action is compared to a lotus leaf untouched by water",
+          "अनासक्त कर्म की तुलना जल से अछूते कमलपत्र से है"
+        ],
+        [
+          "5.18",
+          "5.18",
+          "The wise see with equality across different beings",
+          "ज्ञानी विभिन्न प्राणियों में समदृष्टि रखते हैं"
+        ],
+        [
+          "5.22",
+          "5.22",
+          "Pleasures from sense contact are temporary and can bring sorrow",
+          "इंद्रिय-संपर्क के सुख अस्थायी और दुःखकारी हो सकते हैं"
+        ],
+        [
+          "5.29",
+          "5.29",
+          "Knowing the Divine as friend of all beings brings peace",
+          "ईश्वर को सब प्राणियों का सुहृद जानने से शांति मिलती है"
+        ],
+        [
+          "6.5",
+          "6.5",
+          "Lift yourself rather than degrade yourself",
+          "स्वयं का उत्थान करें, स्वयं को गिराएं नहीं"
+        ],
+        [
+          "6.6",
+          "6.6",
+          "A disciplined mind becomes one's friend",
+          "संयमित मन अपना मित्र बनता है"
+        ],
+        [
+          "6.16",
+          "6.16",
+          "Yoga does not favor extremes of eating or sleeping",
+          "योग अधिक या बहुत कम खाने-सोने का समर्थन नहीं करता"
+        ],
+        [
+          "6.17",
+          "6.17",
+          "Balanced food, activity, and rest support yoga",
+          "संतुलित आहार, कर्म और विश्राम योग में सहायक हैं"
+        ],
+        [
+          "6.19",
+          "6.19",
+          "A steady meditative mind resembles a lamp in a windless place",
+          "स्थिर ध्यानशील मन की तुलना वायुरहित स्थान के दीपक से है"
+        ],
+        [
+          "6.26",
+          "6.26",
+          "Gently bring the wandering mind back to its focus",
+          "भटकते मन को बार-बार वापस केंद्रित करें"
+        ],
+        [
+          "6.32",
+          "6.32",
+          "Consider others' happiness and suffering through comparison with oneself",
+          "अपने समान दूसरों के सुख-दुःख को समझें"
+        ],
+        [
+          "6.35",
+          "6.35",
+          "Practice and detachment help steady the restless mind",
+          "अभ्यास और वैराग्य चंचल मन को स्थिर करने में सहायक हैं"
+        ],
+        [
+          "7.4",
+          "7.4",
+          "Eight elements are named as the Divine's lower nature",
+          "आठ तत्वों को ईश्वर की अपरा प्रकृति बताया गया है"
+        ],
+        [
+          "7.7",
+          "7.7",
+          "Beings are compared to gems strung on a thread",
+          "प्राणियों की तुलना धागे में पिरोए मणियों से है"
+        ],
+        [
+          "7.8",
+          "7.8",
+          "Krishna identifies divine presence with the taste in water",
+          "कृष्ण जल के रस में अपनी उपस्थिति बताते हैं"
+        ],
+        [
+          "7.16",
+          "7.16",
+          "Four kinds of people turn toward divine worship",
+          "चार प्रकार के लोग ईश्वर की भक्ति करते हैं"
+        ],
+        [
+          "8.5",
+          "8.5",
+          "Remembering the Divine at death is emphasized",
+          "मृत्यु के समय ईश्वर स्मरण पर बल दिया गया है"
+        ],
+        [
+          "8.7",
+          "8.7",
+          "Remember the Divine while carrying out your duty",
+          "कर्तव्य करते हुए ईश्वर का स्मरण करें"
+        ],
+        [
+          "8.9",
+          "8.9",
+          "Meditation contemplates the ancient, subtle, all-governing Divine",
+          "ध्यान में प्राचीन, सूक्ष्म और सर्वनियंता ईश्वर का चिंतन है"
+        ],
+        [
+          "9.22",
+          "9.22",
+          "The Divine cares for devoted worshippers' needs and preservation",
+          "अनन्य भक्तों के योगक्षेम का दायित्व ईश्वर लेते हैं"
+        ],
+        [
+          "9.26",
+          "9.26",
+          "A leaf, flower, fruit, or water offered with devotion is accepted",
+          "भक्ति से अर्पित पत्र, पुष्प, फल या जल स्वीकार है"
+        ],
+        [
+          "9.27",
+          "9.27",
+          "Offer your actions, food, gifts, and austerities to the Divine",
+          "कर्म, भोजन, दान और तप ईश्वर को अर्पित करें"
+        ],
+        [
+          "9.29",
+          "9.29",
+          "The Divine is described as impartial toward all beings",
+          "ईश्वर को सब प्राणियों के प्रति समभाव वाला बताया है"
+        ],
+        [
+          "10.8",
+          "10.8",
+          "Krishna declares himself the source of all",
+          "कृष्ण स्वयं को सबका मूल बताते हैं"
+        ],
+        [
+          "10.20",
+          "10.20",
+          "The Divine self resides in the hearts of all beings",
+          "ईश्वर सब प्राणियों के हृदय में स्थित आत्मा हैं"
+        ],
+        [
+          "10.25",
+          "10.25",
+          "Japa is singled out among sacrifices",
+          "यज्ञों में जपयज्ञ को विशेष बताया गया है"
+        ],
+        [
+          "10.41",
+          "10.41",
+          "Splendor and excellence are expressions of divine radiance",
+          "विभूति और श्रेष्ठता दिव्य तेज की अभिव्यक्ति हैं"
+        ],
+        [
+          "11.8",
+          "11.8",
+          "Arjuna receives divine sight to behold the universal form",
+          "विश्वरूप देखने के लिए अर्जुन को दिव्य दृष्टि मिलती है"
+        ],
+        [
+          "11.32",
+          "11.32",
+          "The universal form declares itself Time, destroyer of worlds",
+          "विश्वरूप स्वयं को लोकों का संहारक काल बताता है"
+        ],
+        [
+          "11.55",
+          "11.55",
+          "Devoted action and freedom from hatred lead toward the Divine",
+          "भक्तिपूर्ण कर्म और निर्वैरता ईश्वर की ओर ले जाते हैं"
+        ],
+        [
+          "12.13–14",
+          "12.13–14",
+          "Compassion, humility, patience, and steadiness characterize a devotee",
+          "करुणा, विनम्रता, क्षमा और स्थिरता भक्त के गुण हैं"
+        ],
+        [
+          "12.15",
+          "12.15",
+          "A dear devotee neither disturbs the world nor is overwhelmed by it",
+          "प्रिय भक्त न जगत को उद्विग्न करता है न उससे व्याकुल होता है"
+        ],
+        [
+          "12.18–19",
+          "12.18–19",
+          "Remain balanced amid praise, blame, honor, and dishonor",
+          "निंदा-स्तुति और मान-अपमान में संतुलित रहें"
+        ],
+        [
+          "13.2",
+          "13.2",
+          "The body is called the field and its knower the field-knower",
+          "शरीर को क्षेत्र और उसके ज्ञाता को क्षेत्रज्ञ कहा है"
+        ],
+        [
+          "13.8",
+          "13.8",
+          "Humility, nonviolence, patience, and sincerity are valued",
+          "विनम्रता, अहिंसा, क्षमा और सरलता को महत्व दिया है"
+        ],
+        [
+          "14.5",
+          "14.5",
+          "Sattva, rajas, and tamas are the three qualities of nature",
+          "सत्त्व, रज और तम प्रकृति के तीन गुण हैं"
+        ],
+        [
+          "14.6",
+          "14.6",
+          "Sattva is associated with clarity and illumination",
+          "सत्त्व का संबंध निर्मलता और प्रकाश से है"
+        ],
+        [
+          "14.7",
+          "14.7",
+          "Rajas is associated with craving and attachment to action",
+          "रज का संबंध तृष्णा और कर्मासक्ति से है"
+        ],
+        [
+          "14.8",
+          "14.8",
+          "Tamas is associated with ignorance, negligence, and sleep",
+          "तम का संबंध अज्ञान, प्रमाद और निद्रा से है"
+        ],
+        [
+          "15.1",
+          "15.1",
+          "Worldly existence is pictured as a tree with roots above",
+          "संसार को ऊपर जड़ों वाले वृक्ष के रूप में बताया है"
+        ],
+        [
+          "15.15",
+          "15.15",
+          "Memory, knowledge, and their loss arise through divine presence",
+          "स्मृति, ज्ञान और उनका लोप दिव्य उपस्थिति से होते हैं"
+        ],
+        [
+          "16.1–3",
+          "16.1–3",
+          "Fearlessness, generosity, truth, and compassion are divine qualities",
+          "अभय, दान, सत्य और दया दैवी गुण हैं"
+        ],
+        [
+          "16.21",
+          "16.21",
+          "Desire, anger, and greed are three gates to ruin",
+          "काम, क्रोध और लोभ पतन के तीन द्वार हैं"
+        ],
+        [
+          "17.15",
+          "17.15",
+          "Speech should be truthful, helpful, kind, and non-agitating",
+          "वाणी सत्य, हितकारी, प्रिय और अनुद्वेगकारी हो"
+        ],
+        [
+          "17.20",
+          "17.20",
+          "Giving without expecting repayment is sattvic charity",
+          "बदले की अपेक्षा बिना किया दान सात्त्विक है"
+        ],
+        [
+          "18.66",
+          "18.66",
+          "Krishna calls for wholehearted refuge in the Divine",
+          "कृष्ण पूर्ण भाव से ईश्वर की शरण लेने को कहते हैं"
+        ],
+        [
+          "18.78",
+          "18.78",
+          "The closing verse joins Krishna and Arjuna with victory and sound policy",
+          "अंतिम श्लोक कृष्ण और अर्जुन के साथ विजय और नीति बताता है"
+        ]
+      ]
+    }
+  ]
+}

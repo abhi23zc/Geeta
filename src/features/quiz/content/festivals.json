@@ -1,0 +1,651 @@
+{
+  "ids": ["festivals-001","festivals-002","festivals-003","festivals-004","festivals-005","festivals-006","festivals-007","festivals-008","festivals-009","festivals-010","festivals-011","festivals-012","festivals-013","festivals-014","festivals-015","festivals-016","festivals-017","festivals-018","festivals-019","festivals-020","festivals-021","festivals-022","festivals-023","festivals-024","festivals-025","festivals-026","festivals-027","festivals-028","festivals-029","festivals-030","festivals-031","festivals-032","festivals-033","festivals-034","festivals-035","festivals-036","festivals-037","festivals-038","festivals-039","festivals-040","festivals-041","festivals-042","festivals-043","festivals-044","festivals-045","festivals-046","festivals-047","festivals-048","festivals-049","festivals-050","festivals-051","festivals-052","festivals-053","festivals-054","festivals-055","festivals-056","festivals-057","festivals-058","festivals-059","festivals-060","festivals-061","festivals-062","festivals-063","festivals-064","festivals-065","festivals-066","festivals-067","festivals-068","festivals-069","festivals-070","festivals-071","festivals-072","festivals-073","festivals-074","festivals-075","festivals-076","festivals-077","festivals-078","festivals-079","festivals-080","festivals-081","festivals-082","festivals-083","festivals-084","festivals-085","festivals-086","festivals-087","festivals-088","festivals-089","festivals-090","festivals-091","festivals-092","festivals-093","festivals-094","festivals-095","festivals-096","festivals-097","festivals-098","festivals-099","festivals-100"],
+  "reviewedIds": [],
+  "groups": [
+    {
+      "en": "Which deity or sacred figure is especially honored at {s}?",
+      "hi": "{s} में विशेष रूप से किस देवता या पवित्र व्यक्तित्व का सम्मान होता है?",
+      "exEn": "{s} especially honors {a} in this tradition. Families and regions may observe additional customs.",
+      "exHi": "इस परंपरा में {s} के अवसर पर विशेषतः {a} का सम्मान होता है। परिवारों और क्षेत्रों की प्रथाएं अलग हो सकती हैं।",
+      "ref": "Incredible India — festival profiles; traditional Hindu festival observances",
+      "rows": [
+        [
+          "Ganesh Chaturthi",
+          "गणेश चतुर्थी",
+          "Ganesha",
+          "गणेश"
+        ],
+        [
+          "Maha Shivaratri",
+          "महाशिवरात्रि",
+          "Shiva",
+          "शिव"
+        ],
+        [
+          "Janmashtami",
+          "जन्माष्टमी",
+          "Krishna",
+          "कृष्ण"
+        ],
+        [
+          "Rama Navami",
+          "राम नवमी",
+          "Rama",
+          "राम"
+        ],
+        [
+          "Hanuman Jayanti",
+          "हनुमान जयंती",
+          "Hanuman",
+          "हनुमान"
+        ],
+        [
+          "Vasant Panchami in Sarasvati worship",
+          "सरस्वती उपासना की वसंत पंचमी",
+          "Sarasvati",
+          "सरस्वती"
+        ],
+        [
+          "Durga Puja",
+          "दुर्गा पूजा",
+          "Durga",
+          "दुर्गा"
+        ],
+        [
+          "Lakshmi Puja during Diwali",
+          "दीपावली की लक्ष्मी पूजा",
+          "Lakshmi",
+          "लक्ष्मी"
+        ],
+        [
+          "Chhath Puja",
+          "छठ पूजा",
+          "Surya",
+          "सूर्य"
+        ],
+        [
+          "Thaipusam",
+          "थाईपुसम",
+          "Murugan",
+          "मुरुगन"
+        ],
+        [
+          "Skanda Sashti",
+          "स्कंद षष्ठी",
+          "Murugan",
+          "मुरुगन"
+        ],
+        [
+          "Ratha Yatra in Puri",
+          "पुरी की रथयात्रा",
+          "Jagannath",
+          "जगन्नाथ"
+        ],
+        [
+          "Govardhan Puja",
+          "गोवर्धन पूजा",
+          "Krishna",
+          "कृष्ण"
+        ],
+        [
+          "Dhanteras in the Dhanvantari tradition",
+          "धन्वंतरि परंपरा का धनतेरस",
+          "Dhanvantari",
+          "धन्वंतरि"
+        ],
+        [
+          "Anant Chaturdashi in Vishnu worship",
+          "विष्णु उपासना की अनंत चतुर्दशी",
+          "Vishnu",
+          "विष्णु"
+        ],
+        [
+          "Narasimha Jayanti",
+          "नरसिंह जयंती",
+          "Narasimha",
+          "नरसिंह"
+        ],
+        [
+          "Vamana Jayanti",
+          "वामन जयंती",
+          "Vamana",
+          "वामन"
+        ],
+        [
+          "Gita Jayanti",
+          "गीता जयंती",
+          "Krishna as teacher of the Gita",
+          "गीता के उपदेशक कृष्ण"
+        ],
+        [
+          "Guru Purnima in the Vyasa tradition",
+          "व्यास परंपरा की गुरु पूर्णिमा",
+          "Vyasa",
+          "व्यास"
+        ],
+        [
+          "Shitala Ashtami",
+          "शीतला अष्टमी",
+          "Shitala Devi",
+          "शीतला देवी"
+        ]
+      ]
+    },
+    {
+      "en": "Which region or state is especially associated with {s}?",
+      "hi": "{s} विशेष रूप से किस क्षेत्र या राज्य से जुड़ा है?",
+      "exEn": "{s} is especially associated with {a}, although celebrations can extend elsewhere.",
+      "exHi": "{s} का विशेष संबंध {a} से है, हालांकि इसे अन्य स्थानों पर भी मनाया जा सकता है।",
+      "ref": "Incredible India — regional festivals and events",
+      "rows": [
+        [
+          "Pongal",
+          "पोंगल",
+          "Tamil Nadu",
+          "तमिलनाडु"
+        ],
+        [
+          "Onam",
+          "ओणम",
+          "Kerala",
+          "केरल"
+        ],
+        [
+          "Vishu",
+          "विषु",
+          "Kerala",
+          "केरल"
+        ],
+        [
+          "Bohag Bihu",
+          "बोहाग बिहू",
+          "Assam",
+          "असम"
+        ],
+        [
+          "Magh Bihu",
+          "माघ बिहू",
+          "Assam",
+          "असम"
+        ],
+        [
+          "Bathukamma",
+          "बथुकम्मा",
+          "Telangana",
+          "तेलंगाना"
+        ],
+        [
+          "Bonalu",
+          "बोनालु",
+          "Telangana",
+          "तेलंगाना"
+        ],
+        [
+          "Gudi Padwa",
+          "गुड़ी पड़वा",
+          "Maharashtra",
+          "महाराष्ट्र"
+        ],
+        [
+          "Ugadi",
+          "उगादि",
+          "Andhra Pradesh and Karnataka",
+          "आंध्र प्रदेश और कर्नाटक"
+        ],
+        [
+          "Garba during Navratri",
+          "नवरात्रि का गरबा",
+          "Gujarat",
+          "गुजरात"
+        ],
+        [
+          "Gangaur",
+          "गणगौर",
+          "Rajasthan",
+          "राजस्थान"
+        ],
+        [
+          "Kharchi Puja",
+          "खारची पूजा",
+          "Tripura",
+          "त्रिपुरा"
+        ],
+        [
+          "Lai Haraoba",
+          "लाई हराओबा",
+          "Manipur",
+          "मणिपुर"
+        ],
+        [
+          "Kullu Dussehra",
+          "कुल्लू दशहरा",
+          "Himachal Pradesh",
+          "हिमाचल प्रदेश"
+        ],
+        [
+          "Mysuru Dasara",
+          "मैसूर दशहरा",
+          "Karnataka",
+          "कर्नाटक"
+        ],
+        [
+          "Thrissur Pooram",
+          "त्रिशूर पूरम",
+          "Kerala",
+          "केरल"
+        ],
+        [
+          "Nuakhai",
+          "नुआखाई",
+          "Odisha",
+          "ओडिशा"
+        ],
+        [
+          "Raja Parba",
+          "रज पर्व",
+          "Odisha",
+          "ओडिशा"
+        ],
+        [
+          "Lathmar Holi",
+          "लठमार होली",
+          "Braj region",
+          "ब्रज क्षेत्र"
+        ],
+        [
+          "Chhath's especially strong regional tradition",
+          "छठ की विशेष रूप से मजबूत क्षेत्रीय परंपरा",
+          "Bihar and eastern Uttar Pradesh",
+          "बिहार और पूर्वी उत्तर प्रदेश"
+        ]
+      ]
+    },
+    {
+      "en": "Which practice is characteristic of {s}?",
+      "hi": "{s} की विशेष प्रथा कौन सी है?",
+      "exEn": "A characteristic practice of {s} is {a}. Participation and details vary between communities.",
+      "exHi": "{s} की एक विशेष प्रथा है: {a}। समुदायों के अनुसार भागीदारी और विवरण अलग हो सकते हैं।",
+      "ref": "Incredible India festival profiles; regional observances",
+      "rows": [
+        [
+          "Raksha Bandhan",
+          "रक्षा बंधन",
+          "Tying a rakhi as a bond of care",
+          "स्नेह के बंधन के रूप में राखी बांधना"
+        ],
+        [
+          "Bhai Dooj",
+          "भाई दूज",
+          "A sister's ceremonial greeting to her brother",
+          "बहन द्वारा भाई का तिलक और स्वागत"
+        ],
+        [
+          "Holi",
+          "होली",
+          "Playing with colors",
+          "रंगों से खेलना"
+        ],
+        [
+          "Holika Dahan",
+          "होलिका दहन",
+          "Lighting a ceremonial bonfire",
+          "अनुष्ठानिक अग्नि प्रज्वलित करना"
+        ],
+        [
+          "Diwali",
+          "दीपावली",
+          "Lighting lamps",
+          "दीप जलाना"
+        ],
+        [
+          "Dussehra in many north Indian towns",
+          "अनेक उत्तर भारतीय नगरों का दशहरा",
+          "Burning Ravana effigies",
+          "रावण के पुतले जलाना"
+        ],
+        [
+          "Navratri Garba",
+          "नवरात्रि गरबा",
+          "Dancing in circles",
+          "घेरा बनाकर नृत्य करना"
+        ],
+        [
+          "Ganesh festival immersion",
+          "गणेश उत्सव का विसर्जन",
+          "Ceremonially bidding farewell to the image",
+          "प्रतिमा को अनुष्ठानिक विदाई देना"
+        ],
+        [
+          "Puri Ratha Yatra",
+          "पुरी की रथयात्रा",
+          "Pulling temple chariots",
+          "मंदिर के रथ खींचना"
+        ],
+        [
+          "Dahi Handi",
+          "दही हांडी",
+          "Forming human pyramids to reach a pot",
+          "मटकी तक पहुंचने के लिए मानव पिरामिड बनाना"
+        ],
+        [
+          "Chhath sunset worship",
+          "छठ की संध्या पूजा",
+          "Offering arghya to the setting sun",
+          "अस्त होते सूर्य को अर्घ्य देना"
+        ],
+        [
+          "Chhath concluding worship",
+          "छठ की अंतिम पूजा",
+          "Offering arghya to the rising sun",
+          "उगते सूर्य को अर्घ्य देना"
+        ],
+        [
+          "Pongal cooking",
+          "पोंगल पकाने की प्रथा",
+          "Boiling a new rice harvest offering",
+          "नई फसल के चावल का अर्पण पकाना"
+        ],
+        [
+          "Mattu Pongal",
+          "मट्टू पोंगल",
+          "Honoring cattle",
+          "पशुधन का सम्मान"
+        ],
+        [
+          "Onam Pookalam",
+          "ओणम का पुक्कलम",
+          "Making floral arrangements",
+          "फूलों की सजावट बनाना"
+        ],
+        [
+          "Onam Sadya",
+          "ओणम की सद्या",
+          "Sharing a festive meal",
+          "उत्सव का सामूहिक भोजन"
+        ],
+        [
+          "Vishu Kani",
+          "विषु कणी",
+          "Viewing an auspicious arrangement first",
+          "प्रथम शुभ वस्तुओं का दर्शन"
+        ],
+        [
+          "Gudi Padwa",
+          "गुड़ी पड़वा",
+          "Raising a decorated gudi",
+          "सजी हुई गुड़ी खड़ी करना"
+        ],
+        [
+          "Ugadi Pachadi",
+          "उगादि पचड़ी",
+          "Tasting a mixture of different flavors",
+          "विभिन्न स्वादों का मिश्रण चखना"
+        ],
+        [
+          "Ayudha Puja",
+          "आयुध पूजा",
+          "Respectfully honoring tools of work",
+          "काम के औजारों का सम्मान"
+        ],
+        [
+          "Bathukamma",
+          "बथुकम्मा",
+          "Arranging flowers in a tiered stack",
+          "फूलों को स्तरों में सजाना"
+        ],
+        [
+          "Karva Chauth in its usual household tradition",
+          "सामान्य घरेलू परंपरा का करवा चौथ",
+          "Viewing the moon before ending the fast",
+          "व्रत खोलने से पहले चंद्र दर्शन"
+        ],
+        [
+          "Makar Sankranti in Gujarat",
+          "गुजरात की मकर संक्रांति",
+          "Flying kites",
+          "पतंग उड़ाना"
+        ],
+        [
+          "Lohri",
+          "लोहड़ी",
+          "Gathering around a bonfire",
+          "अग्नि के आसपास एकत्र होना"
+        ],
+        [
+          "Nag Panchami",
+          "नाग पंचमी",
+          "Reverence toward serpent deities",
+          "नाग देवताओं का सम्मान"
+        ],
+        [
+          "Tulasi Vivaha",
+          "तुलसी विवाह",
+          "A ceremonial marriage of Tulasi and Vishnu's form",
+          "तुलसी और विष्णु रूप का अनुष्ठानिक विवाह"
+        ],
+        [
+          "Dev Deepavali in Varanasi",
+          "वाराणसी की देव दीपावली",
+          "Lighting lamps along the ghats",
+          "घाटों पर दीप जलाना"
+        ],
+        [
+          "Durga Puja immersion",
+          "दुर्गा पूजा का विसर्जन",
+          "Bidding farewell to the goddess's image",
+          "देवी की प्रतिमा को विदाई"
+        ],
+        [
+          "Sarasvati Puja for students",
+          "विद्यार्थियों की सरस्वती पूजा",
+          "Honoring books and learning",
+          "पुस्तकों और विद्या का सम्मान"
+        ],
+        [
+          "Guru Purnima observance",
+          "गुरु पूर्णिमा की प्रथा",
+          "Expressing gratitude to teachers",
+          "गुरुओं के प्रति कृतज्ञता व्यक्त करना"
+        ]
+      ]
+    },
+    {
+      "en": "What does {s} signify in its traditional festival context?",
+      "hi": "पारंपरिक उत्सव के संदर्भ में {s} का क्या अर्थ है?",
+      "exEn": "In this context, {s} signifies {a}. Calendar systems and observances differ regionally.",
+      "exHi": "इस संदर्भ में {s} का अर्थ है: {a}। पंचांग और प्रथाएं क्षेत्रानुसार बदल सकती हैं।",
+      "ref": "Traditional Hindu festival names; Sanskrit festival vocabulary",
+      "rows": [
+        [
+          "Navratri",
+          "नवरात्रि",
+          "Nine nights",
+          "नौ रातें"
+        ],
+        [
+          "Deepavali",
+          "दीपावली",
+          "A row of lamps",
+          "दीपों की पंक्ति"
+        ],
+        [
+          "Vijayadashami",
+          "विजयदशमी",
+          "The victorious tenth day",
+          "विजय का दसवां दिन"
+        ],
+        [
+          "Janmashtami",
+          "जन्माष्टमी",
+          "Birth observance on an eighth lunar day",
+          "आठवीं तिथि पर जन्मोत्सव"
+        ],
+        [
+          "Rama Navami",
+          "राम नवमी",
+          "Rama's birth observance on a ninth lunar day",
+          "नवमी तिथि पर राम जन्मोत्सव"
+        ],
+        [
+          "Ganesh Chaturthi",
+          "गणेश चतुर्थी",
+          "Ganesha's observance on a fourth lunar day",
+          "चतुर्थी पर गणेश उत्सव"
+        ],
+        [
+          "Guru Purnima",
+          "गुरु पूर्णिमा",
+          "A full-moon observance honoring teachers",
+          "गुरु सम्मान का पूर्णिमा उत्सव"
+        ],
+        [
+          "Maha Shivaratri",
+          "महाशिवरात्रि",
+          "The great night of Shiva",
+          "शिव की महान रात्रि"
+        ],
+        [
+          "Vasant Panchami",
+          "वसंत पंचमी",
+          "A spring observance on a fifth lunar day",
+          "पंचमी का वसंत उत्सव"
+        ],
+        [
+          "Raksha Bandhan",
+          "रक्षा बंधन",
+          "A bond of protection and care",
+          "रक्षा और स्नेह का बंधन"
+        ],
+        [
+          "Ratha Yatra",
+          "रथयात्रा",
+          "A chariot procession",
+          "रथों की यात्रा"
+        ],
+        [
+          "Tulasi Vivaha",
+          "तुलसी विवाह",
+          "The ceremonial wedding of Tulasi",
+          "तुलसी का अनुष्ठानिक विवाह"
+        ],
+        [
+          "Ayudha Puja",
+          "आयुध पूजा",
+          "Worship or honoring of implements",
+          "आयुधों और औजारों की पूजा"
+        ],
+        [
+          "Anant Chaturdashi",
+          "अनंत चतुर्दशी",
+          "A fourteenth-day observance of Ananta",
+          "अनंत की चतुर्दशी तिथि की पूजा"
+        ],
+        [
+          "Nag Panchami",
+          "नाग पंचमी",
+          "A fifth-day observance honoring serpents",
+          "नागों के सम्मान की पंचमी"
+        ],
+        [
+          "Skanda Sashti",
+          "स्कंद षष्ठी",
+          "A sixth-day observance honoring Skanda",
+          "स्कंद के सम्मान की षष्ठी"
+        ],
+        [
+          "Akshaya Tritiya",
+          "अक्षय तृतीया",
+          "A third-day observance associated with the imperishable",
+          "अक्षय भाव से जुड़ी तृतीया"
+        ],
+        [
+          "Dhanteras",
+          "धनतेरस",
+          "A thirteenth-day observance associated with prosperity",
+          "समृद्धि से जुड़ी तेरहवीं तिथि"
+        ],
+        [
+          "Bhai Dooj",
+          "भाई दूज",
+          "A second-day observance of sibling affection",
+          "भाई-बहन के स्नेह की द्वितीया"
+        ],
+        [
+          "Sharad Purnima",
+          "शरद पूर्णिमा",
+          "The autumn full moon",
+          "शरद ऋतु की पूर्णिमा"
+        ]
+      ]
+    },
+    {
+      "en": "Which story, season, or purpose is associated with {s}?",
+      "hi": "{s} किस कथा, ऋतु या उद्देश्य से जुड़ा है?",
+      "exEn": "{s} is associated with {a} in the specified tradition.",
+      "exHi": "बताई गई परंपरा में {s} का संबंध {a} से है।",
+      "ref": "Incredible India — festivals; Bhagavata Purana; Ramayana traditions",
+      "rows": [
+        [
+          "Onam's Mahabali narrative",
+          "ओणम की महाबलि कथा",
+          "King Mahabali's annual return",
+          "राजा महाबलि की वार्षिक वापसी"
+        ],
+        [
+          "Holi's Prahlada narrative",
+          "होली की प्रह्लाद कथा",
+          "Devotion surviving persecution",
+          "उत्पीड़न के बीच भक्ति की रक्षा"
+        ],
+        [
+          "Diwali's Ayodhya narrative",
+          "दीपावली की अयोध्या कथा",
+          "Rama's return from exile",
+          "वनवास से राम की वापसी"
+        ],
+        [
+          "Govardhan Puja's narrative",
+          "गोवर्धन पूजा की कथा",
+          "Krishna lifting Govardhan",
+          "कृष्ण द्वारा गोवर्धन उठाना"
+        ],
+        [
+          "Vijayadashami's Durga narrative",
+          "विजयदशमी की दुर्गा कथा",
+          "Durga's victory over Mahishasura",
+          "महिषासुर पर दुर्गा की विजय"
+        ],
+        [
+          "Thai Pongal",
+          "थाई पोंगल",
+          "Thanksgiving for the harvest",
+          "फसल के प्रति कृतज्ञता"
+        ],
+        [
+          "Makar Sankranti's solar meaning",
+          "मकर संक्रांति का सौर अर्थ",
+          "The sun's transition into Makara",
+          "सूर्य का मकर राशि में प्रवेश"
+        ],
+        [
+          "Vasant Panchami's seasonal theme",
+          "वसंत पंचमी की ऋतु",
+          "The arrival of spring",
+          "वसंत का आगमन"
+        ],
+        [
+          "Gita Jayanti's narrative",
+          "गीता जयंती का प्रसंग",
+          "Krishna's teaching to Arjuna",
+          "अर्जुन को कृष्ण का उपदेश"
+        ],
+        [
+          "Nuakhai's harvest theme",
+          "नुआखाई का फसल प्रसंग",
+          "Welcoming the new rice harvest",
+          "नई धान फसल का स्वागत"
+        ]
+      ]
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n/provider';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View, LayoutChangeEvent } from 'react-native';
 import Animated, {
@@ -28,6 +29,7 @@ export function ModeSegmentedControl({
   onChangeMode,
   night = false,
 }: ModeSegmentedControlProps) {
+  const { text: translateText } = useLanguage();
   const activeIndex = MODES.findIndex((m) => m.id === activeMode);
   const indicatorPosition = useSharedValue(activeIndex);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -37,7 +39,7 @@ export function ModeSegmentedControl({
       damping: 15,
       stiffness: 190,
     });
-  }, [activeIndex]);
+  }, [activeIndex, indicatorPosition]);
 
   const handleLayout = (e: LayoutChangeEvent) => {
     setContainerWidth(e.nativeEvent.layout.width);
@@ -97,7 +99,7 @@ export function ModeSegmentedControl({
                 isActive && { fontWeight: '800' },
               ]}
             >
-              {modeItem.label}
+              {translateText(modeItem.label)}
             </TextR>
           </Pressable>
         );
@@ -108,7 +110,7 @@ export function ModeSegmentedControl({
 
 const styles = StyleSheet.create({
   containerTrack: {
-    height: 50,
+    minHeight: 58,
     width: '100%',
     backgroundColor: 'rgba(254, 236, 220, 0.88)',
     borderRadius: 25,

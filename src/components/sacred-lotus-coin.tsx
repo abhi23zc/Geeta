@@ -1,11 +1,11 @@
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
+  cancelAnimation,
   Easing,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
-  withSequence,
   withTiming,
 } from "react-native-reanimated";
 import Svg, {
@@ -24,7 +24,6 @@ interface SacredLotusCoinProps {
 
 export function SacredLotusCoin({ size = 64 }: SacredLotusCoinProps) {
   const rotation = useSharedValue(0);
-  const auraPulse = useSharedValue(1);
 
   useEffect(() => {
     rotation.value = withRepeat(
@@ -33,23 +32,11 @@ export function SacredLotusCoin({ size = 64 }: SacredLotusCoinProps) {
       false,
     );
 
-    auraPulse.value = withRepeat(
-      withSequence(
-        withTiming(1.12, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.94, { duration: 2400, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      true,
-    );
-  }, []);
+    return () => cancelAnimation(rotation);
+  }, [rotation]);
 
   const animatedRotateStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],
-  }));
-
-  const animatedAuraStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: auraPulse.value }],
-    opacity: auraPulse.value > 1 ? 0.6 : 0.35,
   }));
 
   return (

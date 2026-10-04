@@ -1,0 +1,375 @@
+{
+  "ids": ["sanskrit-001","sanskrit-002","sanskrit-003","sanskrit-004","sanskrit-005","sanskrit-006","sanskrit-007","sanskrit-008","sanskrit-009","sanskrit-010","sanskrit-011","sanskrit-012","sanskrit-013","sanskrit-014","sanskrit-015","sanskrit-016","sanskrit-017","sanskrit-018","sanskrit-019","sanskrit-020","sanskrit-021","sanskrit-022","sanskrit-023","sanskrit-024","sanskrit-025","sanskrit-026","sanskrit-027","sanskrit-028","sanskrit-029","sanskrit-030","sanskrit-031","sanskrit-032","sanskrit-033","sanskrit-034","sanskrit-035","sanskrit-036","sanskrit-037","sanskrit-038","sanskrit-039","sanskrit-040","sanskrit-041","sanskrit-042","sanskrit-043","sanskrit-044","sanskrit-045","sanskrit-046","sanskrit-047","sanskrit-048","sanskrit-049","sanskrit-050","sanskrit-051","sanskrit-052","sanskrit-053","sanskrit-054","sanskrit-055","sanskrit-056","sanskrit-057","sanskrit-058","sanskrit-059","sanskrit-060"],
+  "reviewedIds": [],
+  "groups": [
+    {
+      "en": "What does the Sanskrit term “{s}” commonly mean?",
+      "hi": "संस्कृत शब्द “{s}” का सामान्य अर्थ क्या है?",
+      "exEn": "{s} means {a}. Sanskrit terms can carry additional meanings in different texts.",
+      "exHi": "{s} का अर्थ है: {a}। विभिन्न ग्रंथों में संस्कृत शब्दों के अन्य अर्थ भी हो सकते हैं।",
+      "ref": "Monier-Williams Sanskrit–English Dictionary, headword {s}",
+      "rows": [
+        [
+          "Namaste",
+          "नमस्ते",
+          "A respectful greeting or salutation",
+          "सम्मानपूर्ण अभिवादन"
+        ],
+        [
+          "Dharma",
+          "धर्म",
+          "Duty, ethical order, or right conduct in context",
+          "संदर्भ के अनुसार कर्तव्य, नैतिक व्यवस्था या सदाचार"
+        ],
+        [
+          "Karma",
+          "कर्म",
+          "Action or deed",
+          "कार्य या कर्म"
+        ],
+        [
+          "Ahimsa",
+          "अहिंसा",
+          "Non-harming",
+          "हानि न पहुंचाना"
+        ],
+        [
+          "Satya",
+          "सत्य",
+          "Truthfulness",
+          "सत्यनिष्ठा"
+        ],
+        [
+          "Karuna",
+          "करुणा",
+          "Compassion",
+          "दया और संवेदना"
+        ],
+        [
+          "Daya",
+          "दया",
+          "Mercy or kindness",
+          "कृपा या दयालुता"
+        ],
+        [
+          "Shanti",
+          "शांति",
+          "Peace",
+          "शांति और स्थिरता"
+        ],
+        [
+          "Seva",
+          "सेवा",
+          "Service",
+          "सेवा करना"
+        ],
+        [
+          "Bhakti",
+          "भक्ति",
+          "Devotion",
+          "समर्पित भक्ति"
+        ],
+        [
+          "Jnana",
+          "ज्ञान",
+          "Knowledge or understanding",
+          "ज्ञान या समझ"
+        ],
+        [
+          "Dhyana",
+          "ध्यान",
+          "Meditation",
+          "ध्यान और एकाग्र चिंतन"
+        ],
+        [
+          "Yoga",
+          "योग",
+          "Discipline or union depending on context",
+          "संदर्भ के अनुसार साधना या जुड़ाव"
+        ],
+        [
+          "Pranayama",
+          "प्राणायाम",
+          "Regulation of breath",
+          "श्वास का नियमन"
+        ],
+        [
+          "Prana",
+          "प्राण",
+          "Vital breath or life energy",
+          "जीवनदायी श्वास या जीवनशक्ति"
+        ],
+        [
+          "Mantra",
+          "मंत्र",
+          "A sacred utterance used in practice",
+          "साधना में प्रयुक्त पवित्र वचन"
+        ],
+        [
+          "Japa",
+          "जप",
+          "Repeated recitation",
+          "बार-बार मंत्र या नाम का उच्चारण"
+        ],
+        [
+          "Puja",
+          "पूजा",
+          "Worship or reverential offering",
+          "आराधना या श्रद्धापूर्ण अर्पण"
+        ],
+        [
+          "Arati",
+          "आरती",
+          "A worship offering of light",
+          "प्रकाश द्वारा आराधना"
+        ],
+        [
+          "Prasada",
+          "प्रसाद",
+          "Grace or a sanctified offering",
+          "कृपा या पवित्र अर्पण"
+        ],
+        [
+          "Darshana",
+          "दर्शन",
+          "Seeing, especially a sacred beholding",
+          "देखना, विशेषकर पवित्र साक्षात्कार"
+        ],
+        [
+          "Tirtha",
+          "तीर्थ",
+          "A crossing place or sacred pilgrimage place",
+          "पार उतरने का स्थान या पवित्र यात्रा स्थल"
+        ],
+        [
+          "Sankalpa",
+          "संकल्प",
+          "A resolve or intention",
+          "निश्चय या उद्देश्य"
+        ],
+        [
+          "Sadhana",
+          "साधना",
+          "Sustained spiritual practice",
+          "निरंतर आध्यात्मिक अभ्यास"
+        ],
+        [
+          "Satsanga",
+          "सत्संग",
+          "Company oriented toward truth and goodness",
+          "सत्य और सद्गुण की संगति"
+        ],
+        [
+          "Guru",
+          "गुरु",
+          "A teacher or guide",
+          "शिक्षक या मार्गदर्शक"
+        ],
+        [
+          "Shishya",
+          "शिष्य",
+          "A pupil or disciple",
+          "विद्यार्थी या अनुयायी"
+        ],
+        [
+          "Shraddha",
+          "श्रद्धा",
+          "Trustful commitment or faith",
+          "विश्वासपूर्ण निष्ठा"
+        ],
+        [
+          "Vairagya",
+          "वैराग्य",
+          "Freedom from clinging",
+          "आसक्ति से मुक्ति"
+        ],
+        [
+          "Viveka",
+          "विवेक",
+          "Discernment",
+          "उचित-अनुचित का विचार"
+        ],
+        [
+          "Moksha",
+          "मोक्ष",
+          "Liberation",
+          "मुक्ति"
+        ],
+        [
+          "Samsara",
+          "संसार",
+          "The cycle of worldly existence",
+          "सांसारिक अस्तित्व का चक्र"
+        ],
+        [
+          "Atman",
+          "आत्मन्",
+          "The self",
+          "आत्मा या स्वयं"
+        ],
+        [
+          "Brahman",
+          "ब्रह्मन्",
+          "Ultimate reality in Vedantic thought",
+          "वेदांत में परम सत्य"
+        ],
+        [
+          "Ishvara",
+          "ईश्वर",
+          "The Lord or Divine ruler",
+          "परमेश्वर या दिव्य नियंता"
+        ],
+        [
+          "Deva",
+          "देव",
+          "A divine being",
+          "दिव्य सत्ता"
+        ],
+        [
+          "Devi",
+          "देवी",
+          "A goddess",
+          "दिव्य स्त्री सत्ता"
+        ],
+        [
+          "Rishi",
+          "ऋषि",
+          "A sage or seer",
+          "मुनि या मंत्रद्रष्टा"
+        ],
+        [
+          "Veda",
+          "वेद",
+          "Sacred knowledge or Vedic scripture",
+          "पवित्र ज्ञान या वैदिक ग्रंथ"
+        ],
+        [
+          "Smriti",
+          "स्मृति",
+          "Remembered tradition",
+          "स्मरण की गई परंपरा"
+        ],
+        [
+          "Shruti",
+          "श्रुति",
+          "Heard or revealed sacred tradition",
+          "सुनी या प्रकट पवित्र परंपरा"
+        ],
+        [
+          "Itihasa",
+          "इतिहास",
+          "Traditional epic narrative",
+          "परंपरागत महाकाव्य कथा"
+        ],
+        [
+          "Purana",
+          "पुराण",
+          "A traditional narrative scripture",
+          "परंपरागत कथात्मक ग्रंथ"
+        ],
+        [
+          "Shloka",
+          "श्लोक",
+          "A metrical verse",
+          "छंदबद्ध पद्य"
+        ],
+        [
+          "Sutra",
+          "सूत्र",
+          "A concise aphorism or thread",
+          "संक्षिप्त नियम या धागा"
+        ],
+        [
+          "Yajna",
+          "यज्ञ",
+          "Sacrifice or sacred offering",
+          "याग या पवित्र अर्पण"
+        ],
+        [
+          "Homa",
+          "होम",
+          "An offering into a sacred fire",
+          "पवित्र अग्नि में आहुति"
+        ],
+        [
+          "Agni",
+          "अग्नि",
+          "Fire",
+          "आग"
+        ],
+        [
+          "Jala",
+          "जल",
+          "Water",
+          "पानी"
+        ],
+        [
+          "Prithvi",
+          "पृथ्वी",
+          "Earth",
+          "धरती"
+        ],
+        [
+          "Vayu",
+          "वायु",
+          "Air or wind",
+          "हवा"
+        ],
+        [
+          "Akasha",
+          "आकाश",
+          "Space or ether",
+          "अंतरिक्ष या आकाश तत्व"
+        ],
+        [
+          "Surya",
+          "सूर्य",
+          "The sun",
+          "सूरज"
+        ],
+        [
+          "Chandra",
+          "चंद्र",
+          "The moon",
+          "चांद"
+        ],
+        [
+          "Pushpa",
+          "पुष्प",
+          "Flower",
+          "फूल"
+        ],
+        [
+          "Phala",
+          "फल",
+          "Fruit or result",
+          "फल या परिणाम"
+        ],
+        [
+          "Patra",
+          "पत्र",
+          "A leaf in the offering context",
+          "अर्पण के संदर्भ में पत्ता"
+        ],
+        [
+          "Ananda",
+          "आनंद",
+          "Joy or bliss",
+          "प्रसन्नता या परम सुख"
+        ],
+        [
+          "Kshama",
+          "क्षमा",
+          "Forgiveness or patience",
+          "क्षमाशीलता या धैर्य"
+        ],
+        [
+          "Dana",
+          "दान",
+          "Giving or charity",
+          "देना या परोपकारी अर्पण"
+        ]
+      ]
+    }
+  ]
+}

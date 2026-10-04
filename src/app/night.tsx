@@ -1,3 +1,5 @@
+import { useLanguage } from '@/i18n/provider';
+import { taskDisplayTitle } from '@/i18n/task-copy';
 import { Link } from "expo-router";
 import {
   AlarmClock,
@@ -19,7 +21,7 @@ import Animated, {
   withSpring,
   withSequence,
 } from "react-native-reanimated";
-import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 
 import { Header, Screen, TextR } from "@/components/ritual-ui";
 import { AruMascot } from "@/components/aru-mascot";
@@ -34,34 +36,8 @@ const NIGHT_TEMPLE_URL =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuCBM-a_USNYgwfogwljPSzQLIKdcDNkUICdu9RAKLzyv3Aa5SQeaiok00CnOst5mTCXfCvdHBcKY7_lKfuxWDKJ8q_1bFjBzCGx8nUz984x7rEGZmf5fobbcJKXzEDAVScc0gEySJDyeF0eYN660d56aEoS-g_a_bsDEK0NzMwUbYrwJmqOCUi81OPz3s5gitqPCbD8_XzOJrFTKIcB3XqW8Q1ZWjlSan0KbOvvixaCmkjHCpc_nNFXWQ";
 
 
-function CelestialMoonIcon({ size = 32 }: { size?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 36 36" fill="none">
-      <Defs>
-        <LinearGradient id="moonGoldGrad" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0%" stopColor="#FFE598" />
-          <Stop offset="50%" stopColor="#F4B942" />
-          <Stop offset="100%" stopColor="#FF9E44" />
-        </LinearGradient>
-      </Defs>
-      {/* Golden Crescent Moon */}
-      <Path
-        d="M22.5 5C15.6 5 10 10.6 10 17.5C10 24.4 15.6 30 22.5 30C26.8 30 30.6 27.8 32.8 24.4C27.2 24.4 22.6 19.8 22.6 14.2C22.6 10.4 24.7 7.1 27.8 5.4C26.1 5.1 24.3 5 22.5 5Z"
-        fill="url(#moonGoldGrad)"
-      />
-      {/* Inner Drop Detail */}
-      <Path
-        d="M22.8 15.5C22.8 15.5 24.5 17.8 24.5 19C24.5 19.9 23.7 20.7 22.8 20.7C21.9 20.7 21.1 19.9 21.1 19C21.1 17.8 22.8 15.5 22.8 15.5Z"
-        fill="#FF9E44"
-      />
-      {/* Star Spark Detail */}
-      <Path d="M29.5 7.5L30 9L31.5 9.5L30 10L29.5 11.5L29 10L27.5 9.5L29 9L29.5 7.5Z" fill="#FFE598" />
-      <Path d="M12.5 9L12.8 10L13.8 10.3L12.8 10.6L12.5 11.6L12.2 10.6L11.2 10.3L12.2 10L12.5 9Z" fill="#F4B942" opacity="0.8" />
-    </Svg>
-  );
-}
-
 export default function Night() {
+  const { t: translate, text: translateText } = useLanguage();
   const { reflection, setReflection, alarmTime, alarmTone } =
     useRitual();
   const { tasks: reviewTasks, toggleCompletion: toggleTask, ready: tasksReady, loadError: tasksLoadError } = useTasks();
@@ -80,7 +56,7 @@ export default function Night() {
 
   return (
     <Screen night>
-      <Header title="Morning Ritual" eyebrow="NIGHT EDITION" night />
+      <Header title={translate("Morning Ritual")} eyebrow={translate("NIGHT EDITION")} night />
 
       {/* Atmospheric Celestial Night Mood Header Card */}
       <View style={{ marginBottom: 24 }}>
@@ -89,12 +65,11 @@ export default function Night() {
             <View style={s.heroCopy}>
               <View style={s.sandhiChip}>
                 <View style={s.goldDotPulse} />
-                <TextR style={s.sandhiText}>SANDHYA & NIDRA</TextR>
+                <TextR style={s.sandhiText}>{translate("SANDHYA & NIDRA")}</TextR>
               </View>
-              <TextR style={s.heroTitle}>Night Reflection</TextR>
+              <TextR style={s.heroTitle}>{translate("Night Reflection")}</TextR>
               <TextR style={s.heroSubtitle}>
-                Close your day in stillness & gratitude
-              </TextR>
+                 {translate("Close your day in stillness & gratitude")} </TextR>
             </View>
             <View style={s.mascotAbsolute}>
               <AruMascot clip="night_reflection_lamp" size={135} glow="night" />
@@ -107,11 +82,10 @@ export default function Night() {
             <View style={s.templeFooter}>
               <View style={s.templeLabel}>
                 <Moon size={14} color="#FF9E44" fill="#FF9E44" />
-                <TextR style={s.templeKicker}>Pradosha Kala</TextR>
+                <TextR style={s.templeKicker}>{translate("Pradosha Kala")}</TextR>
               </View>
               <TextR serif style={s.templeMood}>
-                Shanti & Visrama
-              </TextR>
+                 {translate("Shanti & Visrama")} </TextR>
             </View>
           </View>
         </Interactive3DCard>
@@ -121,12 +95,12 @@ export default function Night() {
       <View style={{ marginBottom: 24 }}>
         <SectionTitle
           icon={<View style={s.sectionDot} />}
-          title="Daily Mindful Review"
-          badge={tasksReady ? `${completedCount} of ${reviewTasks.length} Done` : 'Loading'}
+          title={translate("Daily Mindful Review")}
+          badge={tasksReady ? translate('completedCount', { done: completedCount, total: reviewTasks.length }) : translate("Loading")}
           night
         />
         <View style={s.reviewCard}>
-          {!tasksReady ? <TextR style={s.reviewSub}>{tasksLoadError ? 'Open Today to recover your saved intentions.' : 'Preparing your intentions…'}</TextR> : reviewTasks.length === 0 ? <TextR style={s.reviewSub}>No intentions for today. You can add one on Today.</TextR> : null}
+          {!tasksReady ? <TextR style={s.reviewSub}>{tasksLoadError ? translate("Open Today to recover your saved intentions.") : translate("Preparing your intentions…")}</TextR> : reviewTasks.length === 0 ? <TextR style={s.reviewSub}>{translate("No intentions for today. You can add one on Today.")}</TextR> : null}
           {reviewTasks.map((task) => (
             <ReviewRow
               key={task.id}
@@ -142,26 +116,25 @@ export default function Night() {
       <View style={{ marginBottom: 24 }}>
         <SectionTitle
           icon={<Heart size={20} color="#FF9E44" fill="#FF9E44" />}
-          title="Memory of Quiet Joy"
+          title={translate("Memory of Quiet Joy")}
           night
         />
         <View style={s.joyCard}>
           <View style={s.joyTop}>
-            <TextR style={s.promptKicker}>TODAY’S SACRED PROMPT</TextR>
+            <TextR style={s.promptKicker}>{translate("TODAY’S SACRED PROMPT")}</TextR>
             <View style={s.kritajnataChip}>
-              <TextR style={s.kritajnataText}>Kritajnata</TextR>
+              <TextR style={s.kritajnataText}>{translate("Kritajnata")}</TextR>
             </View>
           </View>
           <TextR serif style={s.joyPrompt}>
-            “What brought you quiet joy today?”
-          </TextR>
+             {translate("“What brought you quiet joy today?”")} </TextR>
           <View style={s.joyInputWrap}>
             <TextInput
               value={reflection || defaultJoyText}
               onChangeText={setReflection}
               multiline
               textAlignVertical="top"
-              placeholder="Write one quiet joy from your day..."
+              placeholder={translate("Write one quiet joy from your day...")}
               placeholderTextColor="#9BA3C0"
               style={s.reflectionInput}
             />
@@ -188,8 +161,8 @@ export default function Night() {
       <View style={{ marginBottom: 24 }}>
         <SectionTitle
           icon={<PenLine size={20} color="#F4B942" />}
-          title="Evening Journal Note"
-          helper="Mindful Check-in"
+          title={translate("Evening Journal Note")}
+          helper={translate("Mindful Check-in")}
           night
         />
         <View style={s.journalCard}>
@@ -199,21 +172,21 @@ export default function Night() {
               onChangeText={setJournal}
               multiline
               textAlignVertical="top"
-              placeholder="Write any lingering thoughts before sleep..."
+              placeholder={translate("Write any lingering thoughts before sleep...")}
               placeholderTextColor="#9BA3C0"
               style={s.journalInput}
             />
             <View style={s.savedRow}>
               <Sparkles size={13} color="#F4B942" />
-              <TextR style={s.savedText}>Saved locally</TextR>
+              <TextR style={s.savedText}>{translate("Saved locally")}</TextR>
             </View>
           </View>
           <View style={s.mindRow}>
-            <TextR style={s.mindLabel}>Mind State:</TextR>
+            <TextR style={s.mindLabel}>{translate("Mind State:")}</TextR>
             {[
-              { label: "🕊️ Serene", id: "Serene" },
-              { label: "🪷 Grounded", id: "Grounded" },
-              { label: "🙏 Grateful", id: "Grateful" },
+              { label: translate("🕊️ Serene"), id: "Serene" },
+              { label: translate("🪷 Grounded"), id: "Grounded" },
+              { label: translate("🙏 Grateful"), id: "Grateful" },
             ].map((st) => (
               <Pressable
                 key={st.id}
@@ -226,7 +199,7 @@ export default function Night() {
                     mindState === st.id && s.mindPillTextActive,
                   ]}
                 >
-                  {st.label}
+                  {translateText(st.label)}
                 </TextR>
               </Pressable>
             ))}
@@ -238,13 +211,13 @@ export default function Night() {
       <View style={{ marginBottom: 28 }}>
         <SectionTitle
           icon={<AlarmClock size={20} color="#F4B942" />}
-          title="Dawn Preparation"
+          title={translate("Dawn Preparation")}
           night
         />
         <View style={s.dawnCard}>
           <View style={s.dawnTop}>
             <View style={{ flex: 1 }}>
-              <TextR style={s.promptKicker}>TOMORROW’S WAKE-UP</TextR>
+              <TextR style={s.promptKicker}>{translate("TOMORROW’S WAKE-UP")}</TextR>
               <View style={s.timeRow}>
                 <TextR serif style={s.timeText}>
                   {alarmTime || "06:00"}
@@ -254,7 +227,7 @@ export default function Night() {
               <View style={s.toneRow}>
                 <Music size={14} color="#FF9E44" />
                 <TextR style={s.toneText}>
-                  {alarmTone || "Shankh & Sitar Wake Harmonics"}
+                  {translateText(alarmTone || 'Shankh & Sitar Wake Harmonics')}
                 </TextR>
               </View>
             </View>
@@ -274,22 +247,20 @@ export default function Night() {
                 style={({ pressed }) => [s.adjustBtn, pressed && s.pressed]}
               >
                 <Timer size={15} color="#7D86A9" />
-                <TextR style={s.adjustText} numberOfLines={1}>Adjust Time</TextR>
+                <TextR style={s.adjustText} numberOfLines={1}>{translate("Adjust Time")}</TextR>
               </Pressable>
             </Link>
 
             <View style={s.targetPill}>
               <View style={s.greenDot} />
-              <TextR style={s.targetText} numberOfLines={1}>Brahma Muhurta Target</TextR>
+              <TextR style={s.targetText} numberOfLines={1}>{translate("Brahma Muhurta Target")}</TextR>
             </View>
           </View>
 
           <View style={s.intentionBox}>
             <Sparkles size={16} color="#FF9E44" />
             <TextR style={s.intentionText}>
-              Intention: Wake early for 20-min mindful breathwork and Surya
-              namaskar.
-            </TextR>
+               {translate("Intention: Wake early for 20-min mindful breathwork and Surya namaskar.")} </TextR>
           </View>
         </View>
       </View>
@@ -305,13 +276,12 @@ export default function Night() {
         <Moon size={20} color="#FFE598" fill="#FFE598" />
         <TextR style={s.completeText}>
           {completed
-            ? "Resting peacefully... Subha Ratri"
-            : "Complete Reflection & Sleep Well"}
+            ? translate("Resting peacefully... Subha Ratri")
+            : translate("Complete Reflection & Sleep Well")}
         </TextR>
       </Pressable>
       <TextR style={s.footerBlessing}>
-        May your night be peaceful and your morning luminous
-      </TextR>
+         {translate("May your night be peaceful and your morning luminous")} </TextR>
     </Screen>
   );
 }
@@ -329,6 +299,7 @@ function SectionTitle({
   helper?: string;
   night?: boolean;
 }) {
+
   return (
     <View style={s.sectionHeader}>
       <View style={s.sectionTitleRow}>
@@ -361,6 +332,7 @@ function ReviewRow({
   carried: boolean;
   onToggle?: () => void;
 }) {
+  const { t: translate, language } = useLanguage();
   const done = task.done && !carried;
   const pressVal = useSharedValue(0);
   const checkScale = useSharedValue(1);
@@ -414,19 +386,19 @@ function ReviewRow({
             style={[s.reviewTitle, done && s.reviewTitleDone]}
             numberOfLines={1}
           >
-            {task.title}
+            {taskDisplayTitle(task, language)}
           </TextR>
           <TextR
             style={[s.reviewSub, carried && s.reviewSubCarry]}
             numberOfLines={1}
           >
-            {done ? "Completed today" : task.recurrence === 'daily' ? "Not completed today" : "Continues tomorrow"}
+            {done ? translate("Completed today") : task.recurrence === 'daily' ? translate("Not completed today") : translate("Continues tomorrow")}
           </TextR>
         </View>
       </View>
       {carried ? (
         <View style={s.tomorrowPill}>
-          <TextR style={s.tomorrowText}>Pending</TextR>
+          <TextR style={s.tomorrowText}>{translate("Pending")}</TextR>
         </View>
       ) : (
         <CheckCircle2 size={20} color={done ? "#2DD4BF" : "#7D86A9"} fill={done ? "rgba(45, 212, 191, 0.15)" : "transparent"} />

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, {
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -44,7 +45,8 @@ export function SacredLotusBadge({ size = 56 }: SacredLotusBadgeProps) {
       -1,
       true
     );
-  }, []);
+    return () => { cancelAnimation(rotation); cancelAnimation(pulseScale); cancelAnimation(auraOpacity); };
+  }, [auraOpacity, pulseScale, rotation]);
 
   const animatedRotateStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],

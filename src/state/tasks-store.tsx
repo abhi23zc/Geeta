@@ -49,20 +49,24 @@ export function TasksProvider({ children }: React.PropsWithChildren) {
   const mounted = useRef(true);
   const latest = useRef<TasksData | null>(null);
   const idSequence = useRef(0);
-  const [writer] = useState(() =>
-    createSnapshotWriter<TasksData>(
+  const reportSaveError = useCallback((failed: boolean) => {
+    if (mounted.current) setSaveError(failed);
+  }, []);
+  const writer = useRef<ReturnType<typeof createSnapshotWriter<TasksData>> | null>(null);
+  useEffect(() => {
+    const instance = createSnapshotWriter<TasksData>(
       (snapshot) => AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot)),
-      (failed) => {
-        if (mounted.current) setSaveError(failed);
-      },
-    ),
-  );
-  const flush = writer.flush;
+      reportSaveError,
+    );
+    writer.current = instance;
+    return () => { void instance.flush(); writer.current = null; };
+  }, [reportSaveError]);
+  const flush = useCallback(() => writer.current?.flush() ?? Promise.resolve(), []);
 
   const commit = useCallback(
     (next: TasksData) => {
       latest.current = next;
-      writer.enqueue(next);
+      writer.current?.enqueue(next);
       setData(next);
     },
     [writer],
@@ -133,7 +137,7 @@ export function TasksProvider({ children }: React.PropsWithChildren) {
         ...current,
         records: current.records.map((task) =>
           task.id === id
-            ? { ...task, ...input, title: input.title.trim() }
+            ? { ...task, ...input, title: input.title.trim(), templateId: undefined }
             : task,
         ),
       });
@@ -163,7 +167,7 @@ export function TasksProvider({ children }: React.PropsWithChildren) {
   );
   const retry = useCallback(() => {
     if (latest.current) {
-      writer.enqueue(latest.current);
+      writer.current?.enqueue(latest.current);
       void flush();
     } else void load();
   }, [flush, load, writer]);

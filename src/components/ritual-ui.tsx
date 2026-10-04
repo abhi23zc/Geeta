@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n/provider';
 import React, { ReactNode } from 'react';
 import {
   Image,
@@ -37,6 +38,7 @@ import Animated, {
 export const MORNING_RITUAL_LOGO = require('@/assets/images/morning-ritual-logo.png');
 const DockContext = React.createContext({ height: 76, setHeight: (_height: number) => {} });
 export function DockLayoutProvider({ children }: { children: ReactNode }) {
+
   const [height, setHeight] = React.useState(76);
   const value = React.useMemo(() => ({ height, setHeight }), [height]);
   return <DockContext.Provider value={value}>{children}</DockContext.Provider>;
@@ -44,6 +46,7 @@ export function DockLayoutProvider({ children }: { children: ReactNode }) {
 export function useDockHeight() { return React.useContext(DockContext).height; }
 
 export function DawnMeshBackdrop({ night = false }: { night?: boolean }) {
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <Svg width="100%" height="650" style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
@@ -88,6 +91,7 @@ export function DiyaGraphic({
   animated?: boolean;
   showAura?: boolean;
 }) {
+
   const flameScaleY = useSharedValue(1);
   const flameTranslateY = useSharedValue(0);
   const flameRotate = useSharedValue(0);
@@ -304,15 +308,17 @@ export function TextR({
   serif = false,
   ...rest
 }: any) {
+  const { language } = useLanguage();
   return (
     <Text
       {...rest}
       style={[
         {
           color: C.ink,
-          fontFamily: serif ? 'Georgia' : undefined,
+          fontFamily: serif && language !== 'hi' ? 'Georgia' : undefined,
         },
         style,
+        language === 'hi' && { fontFamily: undefined, includeFontPadding: true },
       ]}
     >
       {children}
@@ -333,6 +339,7 @@ export function Screen({
   contentStyle?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
 }) {
+
   const nightBg = '#0B0D19';
   const insets = useSafeAreaInsets();
   const dockHeight = useDockHeight();
@@ -381,6 +388,7 @@ export function Header({
   logo?: ReactNode;
   showActions?: boolean;
 }) {
+  const { text: translateText } = useLanguage();
   const color = night ? '#F1F3F9' : C.ink;
   const eyebrowColor = night ? '#F4B942' : C.saffron;
 
@@ -399,7 +407,7 @@ export function Header({
           <Image source={MORNING_RITUAL_LOGO} style={styles.logoMarkOnly} />
         )}
         <View>
-          <TextR style={[styles.brandTitle, { color }]}>{title ?? 'Morning Ritual'}</TextR>
+          <TextR style={[styles.brandTitle, { color }]}>{title ?? translateText('Morning Ritual')}</TextR>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 }}>
             {night && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#F4B942' }} />}
             <TextR style={[styles.eyebrow, { color: eyebrowColor }]}>{eyebrow}</TextR>
@@ -439,6 +447,7 @@ function AnimatedTabItem({
   night: boolean;
   onPress: () => void;
 }) {
+  const { text: translateText } = useLanguage();
   const IconComp = tab.IconComponent;
   const activeColor = night ? '#F4B942' : C.saffron;
   const inactiveColor = night ? '#7D86A9' : C.muted;
@@ -455,6 +464,8 @@ function AnimatedTabItem({
   return (
     <Pressable
       accessibilityRole="tab"
+      accessibilityLabel={translateText(tab.label)}
+      accessibilityState={{ selected: active }}
       onPress={onPress}
       style={({ pressed }) => [
         styles.tabItem,
@@ -476,7 +487,7 @@ function AnimatedTabItem({
             },
           ]}
         >
-          {tab.label}
+          {translateText(tab.label)}
         </TextR>
         {active && <View style={[styles.activeDot, night && { backgroundColor: '#F4B942' }]} />}
       </Animated.View>
@@ -485,6 +496,7 @@ function AnimatedTabItem({
 }
 
 export function TabBar({ night }: { night?: boolean }) {
+
   const { setHeight } = React.useContext(DockContext);
   const path = usePathname();
   const router = useRouter();
@@ -552,6 +564,7 @@ export function Card({
   style?: StyleProp<ViewStyle>;
   night?: boolean;
 }) {
+
   return (
     <View
       style={[
@@ -576,6 +589,7 @@ export function PillButton({
   secondary?: boolean;
   icon?: string;
 }) {
+
   return (
     <Pressable
       onPress={onPress}

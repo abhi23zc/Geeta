@@ -1,3 +1,6 @@
+import { useLanguage } from '@/i18n/provider';
+import { translate } from '@/i18n/translations';
+import type { AppLanguage } from '@/i18n/model';
 import { useNavigation } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -116,7 +119,8 @@ function getAlarmCountdownText(
   hour: number,
   minute: number,
   meridiem: "AM" | "PM",
-  days: { id: AlarmDayId; selected: boolean }[]
+  days: { id: AlarmDayId; selected: boolean }[],
+  language: AppLanguage,
 ): string {
   const now = new Date();
   let targetHour = hour % 12;
@@ -142,7 +146,7 @@ function getAlarmCountdownText(
       nextDate.setDate(nextDate.getDate() + 1);
     }
     const diffMs = nextDate.getTime() - now.getTime();
-    return formatDiff(diffMs);
+    return formatDiff(diffMs, language);
   }
 
   const selectedJsDays = selectedDayIds.map((id) => dayIdToJsDay[id]);
@@ -177,24 +181,24 @@ function getAlarmCountdownText(
     }
   }
 
-  if (minDiffMs === Infinity || isNaN(minDiffMs)) return "Alarm not scheduled";
-  return formatDiff(minDiffMs);
+  if (minDiffMs === Infinity || isNaN(minDiffMs)) return translate("Alarm not scheduled", undefined, language);
+  return formatDiff(minDiffMs, language);
 }
 
-function formatDiff(diffMs: number): string {
+function formatDiff(diffMs: number, language: AppLanguage): string {
   const totalMinutes = Math.ceil(diffMs / 60000);
-  if (totalMinutes <= 0) return "Alarm rings in less than a minute";
+  if (totalMinutes <= 0) return translate("Alarm rings in less than a minute", undefined, language);
 
   const days = Math.floor(totalMinutes / (24 * 60));
   const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
   const minutes = totalMinutes % 60;
 
   const parts: string[] = [];
-  if (days > 0) parts.push(`${days} day${days > 1 ? "s" : ""}`);
-  if (hours > 0) parts.push(`${hours} hr${hours > 1 ? "s" : ""}`);
-  if (minutes > 0 || parts.length === 0) parts.push(`${minutes} min`);
+  if (days > 0) parts.push(translate('daysCount', { count: days }, language));
+  if (hours > 0) parts.push(translate('hoursCount', { count: hours }, language));
+  if (minutes > 0 || parts.length === 0) parts.push(translate('minutesCount', { count: minutes }, language));
 
-  return `Alarm rings in ${parts.join(" ")}`;
+  return translate('alarmIn', { duration: parts.join(' ') }, language);
 }
 
 function ReadinessRow({
@@ -206,8 +210,9 @@ function ReadinessRow({
   label: string;
   ready: boolean;
   onPress: () => void | Promise<void>;
-  status?: "Verified" | "Needs action" | "User confirmed" | "Not applicable";
+  status?: string;
 }) {
+  const { t: translate, text: translateText } = useLanguage();
   return (
     <View style={s.readinessRow}>
       <View style={s.readinessRowLeft}>
@@ -219,30 +224,31 @@ function ReadinessRow({
             {label}
           </TextR>
           <TextR style={[s.readinessSubStatus, ready && s.readinessSubStatusReady]}>
-            {status ?? (ready ? "Verified" : "Needs action")}
+            {status ?? (ready ? translate("Verified") : translate("Needs action"))}
           </TextR>
         </View>
       </View>
       <Pressable
-        accessibilityHint={`Opens Android settings for ${label}`}
-        accessibilityLabel={`${ready ? "Review" : "Set up"} ${label}`}
+        accessibilityHint={translate('androidSettingsFor', { label })}
+        accessibilityLabel={translateText(`${ready ? translate("Review") : translate("Set up")} ${label}`)}
         accessibilityRole="button"
         onPress={onPress}
         style={({ pressed }) => [s.settingsButton, pressed && s.pressed]}
       >
-        <TextR style={s.settingsButtonText}>{ready ? "Review" : "Open settings"}</TextR>
+        <TextR style={s.settingsButtonText}>{ready ? translate("Review") : translate("Open settings")}</TextR>
       </Pressable>
     </View>
   );
 }
 
 export default function Setup() {
+  const { t: translate } = useLanguage();
   const { alarmReady } = useRitual();
   if (!alarmReady) {
     return (
       <Screen>
         <View style={s.loadingState}>
-          <TextR style={s.caption}>Loading your alarm…</TextR>
+          <TextR style={s.caption}>{translate("Loading your alarm…")}</TextR>
         </View>
       </Screen>
     );
@@ -251,6 +257,7 @@ export default function Setup() {
 }
 
 function SetupContent() {
+  const { language, t: translate, text: translateText } = useLanguage();
   const navigation = useNavigation("/");
   const { width } = useWindowDimensions();
   const isSmall = width < 360;
@@ -298,9 +305,9 @@ function SetupContent() {
   }, []);
 
   const countdownText = useMemo(
-    () => getAlarmCountdownText(hour, minute, meridiem, days),
+    () => getAlarmCountdownText(hour, minute, meridiem, days, language),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [hour, minute, meridiem, days, ticker]
+    [hour, minute, meridiem, days, ticker, language]
   );
 
   const refreshCapabilities = useCallback(async () => {
@@ -363,7 +370,7 @@ function SetupContent() {
       .filter((day) => day.selected)
       .map((day) => day.id as AlarmDayId);
     if (!selectedDayIds.length) {
-      Alert.alert("Choose alarm days", "Select at least one day of the week.");
+      Alert.alert(translate("Choose alarm days"), translate("Select at least one day of the week."));
       return;
     }
 
@@ -394,10 +401,10 @@ function SetupContent() {
         return;
       }
       setReadinessMessage("");
-      Alert.alert("Alarm scheduled", `${!result.capabilities.fullScreenIntent ? "Full-screen access is off. Use the alarm notification to open or stop the alarm.\n" : ""}${recurrenceLabel} at ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")} ${meridiem}`);
+      Alert.alert(translate("Alarm scheduled"), `${!result.capabilities.fullScreenIntent ? translate('Full-screen access is off. Use the alarm notification to open or stop it.') + '\n' : ''}${translate('alarmSavedTime', { days: recurrenceLabel, time: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} ${meridiem}` })}`);
       replaceAppRoute(navigation, "/");
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : "The alarm could not be saved. Please try again.");
+      setSaveError(error instanceof Error ? error.message : translate("The alarm could not be saved. Please try again."));
     } finally {
       setSaving(false);
     }
@@ -407,8 +414,8 @@ function SetupContent() {
   const openSettings = async (open: () => Promise<SettingsDestination | undefined>) => {
     try {
       const result = await open();
-      setReadinessMessage(result ? `Opened ${result.destination}.${result.fallback ? " Follow the manual instructions below." : ""} Return here to recheck access.` : "Android native settings are unavailable in this build.");
-    } catch (error) { setReadinessMessage(error instanceof Error ? error.message : "Open Settings manually and select this app."); }
+      setReadinessMessage(result ? translate('openedSettings', { destination: translateText(result.destination) }) + (result.fallback ? ' ' + translate('manualInstructions') : '') : 'Android native settings are unavailable in this build.');
+    } catch (error) { setReadinessMessage(error instanceof Error ? error.message : translate("Open Settings manually and select this app.")); }
   };
   const testAlarm = async () => {
     if (testing) return;
@@ -416,24 +423,24 @@ function SetupContent() {
     try {
       await scheduleTestAlarm();
       setReadinessMessage("Test alarm scheduled in 30 seconds. Lock your screen to check presentation. It stops after 30 seconds and keeps your saved alarm.");
-    } catch (error) { setReadinessMessage(error instanceof Error ? error.message : "Test could not be scheduled."); }
+    } catch (error) { setReadinessMessage(error instanceof Error ? error.message : translate("Test could not be scheduled.")); }
     finally { setTesting(false); }
   };
 
   const selectedDays = days.filter((day) => day.selected);
   const recurrenceLabel =
     selectedDays.length === 6 && !days[6].selected
-      ? "Mon - Sat"
+      ? translate("Mon - Sat")
       : selectedDays.length === 7
-        ? "Every day"
-        : `${selectedDays.length} days`;
+        ? translate("Every day")
+        : translate('daysCount', { count: selectedDays.length });
 
   return (
     <Screen>
       <View style={s.header}>
         <View style={s.headerLeft}>
           <Pressable
-            accessibilityLabel="Go back"
+            accessibilityLabel={translate("Go back")}
             accessibilityRole="button"
             onPress={() => navigation.goBack()}
             style={({ pressed }) => [s.backButton, pressed && s.pressed]}
@@ -443,7 +450,7 @@ function SetupContent() {
           <View style={s.logoContainer}>
             <Image source={MORNING_RITUAL_LOGO} style={s.logo} />
           </View>
-          <TextR style={[s.headerTitle, isSmall && s.headerTitleSmall]}>Set Alarm</TextR>
+          <TextR style={[s.headerTitle, isSmall && s.headerTitleSmall]}>{translate("Set Alarm")}</TextR>
         </View>
       </View>
 
@@ -452,10 +459,10 @@ function SetupContent() {
           <View style={[s.sectionIcon, isSmall && s.sectionIconSmall]}>
             <AlarmClockPlus size={isSmall ? 19 : 22} color={C.saffron} strokeWidth={2.2} />
           </View>
-          <TextR style={[s.mainTitle, isSmall && s.mainTitleSmall]}>Sacred Timing</TextR>
+          <TextR style={[s.mainTitle, isSmall && s.mainTitleSmall]}>{translate("Sacred Timing")}</TextR>
         </View>
         <Pressable
-          accessibilityLabel="Save alarm"
+          accessibilityLabel={translate("Save alarm")}
           accessibilityRole="button"
           accessibilityState={{ disabled: saving || initializing, busy: saving }}
           disabled={saving || initializing}
@@ -467,7 +474,7 @@ function SetupContent() {
           ]}
         >
           <TextR style={[s.saveText, isSmall && s.saveTextSmall]}>
-            {saving ? "Saving…" : initializing ? "Loading…" : "Save"}
+            {saving ? translate("Saving…") : initializing ? translate("Loading…") : translate("Save")}
           </TextR>
         </Pressable>
       </View>
@@ -475,7 +482,7 @@ function SetupContent() {
       <View style={[s.timeCard, isSmall && s.timeCardSmall]}>
         <View style={s.windowTitle}>
           <Sun size={18} color={C.goldDark} />
-          <TextR style={s.windowText}>Wake-up time</TextR>
+          <TextR style={s.windowText}>{translate("Wake-up time")}</TextR>
         </View>
 
         {/* Smooth Scrollable Wheel Picker */}
@@ -502,7 +509,7 @@ function SetupContent() {
               const active = meridiem === value;
               return (
                 <Pressable
-                  accessibilityLabel={`${value} time period`}
+                  accessibilityLabel={translate('alarmTimePeriod', { value })}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: active }}
                   key={value}
@@ -535,13 +542,13 @@ function SetupContent() {
       </View>
 
       <View style={s.recurrenceHeader}>
-        <TextR style={[s.label, isSmall && s.labelSmall]}>Weekly Recurrence</TextR>
+        <TextR style={[s.label, isSmall && s.labelSmall]}>{translate("Weekly Recurrence")}</TextR>
         <TextR style={[s.recurrenceValue, isSmall && s.recurrenceValueSmall]}>{recurrenceLabel}</TextR>
       </View>
       <View style={s.weekRow}>
         {days.map((day) => (
           <Pressable
-            accessibilityLabel={`${day.id}, ${day.selected ? "selected" : "not selected"}`}
+            accessibilityLabel={`${translate(({ mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" } as const)[day.id])}, ${day.selected ? translate("selected") : translate("not selected")}`}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: day.selected }}
             key={day.id}
@@ -561,7 +568,7 @@ function SetupContent() {
             ]}
           >
             <TextR style={[s.dayText, isSmall && s.dayTextSmall, day.selected && s.dayTextSelected]}>
-              {day.label}
+              {translate(({ mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun" } as const)[day.id])}
             </TextR>
           </Pressable>
         ))}
@@ -569,7 +576,7 @@ function SetupContent() {
 
       <View style={s.readinessCard}>
         <Pressable
-          accessibilityLabel={`Alarm readiness, ${initializing ? "checking" : coreReady ? "ready" : `${coreReadyCount} of 3 requirements ready`}`}
+          accessibilityLabel={`${translate('Alarm readiness')}, ${initializing ? translate('checking') : coreReady ? translate('ready') : translate('requirementsReady', { count: coreReadyCount })}`}
           accessibilityRole="button"
           accessibilityState={{ expanded: readinessExpanded }}
           onPress={() => setReadinessExpanded((value) => !value)}
@@ -583,13 +590,13 @@ function SetupContent() {
             )}
           </View>
           <View style={s.readinessSummaryCopy}>
-            <TextR style={[s.readinessTitle, isSmall && s.readinessTitleSmall]}>Alarm readiness</TextR>
+            <TextR style={[s.readinessTitle, isSmall && s.readinessTitleSmall]}>{translate("Alarm readiness")}</TextR>
             <TextR style={s.readinessSummaryText}>
               {initializing
-                ? "Checking Android settings…"
+                ? translate("Checking Android settings…")
                 : coreReady
-                  ? "Required Android access verified"
-                  : `${coreReadyCount} of 3 required settings ready`}
+                  ? translate("Required Android access verified")
+                  : translate('requirementsReady', { count: coreReadyCount })}
             </TextR>
           </View>
           {readinessExpanded ? (
@@ -598,21 +605,19 @@ function SetupContent() {
             <ChevronDown size={20} color={C.muted} />
           )}
         </Pressable>
-        {readinessMessage ? <TextR style={s.readinessWarning}>{readinessMessage}</TextR> : null}
-        {saveError ? <TextR accessibilityRole="alert" style={s.saveError}>{saveError}</TextR> : null}
+        {readinessMessage ? <TextR style={s.readinessWarning}>{translateText(readinessMessage)}</TextR> : null}
+        {saveError ? <TextR accessibilityRole="alert" style={s.saveError}>{translateText(saveError)}</TextR> : null}
         {readinessExpanded ? (
           <View style={s.readinessDetails}>
             <TextR style={s.readinessIntro}>
-              Notifications and exact-alarm access are required. Full-screen access is optional; Android controls when an alarm screen appears.
-            </TextR>
-            <ReadinessRow label="Alarm notifications" ready={capabilities?.notifications ?? false} onPress={() => openSettings(openNotificationSettings)} />
-            <ReadinessRow status={capabilities && capabilities.sdkInt < 31 ? "Not applicable" : undefined} label="Alarms & reminders" ready={capabilities?.exactAlarm ?? false} onPress={() => openSettings(openExactAlarmSettings)} />
-            <ReadinessRow label="High-priority alarm channel" ready={capabilities?.notificationChannelReady ?? false} onPress={() => openSettings(openNotificationChannelSettings)} />
-            <ReadinessRow status={capabilities && capabilities.sdkInt < 34 ? "Not applicable" : undefined} label="Full-screen alarms (optional)" ready={capabilities?.fullScreenIntent ?? false} onPress={() => openSettings(openFullScreenIntentSettings)} />
-            {!capabilities?.fullScreenIntent ? <TextR style={s.readinessIntro}>Without full-screen access, use the alarm notification to open or stop the alarm.</TextR> : null}
+               {translate("Notifications and exact-alarm access are required. Full-screen access is optional; Android controls when an alarm screen appears.")} </TextR>
+            <ReadinessRow label={translate("Alarm notifications")} ready={capabilities?.notifications ?? false} onPress={() => openSettings(openNotificationSettings)} />
+            <ReadinessRow status={capabilities && capabilities.sdkInt < 31 ? translate("Not applicable") : undefined} label={translate("Alarms & reminders")} ready={capabilities?.exactAlarm ?? false} onPress={() => openSettings(openExactAlarmSettings)} />
+            <ReadinessRow label={translate("High-priority alarm channel")} ready={capabilities?.notificationChannelReady ?? false} onPress={() => openSettings(openNotificationChannelSettings)} />
+            <ReadinessRow status={capabilities && capabilities.sdkInt < 34 ? translate("Not applicable") : undefined} label={translate("Full-screen alarms (optional)")} ready={capabilities?.fullScreenIntent ?? false} onPress={() => openSettings(openFullScreenIntentSettings)} />
+            {!capabilities?.fullScreenIntent ? <TextR style={s.readinessIntro}>{translate("Without full-screen access, use the alarm notification to open or stop the alarm.")}</TextR> : null}
             <TextR style={s.readinessFootnote}>
-              A force-stopped app or powered-off phone cannot ring. Without full-screen access, Android shows a persistent alarm notification.
-            </TextR>
+               {translate("A force-stopped app or powered-off phone cannot ring. Without full-screen access, Android shows a persistent alarm notification.")} </TextR>
           </View>
         ) : null}
         <View style={s.reliabilitySection}>
@@ -622,25 +627,25 @@ function SetupContent() {
             onPress={() => setExtraExpanded(value => !value)}
             style={({ pressed }) => [s.reliabilitySummary, pressed && s.pressed]}
           >
-            <TextR style={[s.readinessTitle, isSmall && s.readinessTitleSmall]}>Extra reliability on your phone</TextR>
+            <TextR style={[s.readinessTitle, isSmall && s.readinessTitleSmall]}>{translate("Extra reliability on your phone")}</TextR>
             {extraExpanded ? <ChevronUp size={20} color={C.muted} /> : <ChevronDown size={20} color={C.muted} />}
           </Pressable>
           {extraExpanded ? <View style={s.readinessDetails}>
             <TextR style={s.oemTitle}>{profile.name}</TextR>
-            <ReadinessRow label="Background activity allowed" ready={capabilities != null && !capabilities.batteryRestricted} status={capabilities && capabilities.sdkInt < 28 ? "Not applicable" : undefined} onPress={() => openSettings(openBatterySettings)} />
-            <ReadinessRow label="Battery optimization exemption" ready={capabilities?.batteryOptimizationExempt ?? false} onPress={() => openSettings(openBatterySettings)} />
-            <TextR style={s.readinessIntro}>These checks are separate. Battery exemption is advisory and does not verify your phone’s custom settings. Menu names vary by software version.</TextR>
+            <ReadinessRow label={translate("Background activity allowed")} ready={capabilities != null && !capabilities.batteryRestricted} status={capabilities && capabilities.sdkInt < 28 ? translate("Not applicable") : undefined} onPress={() => openSettings(openBatterySettings)} />
+            <ReadinessRow label={translate("Battery optimization exemption")} ready={capabilities?.batteryOptimizationExempt ?? false} onPress={() => openSettings(openBatterySettings)} />
+            <TextR style={s.readinessIntro}>{translate("These checks are separate. Battery exemption is advisory and does not verify your phone’s custom settings. Menu names vary by software version.")}</TextR>
             {profile.steps.map(step => {
               const key = `${profile.id}:${step.id}`;
               const confirmed = confirmations[key] === true;
               return <View key={key}>
-                <ReadinessRow label={step.label} ready={confirmed} status={confirmed ? "User confirmed" : "Needs action"} onPress={() => openSettings(step.settings === "battery" ? openBatterySettings : step.settings === "autostart" ? openAutoStartSettings : openOemPermissionSettings)} />
-                <TextR style={s.readinessIntro}>{step.guidance}</TextR>
+                <ReadinessRow label={translateText(step.label)} ready={confirmed} status={confirmed ? translate("User confirmed") : translate("Needs action")} onPress={() => openSettings(step.settings === "battery" ? openBatterySettings : step.settings === "autostart" ? openAutoStartSettings : openOemPermissionSettings)} />
+                <TextR style={s.readinessIntro}>{translateText(step.guidance)}</TextR>
                 <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: confirmed }} onPress={async () => {
                   const next = { ...confirmations, [key]: !confirmed };
                   setConfirmations(next);
                   try { await AsyncStorage.setItem(OEM_CONFIRMED_KEY, JSON.stringify(next)); } catch { setReadinessMessage("Confirmation could not be saved. Try again."); }
-                }} style={s.confirmOem}><TextR style={s.confirmOemText}>{confirmed ? "✓ User confirmed" : "I checked this setting"}</TextR></Pressable>
+                }} style={s.confirmOem}><TextR style={s.confirmOemText}>{confirmed ? translate("✓ User confirmed") : translate("I checked this setting")}</TextR></Pressable>
               </View>;
             })}
           </View> : null}
@@ -650,15 +655,15 @@ function SetupContent() {
             onPress={testAlarm}
             style={({ pressed }) => [s.testAlarmRow, pressed && s.pressed, (testing || initializing) && s.buttonDisabled]}
           >
-            <TextR style={s.settingsButtonText}>{testing ? "Scheduling…" : "Test alarm in 30 seconds"}</TextR>
+            <TextR style={s.settingsButtonText}>{testing ? translate("Scheduling…") : translate("Test alarm in 30 seconds")}</TextR>
           </Pressable>
         </View>
       </View>
 
       <View style={s.modeHeader}>
         <View style={s.modeHeaderLeft}>
-          <TextR style={[s.label, isSmall && s.labelSmall]}>Morning Awakening Mode</TextR>
-          <TextR style={[s.caption, isSmall && s.captionSmall]}>Selected devotional flow upon waking</TextR>
+          <TextR style={[s.label, isSmall && s.labelSmall]}>{translate("Morning Awakening Mode")}</TextR>
+          <TextR style={[s.caption, isSmall && s.captionSmall]}>{translate("Selected devotional flow upon waking")}</TextR>
         </View>
         <Leaf size={isSmall ? 20 : 23} color={C.goldDark} />
       </View>
@@ -678,7 +683,7 @@ function SetupContent() {
       </View>
 
       <Pressable
-        accessibilityLabel="Save alarm and morning ritual"
+        accessibilityLabel={translate("Save alarm and morning ritual")}
         accessibilityRole="button"
         accessibilityState={{ disabled: saving || initializing, busy: saving }}
         disabled={saving || initializing}
@@ -692,7 +697,7 @@ function SetupContent() {
       >
         <Sun size={isSmall ? 20 : 23} color={C.white} />
         <TextR style={[s.primaryText, isSmall && s.primaryTextSmall]}>
-          {saving ? "Scheduling Alarm…" : initializing ? "Checking Alarm…" : "Save Alarm & Morning Ritual"}
+          {saving ? translate("Scheduling Alarm…") : initializing ? translate("Checking Alarm…") : translate("Save Alarm & Morning Ritual")}
         </TextR>
       </Pressable>
     </Screen>
@@ -712,6 +717,7 @@ function SmoothWheelColumn({
   padZero?: boolean;
   isSmall?: boolean;
 }) {
+
   const itemHeight = isSmall ? 48 : 54;
   const scrollViewRef = useRef<ScrollView>(null);
   const isUserInteractingRef = useRef(false);
@@ -889,11 +895,12 @@ function ModeCard({
   onPress: () => void;
   isSmall?: boolean;
 }) {
+  const { t: translate, text: translateText } = useLanguage();
   const Icon = item.Icon;
 
   return (
     <Pressable
-      accessibilityLabel={`${item.title}. ${item.description}`}
+      accessibilityLabel={`${translateText(item.title)}. ${translateText(item.description)}`}
       accessibilityRole="radio"
       accessibilityState={{ selected: active }}
       onPress={onPress}
@@ -913,14 +920,14 @@ function ModeCard({
       </View>
       <View style={s.modeBody}>
         <View style={s.modeTitleLine}>
-          <TextR style={[s.modeTitle, isSmall && s.modeTitleSmall]}>{item.title}</TextR>
+          <TextR style={[s.modeTitle, isSmall && s.modeTitleSmall]}>{translateText(item.title)}</TextR>
           {active && (
             <View style={s.activePill}>
-              <TextR style={s.activePillText}>Active</TextR>
+              <TextR style={s.activePillText}>{translate("Active")}</TextR>
             </View>
           )}
         </View>
-        <TextR style={[s.modeDescription, isSmall && s.modeDescriptionSmall]}>{item.description}</TextR>
+        <TextR style={[s.modeDescription, isSmall && s.modeDescriptionSmall]}>{translateText(item.description)}</TextR>
       </View>
       <View style={[s.radio, active && s.radioActive]}>
         {active ? (
@@ -1385,14 +1392,16 @@ const s = StyleSheet.create({
   weekRow: {
     marginBottom: 24,
     flexDirection: "row",
+    flexWrap: 'wrap',
     justifyContent: "space-between",
     alignItems: "center",
     gap: 6,
   },
   dayChip: {
-    flex: 1,
-    maxWidth: 48,
-    aspectRatio: 1,
+    minWidth: 48,
+    minHeight: 48,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",

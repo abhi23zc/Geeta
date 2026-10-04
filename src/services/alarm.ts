@@ -3,6 +3,7 @@ import * as Notifications from "expo-notifications";
 import { NativeModule, requireOptionalNativeModule } from "expo-modules-core";
 import { Platform } from "react-native";
 import { toneKey } from "../../shared/content";
+import { translateText } from '@/i18n/translations';
 
 export const ALARM_CHANNEL_ID = "morning-ritual-native-alarm-v3";
 const MIGRATION_KEY = "morning-ritual:native-alarm-migrated-v3";
@@ -79,11 +80,19 @@ export type AlarmHomeSnapshot = {
 export type SettingsDestination = { destination: string; fallback: boolean };
 
 type AlarmEvents = {
+  alarmPresentationChanged(state: AlarmPresentationState): void;
   alarmTriggered(state: AlarmPlaybackState): void;
   alarmStopped(event: { reason: string }): void;
 };
 
 declare class MorningAlarmNativeModule extends NativeModule<AlarmEvents> {
+  setAppLanguage(language: string): Promise<void>;
+  getPresentationState(): AlarmPresentationState;
+  setRitualStage(stage: AlarmRitualStage): Promise<void>;
+  notifyRitualScreenReady(route: string): Promise<void>;
+  endRitualPresentation(): Promise<void>;
+  setRitualScreenAwake(awake: boolean): Promise<void>;
+  requestRitualUnlock(): Promise<boolean>;
   hashContentFile(uri: string): Promise<string>;
   installAlarmTone(input: { key: string; uri: string; revision: string; bytes: number; sha256: string }): Promise<string>;
   getInstalledAlarmTone(): Promise<{ key: string | null; revision: string | null }>;
@@ -112,6 +121,25 @@ const NativeAlarm = Platform.OS === "android"
 
 export const isNativeAlarmAvailable = NativeAlarm != null;
 
+export async function setNativeAppLanguage(language: 'en' | 'hi' | 'hinglish') {
+  await NativeAlarm?.setAppLanguage?.(language);
+  await configureAlarmNotifications();
+}
+
+export type AlarmRitualStage = 'wake' | 'breathe' | 'gita';
+export type AlarmPresentationState = { active: boolean; locked: boolean; stage: AlarmRitualStage | null; loading: boolean };
+export function getAlarmPresentationState(): AlarmPresentationState {
+  return NativeAlarm?.getPresentationState?.() ?? { active: false, locked: false, stage: null, loading: false };
+}
+export function addAlarmPresentationListener(listener: (state: AlarmPresentationState) => void) {
+  return NativeAlarm?.addListener('alarmPresentationChanged', listener);
+}
+export async function setAlarmRitualStage(stage: AlarmRitualStage) { await NativeAlarm?.setRitualStage?.(stage); }
+export async function notifyRitualScreenReady(route: string) { await NativeAlarm?.notifyRitualScreenReady?.(route); }
+export async function endAlarmRitual() { await NativeAlarm?.endRitualPresentation?.(); }
+export async function setAlarmRitualScreenAwake(awake: boolean) { await NativeAlarm?.setRitualScreenAwake?.(awake); }
+export async function requestRitualUnlock() { return NativeAlarm?.requestRitualUnlock ? NativeAlarm.requestRitualUnlock() : true; }
+
 export async function hashContentFile(uri: string) {
   if (!NativeAlarm) throw new Error("Verified downloads require the updated Android native build.");
   return NativeAlarm.hashContentFile(uri);
@@ -138,8 +166,8 @@ export async function configureAlarmNotifications() {
     Notifications.deleteNotificationChannelAsync("morning-ritual-native-alarm-v2").catch(() => undefined),
   ]);
   await Notifications.setNotificationChannelAsync(ALARM_CHANNEL_ID, {
-    name: "Morning ritual alarms",
-    description: "Shows an active Morning Ritual alarm",
+    name: translateText('Morning ritual alarms'),
+    description: translateText('Shows an active Morning Ritual alarm'),
     // The native foreground service owns sound/vibration; this channel only
     // presents the lock-screen/full-screen alarm affordance.
     importance: Notifications.AndroidImportance.HIGH,

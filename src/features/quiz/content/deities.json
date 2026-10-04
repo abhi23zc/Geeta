@@ -1,0 +1,540 @@
+{
+  "ids": ["deities-001","deities-002","deities-003","deities-004","deities-005","deities-006","deities-007","deities-008","deities-009","deities-010","deities-011","deities-012","deities-013","deities-014","deities-015","deities-016","deities-017","deities-018","deities-019","deities-020","deities-021","deities-022","deities-023","deities-024","deities-025","deities-026","deities-027","deities-028","deities-029","deities-030","deities-031","deities-032","deities-033","deities-034","deities-035","deities-036","deities-037","deities-038","deities-039","deities-040","deities-041","deities-042","deities-043","deities-044","deities-045","deities-046","deities-047","deities-048","deities-049","deities-050","deities-051","deities-052","deities-053","deities-054","deities-055","deities-056","deities-057","deities-058","deities-059","deities-060","deities-061","deities-062","deities-063","deities-064","deities-065","deities-066","deities-067","deities-068","deities-069","deities-070","deities-071","deities-072","deities-073","deities-074","deities-075","deities-076","deities-077","deities-078","deities-079","deities-080"],
+  "reviewedIds": [],
+  "groups": [
+    {
+      "en": "Which deity is traditionally associated with {s}?",
+      "hi": "परंपरागत रूप से {s} किस देवता से जुड़ा है?",
+      "exEn": "{a} is traditionally associated with {s}; depictions can vary by tradition.",
+      "exHi": "परंपरागत रूप से {s} का संबंध {a} से है; चित्रण परंपरा के अनुसार बदल सकते हैं।",
+      "ref": "Hindu iconography; temple traditions; Bhagavata Purana; Shiva Purana",
+      "rows": [
+        [
+          "the elephant head",
+          "हाथी का मस्तक",
+          "Ganesha",
+          "गणेश"
+        ],
+        [
+          "the trident",
+          "त्रिशूल",
+          "Shiva",
+          "शिव"
+        ],
+        [
+          "the Sudarshana discus",
+          "सुदर्शन चक्र",
+          "Vishnu",
+          "विष्णु"
+        ],
+        [
+          "the veena as a symbol of learning",
+          "विद्या के प्रतीक के रूप में वीणा",
+          "Sarasvati",
+          "सरस्वती"
+        ],
+        [
+          "the flute in Vrindavan",
+          "वृंदावन की बांसुरी",
+          "Krishna",
+          "कृष्ण"
+        ],
+        [
+          "a bow named Kodanda",
+          "कोदंड नाम का धनुष",
+          "Rama",
+          "राम"
+        ],
+        [
+          "the crescent moon in the hair",
+          "जटाओं में अर्धचंद्र",
+          "Shiva",
+          "शिव"
+        ],
+        [
+          "the river Ganga flowing through the hair",
+          "जटाओं से प्रवाहित गंगा",
+          "Shiva",
+          "शिव"
+        ],
+        [
+          "the third eye",
+          "तीसरा नेत्र",
+          "Shiva",
+          "शिव"
+        ],
+        [
+          "the damaru drum",
+          "डमरू",
+          "Shiva",
+          "शिव"
+        ],
+        [
+          "a broken tusk",
+          "टूटा हुआ दांत",
+          "Ganesha",
+          "गणेश"
+        ],
+        [
+          "modaka sweets",
+          "मोदक",
+          "Ganesha",
+          "गणेश"
+        ],
+        [
+          "a peacock feather worn in the crown",
+          "मुकुट में मोरपंख",
+          "Krishna",
+          "कृष्ण"
+        ],
+        [
+          "the Kaustubha jewel",
+          "कौस्तुभ मणि",
+          "Vishnu",
+          "विष्णु"
+        ],
+        [
+          "the four faces of the creator",
+          "सृष्टिकर्ता के चार मुख",
+          "Brahma",
+          "ब्रह्मा"
+        ],
+        [
+          "the vajra thunderbolt",
+          "वज्र",
+          "Indra",
+          "इंद्र"
+        ],
+        [
+          "the seven-horse chariot",
+          "सात घोड़ों वाला रथ",
+          "Surya",
+          "सूर्य"
+        ],
+        [
+          "the spear called vel in Tamil worship",
+          "तमिल उपासना में वेल नाम का भाला",
+          "Murugan",
+          "मुरुगन"
+        ],
+        [
+          "the Mahishasura-slayer form",
+          "महिषासुरमर्दिनी रूप",
+          "Durga",
+          "दुर्गा"
+        ],
+        [
+          "the blue throat called Nilakantha",
+          "नीलकंठ नाम वाला नीला कंठ",
+          "Shiva",
+          "शिव"
+        ]
+      ]
+    },
+    {
+      "en": "What is the commonly depicted mount of {s}?",
+      "hi": "{s} का सामान्यतः चित्रित वाहन क्या है?",
+      "exEn": "{a} is commonly depicted as the mount of {s}. Iconographic forms may differ.",
+      "exHi": "{s} का वाहन सामान्यतः {a} चित्रित होता है। रूपों में भिन्नता संभव है।",
+      "ref": "Traditional Hindu temple iconography",
+      "rows": [
+        [
+          "Shiva",
+          "शिव",
+          "Nandi the bull",
+          "नंदी बैल"
+        ],
+        [
+          "Vishnu",
+          "विष्णु",
+          "Garuda",
+          "गरुड़"
+        ],
+        [
+          "Ganesha",
+          "गणेश",
+          "Mouse",
+          "मूषक"
+        ],
+        [
+          "Sarasvati",
+          "सरस्वती",
+          "Swan",
+          "हंस"
+        ],
+        [
+          "Durga",
+          "दुर्गा",
+          "Lion",
+          "सिंह"
+        ],
+        [
+          "Kartikeya",
+          "कार्तिकेय",
+          "Peacock",
+          "मोर"
+        ],
+        [
+          "Indra",
+          "इंद्र",
+          "Airavata elephant",
+          "ऐरावत हाथी"
+        ],
+        [
+          "Yama",
+          "यम",
+          "Buffalo",
+          "भैंसा"
+        ],
+        [
+          "Shani",
+          "शनि",
+          "Crow",
+          "कौआ"
+        ],
+        [
+          "Agni",
+          "अग्नि",
+          "Ram",
+          "मेढ़ा"
+        ]
+      ]
+    },
+    {
+      "en": "Which Vishnu incarnation is represented by {s}?",
+      "hi": "{s} विष्णु के किस अवतार का रूप है?",
+      "exEn": "{a} is the incarnation associated with {s}. Lists of incarnations vary across traditions.",
+      "exHi": "{s} से संबंधित अवतार {a} है। अवतारों की सूचियां परंपराओं में अलग हो सकती हैं।",
+      "ref": "Bhagavata Purana, Books 3, 5, 7, 8 and 9; Dashavatara tradition",
+      "rows": [
+        [
+          "a fish",
+          "मछली",
+          "Matsya",
+          "मत्स्य"
+        ],
+        [
+          "a tortoise",
+          "कछुआ",
+          "Kurma",
+          "कूर्म"
+        ],
+        [
+          "a boar lifting the earth",
+          "पृथ्वी को उठाने वाला वराह रूप",
+          "Varaha",
+          "वराह"
+        ],
+        [
+          "a man-lion protecting Prahlada",
+          "प्रह्लाद की रक्षा करने वाला नरसिंह रूप",
+          "Narasimha",
+          "नरसिंह"
+        ],
+        [
+          "a dwarf asking Bali for three steps",
+          "बलि से तीन पग मांगने वाला वामन रूप",
+          "Vamana",
+          "वामन"
+        ],
+        [
+          "the axe-bearing son of Jamadagni",
+          "जमदग्नि के परशुधारी पुत्र",
+          "Parashurama",
+          "परशुराम"
+        ],
+        [
+          "the prince of Ayodhya who defeats Ravana",
+          "रावण को हराने वाले अयोध्या के राजकुमार",
+          "Rama",
+          "राम"
+        ],
+        [
+          "the cowherd who teaches the Bhagavad Gita",
+          "भगवद्गीता का उपदेश देने वाले गोपाल",
+          "Krishna",
+          "कृष्ण"
+        ],
+        [
+          "the future rider on a white horse",
+          "श्वेत अश्व पर भविष्य के अवतार",
+          "Kalki",
+          "कल्कि"
+        ],
+        [
+          "the plough-bearing elder brother in lists including him",
+          "कुछ सूचियों में शामिल हलधारी बड़े भाई",
+          "Balarama",
+          "बलराम"
+        ]
+      ]
+    },
+    {
+      "en": "Which divine name or form means {s}?",
+      "hi": "किस दिव्य नाम या रूप का अर्थ {s} है?",
+      "exEn": "{a} is the name associated with this meaning: {s}.",
+      "exHi": "इस अर्थ से संबंधित नाम {a} है: {s}।",
+      "ref": "Traditional Sanskrit divine epithets; devotional literature",
+      "rows": [
+        [
+          "Lord of the dance",
+          "नृत्य के अधिपति",
+          "Nataraja",
+          "नटराज"
+        ],
+        [
+          "remover of obstacles",
+          "विघ्नों को दूर करने वाले",
+          "Vighnaharta",
+          "विघ्नहर्ता"
+        ],
+        [
+          "Lord of animals or living beings",
+          "पशुओं या जीवों के स्वामी",
+          "Pashupati",
+          "पशुपति"
+        ],
+        [
+          "half-woman divine form",
+          "अर्धनारी रूप",
+          "Ardhanarishvara",
+          "अर्धनारीश्वर"
+        ],
+        [
+          "giver of food or nourishment",
+          "अन्न और पोषण देने वाली",
+          "Annapurna",
+          "अन्नपूर्णा"
+        ],
+        [
+          "the one with one tusk",
+          "एक दांत वाले",
+          "Ekadanta",
+          "एकदंत"
+        ],
+        [
+          "son of the wind",
+          "पवन के पुत्र",
+          "Pavanaputra",
+          "पवनपुत्र"
+        ],
+        [
+          "son of Anjana",
+          "अंजना के पुत्र",
+          "Anjaneya",
+          "आंजनेय"
+        ],
+        [
+          "the one holding a mountain",
+          "पर्वत धारण करने वाले",
+          "Giridhari",
+          "गिरिधारी"
+        ],
+        [
+          "the lotus-naveled one",
+          "कमलनाभि वाले",
+          "Padmanabha",
+          "पद्मनाभ"
+        ],
+        [
+          "the one holding the moon",
+          "चंद्र धारण करने वाले",
+          "Chandrashekhara",
+          "चंद्रशेखर"
+        ],
+        [
+          "the bearer of the Ganga",
+          "गंगा धारण करने वाले",
+          "Gangadhara",
+          "गंगाधर"
+        ],
+        [
+          "the three-eyed one",
+          "तीन नेत्र वाले",
+          "Tryambaka",
+          "त्र्यंबक"
+        ],
+        [
+          "the great deity",
+          "महान देवता",
+          "Mahadeva",
+          "महादेव"
+        ],
+        [
+          "the king of monkeys",
+          "वानरों के राजा",
+          "Kapiraja",
+          "कपिराज"
+        ]
+      ]
+    },
+    {
+      "en": "Which figure is linked with {s} in Hindu sacred narratives?",
+      "hi": "हिंदू पवित्र कथाओं में {s} किससे संबंधित हैं?",
+      "exEn": "The cited narrative connects {a} with {s}. Regional tellings can differ.",
+      "exHi": "संदर्भित कथा में {s} का संबंध {a} से है। क्षेत्रीय कथाएं अलग हो सकती हैं।",
+      "ref": "Bhagavata Purana; Shiva Purana; Devi Mahatmya",
+      "rows": [
+        [
+          "Krishna's foster mother",
+          "कृष्ण की पालक माता",
+          "Yashoda",
+          "यशोदा"
+        ],
+        [
+          "Krishna's foster father",
+          "कृष्ण के पालक पिता",
+          "Nanda",
+          "नंद"
+        ],
+        [
+          "Krishna's birth mother",
+          "कृष्ण की जन्मदात्री माता",
+          "Devaki",
+          "देवकी"
+        ],
+        [
+          "Krishna's father",
+          "कृष्ण के पिता",
+          "Vasudeva",
+          "वसुदेव"
+        ],
+        [
+          "Krishna's maternal uncle",
+          "कृष्ण के मामा",
+          "Kamsa",
+          "कंस"
+        ],
+        [
+          "Prahlada's father",
+          "प्रह्लाद के पिता",
+          "Hiranyakashipu",
+          "हिरण्यकशिपु"
+        ],
+        [
+          "Parvati's mountain-king father",
+          "पार्वती के पर्वतराज पिता",
+          "Himavan",
+          "हिमवान"
+        ],
+        [
+          "the ascetic prince who became the pole star",
+          "ध्रुवतारा बने तपस्वी बालक",
+          "Dhruva",
+          "ध्रुव"
+        ],
+        [
+          "the elephant rescued by Vishnu",
+          "विष्णु द्वारा बचाया गया हाथी",
+          "Gajendra",
+          "गजेंद्र"
+        ],
+        [
+          "the serpent Krishna subdued in the Yamuna",
+          "यमुना में कृष्ण द्वारा वश में किया गया नाग",
+          "Kaliya",
+          "कालिय"
+        ],
+        [
+          "the serpent used as the churning rope",
+          "समुद्रमंथन की रस्सी बने नाग",
+          "Vasuki",
+          "वासुकि"
+        ],
+        [
+          "the mountain used as the churning rod",
+          "समुद्रमंथन में मथनी बना पर्वत",
+          "Mandara",
+          "मंदर"
+        ],
+        [
+          "the celestial physician emerging in the churning",
+          "समुद्रमंथन में प्रकट दिव्य वैद्य",
+          "Dhanvantari",
+          "धन्वंतरि"
+        ],
+        [
+          "the demon defeated in Devi's buffalo-demon story",
+          "देवी की महिषासुर कथा का पराजित असुर",
+          "Mahishasura",
+          "महिषासुर"
+        ],
+        [
+          "the sage musician often depicted with a vina",
+          "वीणा के साथ चित्रित देवर्षि संगीतज्ञ",
+          "Narada",
+          "नारद"
+        ]
+      ]
+    },
+    {
+      "en": "Which sacred symbol is {s}?",
+      "hi": "{s} कौन सा पवित्र प्रतीक है?",
+      "exEn": "{a} is the symbol described here: {s}. Its significance depends on devotional context.",
+      "exHi": "यह वर्णन {a} का है: {s}। इसका महत्व उपासना के संदर्भ पर निर्भर है।",
+      "ref": "Hindu worship and temple traditions; Sanskrit sacred vocabulary",
+      "rows": [
+        [
+          "the syllable used at the beginning of many mantras",
+          "अनेक मंत्रों के आरंभ में प्रयुक्त अक्षर",
+          "Om",
+          "ॐ"
+        ],
+        [
+          "the water-filled vessel used in many ceremonies",
+          "अनेक अनुष्ठानों में प्रयुक्त जलभरा पात्र",
+          "Kalasha",
+          "कलश"
+        ],
+        [
+          "the flowering plant commonly offered to Vishnu",
+          "विष्णु को अर्पित की जाने वाली पवित्र वनस्पति",
+          "Tulasi",
+          "तुलसी"
+        ],
+        [
+          "the three-part leaf commonly offered to Shiva",
+          "शिव को चढ़ाया जाने वाला त्रिदलीय पत्र",
+          "Bilva leaf",
+          "बिल्वपत्र"
+        ],
+        [
+          "the lamp used for worship with light",
+          "प्रकाश से पूजा के लिए प्रयुक्त दीप",
+          "Diya",
+          "दीया"
+        ],
+        [
+          "the shell blown in worship",
+          "पूजा में बजाया जाने वाला समुद्री खोल",
+          "Shankha",
+          "शंख"
+        ],
+        [
+          "the forehead mark worn in worship",
+          "पूजा में माथे पर लगाया जाने वाला चिह्न",
+          "Tilaka",
+          "तिलक"
+        ],
+        [
+          "the beads associated with Shiva worship",
+          "शिव उपासना से जुड़ी माला के बीज",
+          "Rudraksha",
+          "रुद्राक्ष"
+        ],
+        [
+          "the flower symbolizing purity amid muddy water",
+          "कीचड़ में रहकर निर्मलता का प्रतीक पुष्प",
+          "Lotus",
+          "कमल"
+        ],
+        [
+          "the geometric diagram used in worship",
+          "पूजा में प्रयुक्त ज्यामितीय चित्र",
+          "Yantra",
+          "यंत्र"
+        ]
+      ]
+    }
+  ]
+}

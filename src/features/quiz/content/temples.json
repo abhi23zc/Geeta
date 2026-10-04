@@ -1,0 +1,513 @@
+{
+  "ids": ["temples-001","temples-002","temples-003","temples-004","temples-005","temples-006","temples-007","temples-008","temples-009","temples-010","temples-011","temples-012","temples-013","temples-014","temples-015","temples-016","temples-017","temples-018","temples-019","temples-020","temples-021","temples-022","temples-023","temples-024","temples-025","temples-026","temples-027","temples-028","temples-029","temples-030","temples-031","temples-032","temples-033","temples-034","temples-035","temples-036","temples-037","temples-038","temples-039","temples-040","temples-041","temples-042","temples-043","temples-044","temples-045","temples-046","temples-047","temples-048","temples-049","temples-050","temples-051","temples-052","temples-053","temples-054","temples-055","temples-056","temples-057","temples-058","temples-059","temples-060","temples-061","temples-062","temples-063","temples-064","temples-065","temples-066","temples-067","temples-068","temples-069","temples-070","temples-071","temples-072","temples-073","temples-074","temples-075","temples-076","temples-077","temples-078","temples-079","temples-080"],
+  "reviewedIds": [],
+  "groups": [
+    {
+      "en": "In which Indian state is {s} located?",
+      "hi": "{s} भारत के किस राज्य में स्थित है?",
+      "exEn": "{s} is located in {a}. This question asks about the temple's location, not its religious ranking.",
+      "exHi": "{s}, {a} में स्थित है। यह प्रश्न मंदिर के स्थान के बारे में है।",
+      "ref": "Incredible India, Ministry of Tourism — destination and temple profiles",
+      "rows": [
+        [
+          "Kashi Vishwanath Temple",
+          "काशी विश्वनाथ मंदिर",
+          "Uttar Pradesh",
+          "उत्तर प्रदेश"
+        ],
+        [
+          "Somnath Temple",
+          "सोमनाथ मंदिर",
+          "Gujarat",
+          "गुजरात"
+        ],
+        [
+          "Dwarkadhish Temple, Dwarka",
+          "द्वारका का द्वारकाधीश मंदिर",
+          "Gujarat",
+          "गुजरात"
+        ],
+        [
+          "Jagannath Temple, Puri",
+          "पुरी का जगन्नाथ मंदिर",
+          "Odisha",
+          "ओडिशा"
+        ],
+        [
+          "Ramanathaswamy Temple",
+          "रामनाथस्वामी मंदिर",
+          "Tamil Nadu",
+          "तमिलनाडु"
+        ],
+        [
+          "Meenakshi Temple",
+          "मीनाक्षी मंदिर",
+          "Tamil Nadu",
+          "तमिलनाडु"
+        ],
+        [
+          "Brihadisvara Temple",
+          "बृहदीश्वर मंदिर",
+          "Tamil Nadu",
+          "तमिलनाडु"
+        ],
+        [
+          "Shore Temple, Mamallapuram",
+          "मामल्लपुरम का तट मंदिर",
+          "Tamil Nadu",
+          "तमिलनाडु"
+        ],
+        [
+          "Sri Ranganathaswamy Temple, Srirangam",
+          "श्रीरंगम का रंगनाथस्वामी मंदिर",
+          "Tamil Nadu",
+          "तमिलनाडु"
+        ],
+        [
+          "Arunachalesvara Temple",
+          "अरुणाचलेश्वर मंदिर",
+          "Tamil Nadu",
+          "तमिलनाडु"
+        ],
+        [
+          "Chidambaram Nataraja Temple",
+          "चिदंबरम नटराज मंदिर",
+          "Tamil Nadu",
+          "तमिलनाडु"
+        ],
+        [
+          "Kamakshi Temple, Kanchipuram",
+          "कांचीपुरम का कामाक्षी मंदिर",
+          "Tamil Nadu",
+          "तमिलनाडु"
+        ],
+        [
+          "Palani Murugan Temple",
+          "पलनी मुरुगन मंदिर",
+          "Tamil Nadu",
+          "तमिलनाडु"
+        ],
+        [
+          "Tiruchendur Murugan Temple",
+          "तिरुचेंदूर मुरुगन मंदिर",
+          "Tamil Nadu",
+          "तमिलनाडु"
+        ],
+        [
+          "Venkatesvara Temple, Tirumala",
+          "तिरुमला वेंकटेश्वर मंदिर",
+          "Andhra Pradesh",
+          "आंध्र प्रदेश"
+        ],
+        [
+          "Srisailam Mallikarjuna Temple",
+          "श्रीशैलम मल्लिकार्जुन मंदिर",
+          "Andhra Pradesh",
+          "आंध्र प्रदेश"
+        ],
+        [
+          "Srikalahasti Temple",
+          "श्रीकालहस्ती मंदिर",
+          "Andhra Pradesh",
+          "आंध्र प्रदेश"
+        ],
+        [
+          "Kanaka Durga Temple, Vijayawada",
+          "विजयवाड़ा का कनक दुर्गा मंदिर",
+          "Andhra Pradesh",
+          "आंध्र प्रदेश"
+        ],
+        [
+          "Bhadrachalam Rama Temple",
+          "भद्राचलम राम मंदिर",
+          "Telangana",
+          "तेलंगाना"
+        ],
+        [
+          "Ramappa Temple",
+          "रामप्पा मंदिर",
+          "Telangana",
+          "तेलंगाना"
+        ],
+        [
+          "Thousand Pillar Temple, Hanamkonda",
+          "हनमकोंडा का हजार स्तंभ मंदिर",
+          "Telangana",
+          "तेलंगाना"
+        ],
+        [
+          "Padmanabhaswamy Temple",
+          "पद्मनाभस्वामी मंदिर",
+          "Kerala",
+          "केरल"
+        ],
+        [
+          "Guruvayur Temple",
+          "गुरुवायूर मंदिर",
+          "Kerala",
+          "केरल"
+        ],
+        [
+          "Sabarimala Temple",
+          "सबरीमला मंदिर",
+          "Kerala",
+          "केरल"
+        ],
+        [
+          "Vadakkunnathan Temple",
+          "वडक्कुनाथन मंदिर",
+          "Kerala",
+          "केरल"
+        ],
+        [
+          "Udupi Krishna Temple",
+          "उडुपी कृष्ण मंदिर",
+          "Karnataka",
+          "कर्नाटक"
+        ],
+        [
+          "Virupaksha Temple, Hampi",
+          "हंपी का विरुपाक्ष मंदिर",
+          "Karnataka",
+          "कर्नाटक"
+        ],
+        [
+          "Chennakesava Temple, Belur",
+          "बेलूर का चेन्नकेशव मंदिर",
+          "Karnataka",
+          "कर्नाटक"
+        ],
+        [
+          "Hoysalesvara Temple, Halebidu",
+          "हलेबीडु का होयसलेश्वर मंदिर",
+          "Karnataka",
+          "कर्नाटक"
+        ],
+        [
+          "Chamundeshwari Temple",
+          "चामुंडेश्वरी मंदिर",
+          "Karnataka",
+          "कर्नाटक"
+        ],
+        [
+          "Mahakaleshwar Temple",
+          "महाकालेश्वर मंदिर",
+          "Madhya Pradesh",
+          "मध्य प्रदेश"
+        ],
+        [
+          "Omkareshwar Temple",
+          "ओंकारेश्वर मंदिर",
+          "Madhya Pradesh",
+          "मध्य प्रदेश"
+        ],
+        [
+          "Kandariya Mahadeva Temple",
+          "कंदरिया महादेव मंदिर",
+          "Madhya Pradesh",
+          "मध्य प्रदेश"
+        ],
+        [
+          "Bhojeshwar Temple",
+          "भोजेश्वर मंदिर",
+          "Madhya Pradesh",
+          "मध्य प्रदेश"
+        ],
+        [
+          "Kedarnath Temple",
+          "केदारनाथ मंदिर",
+          "Uttarakhand",
+          "उत्तराखंड"
+        ],
+        [
+          "Badrinath Temple",
+          "बद्रीनाथ मंदिर",
+          "Uttarakhand",
+          "उत्तराखंड"
+        ],
+        [
+          "Gangotri Temple",
+          "गंगोत्री मंदिर",
+          "Uttarakhand",
+          "उत्तराखंड"
+        ],
+        [
+          "Yamunotri Temple",
+          "यमुनोत्री मंदिर",
+          "Uttarakhand",
+          "उत्तराखंड"
+        ],
+        [
+          "Baijnath Temple near Palampur",
+          "पालमपुर के पास बैजनाथ मंदिर",
+          "Himachal Pradesh",
+          "हिमाचल प्रदेश"
+        ],
+        [
+          "Jwalamukhi Temple",
+          "ज्वालामुखी मंदिर",
+          "Himachal Pradesh",
+          "हिमाचल प्रदेश"
+        ],
+        [
+          "Kamakhya Temple",
+          "कामाख्या मंदिर",
+          "Assam",
+          "असम"
+        ],
+        [
+          "Dakshineswar Kali Temple",
+          "दक्षिणेश्वर काली मंदिर",
+          "West Bengal",
+          "पश्चिम बंगाल"
+        ],
+        [
+          "Kalighat Temple",
+          "कालीघाट मंदिर",
+          "West Bengal",
+          "पश्चिम बंगाल"
+        ],
+        [
+          "Baidyanath Temple, Deoghar",
+          "देवघर का बैद्यनाथ मंदिर",
+          "Jharkhand",
+          "झारखंड"
+        ],
+        [
+          "Vishnupad Temple, Gaya",
+          "गया का विष्णुपद मंदिर",
+          "Bihar",
+          "बिहार"
+        ],
+        [
+          "Trimbakeshwar Temple",
+          "त्र्यंबकेश्वर मंदिर",
+          "Maharashtra",
+          "महाराष्ट्र"
+        ],
+        [
+          "Bhimashankar Temple",
+          "भीमाशंकर मंदिर",
+          "Maharashtra",
+          "महाराष्ट्र"
+        ],
+        [
+          "Grishneshwar Temple",
+          "घृष्णेश्वर मंदिर",
+          "Maharashtra",
+          "महाराष्ट्र"
+        ],
+        [
+          "Brahma Temple, Pushkar",
+          "पुष्कर का ब्रह्मा मंदिर",
+          "Rajasthan",
+          "राजस्थान"
+        ],
+        [
+          "Tripura Sundari Temple, Udaipur",
+          "उदयपुर का त्रिपुरा सुंदरी मंदिर",
+          "Tripura",
+          "त्रिपुरा"
+        ]
+      ]
+    },
+    {
+      "en": "In which city or town is {s} located?",
+      "hi": "{s} किस नगर या शहर में स्थित है?",
+      "exEn": "{s} is in {a}. Knowing the location helps connect a tradition with its region.",
+      "exHi": "{s}, {a} में स्थित है। स्थान का ज्ञान परंपरा को उसके क्षेत्र से जोड़ता है।",
+      "ref": "Incredible India — city and pilgrimage destination profiles",
+      "rows": [
+        [
+          "Lingaraja Temple",
+          "लिंगराज मंदिर",
+          "Bhubaneswar",
+          "भुवनेश्वर"
+        ],
+        [
+          "Konark Sun Temple",
+          "कोणार्क सूर्य मंदिर",
+          "Konark",
+          "कोणार्क"
+        ],
+        [
+          "Mukteshvara Temple in Odisha",
+          "ओडिशा का मुक्तेश्वर मंदिर",
+          "Bhubaneswar",
+          "भुवनेश्वर"
+        ],
+        [
+          "Siddhivinayak Temple in Maharashtra",
+          "महाराष्ट्र का सिद्धिविनायक मंदिर",
+          "Mumbai",
+          "मुंबई"
+        ],
+        [
+          "Dagdusheth Halwai Ganapati Temple",
+          "दगडूशेठ हलवाई गणपति मंदिर",
+          "Pune",
+          "पुणे"
+        ],
+        [
+          "Vitthal Rukmini Temple",
+          "विठ्ठल रुक्मिणी मंदिर",
+          "Pandharpur",
+          "पंढरपुर"
+        ],
+        [
+          "Durgiana Temple",
+          "दुर्गियाना मंदिर",
+          "Amritsar",
+          "अमृतसर"
+        ],
+        [
+          "Sankat Mochan Hanuman Temple in Uttar Pradesh",
+          "उत्तर प्रदेश का संकटमोचन हनुमान मंदिर",
+          "Varanasi",
+          "वाराणसी"
+        ],
+        [
+          "Banke Bihari Temple",
+          "बांके बिहारी मंदिर",
+          "Vrindavan",
+          "वृंदावन"
+        ],
+        [
+          "Krishna Janmabhoomi complex",
+          "कृष्ण जन्मभूमि परिसर",
+          "Mathura",
+          "मथुरा"
+        ],
+        [
+          "Ram Mandir in Ayodhya",
+          "अयोध्या का राम मंदिर",
+          "Ayodhya",
+          "अयोध्या"
+        ],
+        [
+          "Govind Dev Ji Temple in Rajasthan",
+          "राजस्थान का गोविंद देवजी मंदिर",
+          "Jaipur",
+          "जयपुर"
+        ],
+        [
+          "Jagdish Temple in Rajasthan",
+          "राजस्थान का जगदीश मंदिर",
+          "Udaipur",
+          "उदयपुर"
+        ],
+        [
+          "Mahavir Mandir in Bihar",
+          "बिहार का महावीर मंदिर",
+          "Patna",
+          "पटना"
+        ],
+        [
+          "Kalaram Temple",
+          "कालाराम मंदिर",
+          "Nashik",
+          "नाशिक"
+        ],
+        [
+          "Kapaleeswarar Temple",
+          "कपालीश्वर मंदिर",
+          "Chennai",
+          "चेन्नई"
+        ],
+        [
+          "Parthasarathy Temple in Tamil Nadu",
+          "तमिलनाडु का पार्थसारथी मंदिर",
+          "Chennai",
+          "चेन्नई"
+        ],
+        [
+          "Ekambareswarar Temple",
+          "एकांबरेश्वर मंदिर",
+          "Kanchipuram",
+          "कांचीपुरम"
+        ],
+        [
+          "Suchindram Thanumalayan Temple",
+          "सुचिंद्रम थानुमालयन मंदिर",
+          "Suchindram",
+          "सुचिंद्रम"
+        ],
+        [
+          "Mahalakshmi Temple at Kolhapur",
+          "कोल्हापुर का महालक्ष्मी मंदिर",
+          "Kolhapur",
+          "कोल्हापुर"
+        ]
+      ]
+    },
+    {
+      "en": "Which deity or form is central to worship at {s}?",
+      "hi": "{s} में मुख्यतः किस देवता या रूप की पूजा होती है?",
+      "exEn": "Worship at {s} centers on {a}; temple complexes may also contain other shrines.",
+      "exHi": "{s} की प्रमुख आराधना {a} की है; परिसर में अन्य देवालय भी हो सकते हैं।",
+      "ref": "Official temple traditions; Incredible India temple profiles",
+      "rows": [
+        [
+          "Kedarnath",
+          "केदारनाथ",
+          "Shiva",
+          "शिव"
+        ],
+        [
+          "Badrinath",
+          "बद्रीनाथ",
+          "Vishnu",
+          "विष्णु"
+        ],
+        [
+          "Tirumala Venkatesvara Temple",
+          "तिरुमला वेंकटेश्वर मंदिर",
+          "Venkatesvara, a form of Vishnu",
+          "विष्णु का वेंकटेश्वर रूप"
+        ],
+        [
+          "Guruvayur",
+          "गुरुवायूर",
+          "Krishna",
+          "कृष्ण"
+        ],
+        [
+          "Sabarimala",
+          "सबरीमला",
+          "Ayyappa",
+          "अय्यप्पा"
+        ],
+        [
+          "Palani",
+          "पलनी",
+          "Murugan",
+          "मुरुगन"
+        ],
+        [
+          "Konark Sun Temple",
+          "कोणार्क सूर्य मंदिर",
+          "Surya",
+          "सूर्य"
+        ],
+        [
+          "Dakshineswar",
+          "दक्षिणेश्वर",
+          "Kali",
+          "काली"
+        ],
+        [
+          "Pushkar Brahma Temple",
+          "पुष्कर ब्रह्मा मंदिर",
+          "Brahma",
+          "ब्रह्मा"
+        ],
+        [
+          "Chidambaram",
+          "चिदंबरम",
+          "Shiva as Nataraja",
+          "नटराज रूप में शिव"
+        ]
+      ]
+    }
+  ]
+}

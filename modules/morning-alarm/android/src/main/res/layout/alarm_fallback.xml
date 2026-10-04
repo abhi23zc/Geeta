@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Native twin of src/app/alarm/wake.tsx, visible until React is ready. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/alarm_fallback"
+<!-- Native lock-screen alarm; it does not create another Expo Router root. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="#FFF7EF">
+<LinearLayout
+    android:id="@+id/alarm_fallback"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     android:orientation="vertical"
     android:gravity="center_horizontal"
     android:paddingLeft="24dp"
@@ -15,7 +20,10 @@
   <TextView
       android:id="@+id/alarm_pill"
       android:layout_width="wrap_content"
-      android:layout_height="28dp"
+      android:layout_height="wrap_content"
+      android:minHeight="28dp"
+      android:paddingTop="6dp"
+      android:paddingBottom="6dp"
       android:gravity="center"
       android:background="@drawable/alarm_pill"
       android:paddingLeft="14dp"
@@ -206,14 +214,16 @@
 
   <FrameLayout
       android:layout_width="match_parent"
-      android:layout_height="54dp"
+      android:layout_height="wrap_content"
+      android:minHeight="54dp"
       android:layout_marginTop="12dp"
       android:background="@drawable/alarm_primary_button"
       android:elevation="4dp">
     <Button
         android:id="@+id/alarm_dismiss"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="54dp"
         android:background="@android:color/transparent"
         android:text="☀  Hold to start my day"
         android:textAllCaps="false"
@@ -252,3 +262,4 @@
       android:textColor="#7A6659"
       android:textSize="10sp" />
 </LinearLayout>
+</ScrollView>

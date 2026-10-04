@@ -61,7 +61,8 @@
           "enableBackgroundPlayback": false
         }
       ],
-      "./plugins/with-alarm-desugaring"
+      "./plugins/with-alarm-desugaring",
+      "./plugins/with-alarm-intents"
     ],
     "experiments": {
       "typedRoutes": true,

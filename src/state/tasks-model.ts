@@ -8,6 +8,7 @@ export type TaskInput = {
 };
 export type TaskRecord = TaskInput & {
   id: string;
+  templateId?: 'surya' | 'proposal' | 'walk' | 'read';
   startDate: string;
   archivedDate?: string;
   createdAt: number;
@@ -65,6 +66,7 @@ export function parseTasksData(raw: string): TasksData {
       ids.has(task.id) ||
       !validDate(task.startDate) ||
       !Number.isFinite(task.createdAt) ||
+      (task.templateId !== undefined && !['surya', 'proposal', 'walk', 'read'].includes(task.templateId)) ||
       (task.archivedDate !== undefined && !validDate(task.archivedDate))
     )
       throw new Error("Invalid task record");
@@ -117,6 +119,7 @@ export function seedTasks(date: string): TasksData {
     version: 1,
     records: definitions.map((task, index) => ({
       ...task,
+      templateId: task.id as TaskRecord['templateId'],
       startDate: date,
       createdAt: index,
     })),

@@ -1,0 +1,58 @@
+export const quizHinglish: Record<string, string> = {
+  'This saved question is shown in English because its Hinglish version is unavailable.': 'Hinglish version available nahi hai, isliye yeh saved question English mein dikhaya hai.',
+  'Knowledge collection': 'Gyaan collection',
+  'Complete four different lessons in a topic to unlock each knowledge card.': 'Har knowledge card unlock karne ke liye topic ke chaar alag lessons poore karein.',
+  'Play with Family': 'Family ke saath khelein',
+  'One phone, shared discoveries. Family scores stay separate from your learning journey.': 'Ek phone par saath seekhein. Family scores aapki learning journey se alag rahenge.',
+  'Together • 10 questions': 'Saath mein • 10 questions', 'Take turns • 5 questions each': 'Baari-baari • Har ek ke 5 questions', 'Players': 'Khiladi',
+  'Each player gets 3 easy and 2 medium questions.': 'Har khiladi ko 3 easy aur 2 medium questions milenge.', 'Start family round': 'Family round shuru karein',
+  'Culture Quiz': 'Culture Quiz', 'A little discovery, anytime': 'Thoda naya seekhein, kabhi bhi',
+  '600 questions • Hindi, English & Hinglish • Fully offline': '600 questions • 3 languages • Fully offline',
+  'Explore stories, traditions and wisdom at your own pace.': 'Apni pace par kathayein, paramparayein aur gyaan janein.',
+  'View last result': 'Pichhla result dekhein', 'Resume unfinished quiz': 'Adhoori quiz jaari rakhein', 'Learning Journey →': 'Gyaan yatra →', 'Quick Quiz →': 'Quick Quiz →', 'Practice Again →': 'Phir abhyas karein →',
+  'Learn with your family': 'Family ke saath seekhein', 'Play with Family →': 'Family ke saath khelein →', 'Your discoveries': 'Aapka naya gyaan', 'Recent rounds': 'Haali ke rounds', 'Family': 'Family', 'Solo': 'Akele',
+  'Explore topic': 'Topic janein', 'Saved explanations': 'Saved explanations', 'Language, text size & settings': 'Language, text size aur settings',
+  'Learning Journey': 'Gyaan yatra', 'Five questions per lesson. Every lesson is open to you.': 'Har lesson mein paanch questions. Saare lessons aapke liye khule hain.', ' • Continue here': ' • Yahan se jaari rakhein',
+  'Ready to discover': 'Naya jaanne ke liye taiyar', 'Play again': 'Phir khelein', 'Begin lesson': 'Lesson shuru karein', 'Save and leave?': 'Save karke wapas jayein?',
+  'Your submitted answers are saved. Resume from the quiz home anytime.': 'Aapke diye answers safe hain. Quiz home se kabhi bhi jaari rakhein.', 'Save and leave': 'Save karke wapas jayein',
+  'Correct. Explanation follows.': 'Sahi answer. Aage explanation hai.', 'Let us discover the answer. Explanation follows.': 'Sahi answer janein. Aage explanation hai.',
+  'Your Quiz': 'Aapki quiz', 'Choose a quiz to begin.': 'Shuru karne ke liye quiz chunein.', 'Quiz home': 'Quiz home', 'Round complete': 'Round poora hua',
+  'Every answer is a chance to learn.': 'Har answer seekhne ka mauka hai.', 'Family scores': 'Family scores', 'Equal scores share the place.': 'Samaan scores par jagah saanjhi hai.',
+  'New knowledge card unlocked': 'Naya knowledge card mila', 'Lesson completed': 'Lesson poora hua', 'Continue journey': 'Yatra jaari rakhein', 'Ideas to revisit': 'Phir dekhne layak vichar',
+  'You answered every question correctly. Try another topic!': 'Aapne har question sahi kiya. Doosra topic try karein!', 'Choose another practice round': 'Doosra practice round chunein',
+  'Pass the phone': 'Phone aage dein', 'It is your turn. Take your time.': 'Ab aapki baari hai. Aaram se answer dein.', 'I am ready': 'Main taiyar hoon', 'Discover & learn': 'Janein aur seekhein',
+  ' • Correct answer': ' • Sahi answer', ' • Your answer': ' • Aapka answer', 'Check answer': 'Answer check karein', 'Correct ✓': 'Sahi ✓', 'Let us discover why': 'Aaiye samjhein kyun',
+  'Hide source': 'Source chhupayein', 'Source & tradition': 'Source aur parampara', 'Saved ✓ • Remove': 'Saved ✓ • Hatayein', 'Save explanation': 'Explanation save karein', 'See results': 'Results dekhein', 'Continue': 'Aage badhein',
+  'Practice saved questions': 'Saved questions ka abhyas karein', 'Save an explanation after answering a question.': 'Answer dene ke baad explanation save karein.', 'Remove from saved': 'Saved se hatayein',
+  'Settings': 'Settings', 'Language': 'Language', 'Text size': 'Text size', 'Standard': 'Normal', 'Large': 'Bada', 'Extra large': 'Bahut bada',
+  'Answer vibration: On': 'Answer par vibration: On', 'Answer vibration: Off': 'Answer par vibration: Off',
+  'All questions and explanations are bundled on this device. Progress is shared by people using this phone. No account is required.': 'Saare questions aur explanations is phone par hain. Phone use karne walon ki progress shared hai. Account ki zaroorat nahi.',
+  'Question-level editorial review is pending. Sources and tradition notes are available after each answer.': 'Questions ka editorial review baaki hai. Har answer ke baad sources aur parampara notes available hain.',
+  'Reset quiz progress': 'Quiz progress reset karein', 'Reset quiz?': 'Quiz reset karein?',
+  'This removes only quiz progress, saved questions and the current round. Other app data stays intact.': 'Sirf quiz progress, saved questions aur current round hatenge. Baaki app data safe rahega.', 'Reset quiz': 'Quiz reset karein',
+  'Practice Again': 'Phir abhyas karein', 'Quick Quiz': 'Quick Quiz', 'What would you like to revisit?': 'Aap kya phir dekhna chahenge?', 'Due for revision': 'Revision ka samay', 'Previously missed': 'Pehle galat hue', 'Saved questions': 'Saved questions',
+  'Topic': 'Topic', 'Mixed topics': 'Mixed topics', 'Difficulty': 'Difficulty', 'Any': 'Koi bhi', 'Easy': 'Aasaan', 'Medium': 'Medium', 'Advanced': 'Advanced', 'Round length': 'Round ki length',
+  'Start quiz': 'Quiz shuru karein', 'No matching questions yet. Try another selection or explore a lesson first.': 'Abhi matching questions nahi hain. Doosra selection try karein ya pehle lesson dekhein.',
+  'Unfinished quiz': 'Adhoori quiz', 'Discard the unfinished round and start this one? To resume, use Continue on the quiz home.': 'Adhoora round chhodkar yeh shuru karein? Jaari rakhne ke liye quiz home par Continue use karein.', 'Discard & start': 'Chhodkar shuru karein',
+  '‹ Back': '‹ Wapas', 'Quiz could not be loaded or saved. Your existing data is preserved. ': 'Quiz load ya save nahi hui. Aapka purana data safe hai. ',
+  'Retry': 'Phir try karein', 'Reset quiz data': 'Quiz data reset karein', 'Saving or loading': 'Save ya load ho raha hai', 'Preparing your questions…': 'Aapke questions taiyar ho rahe hain…',
+  'Reset quiz data only': 'Sirf quiz data reset karein', 'Remove existing quiz progress?': 'Purani quiz progress hatayein?', 'Reset': 'Reset karein',
+};
+// These patterns mirror authored interpolated labels, not a general translator.
+const templates: [RegExp, (...args: string[]) => string][] = [
+  [/^(\d+)\/(\d+) topic lessons completed$/, (a,b) => `${a}/${b} topic lessons poore hue`],
+  [/^(\d+) players$/, n => `${n} khiladi`], [/^Player (\d+) name$/, n => `Khiladi ${n} ka naam`], [/^Player (\d+)$/, n => `Khiladi ${n}`],
+  [/^(\d+) explored • (\d+) mastered$/, (a,b) => `${a} dekhe • ${b} achhe se seekhe`],
+  [/^(\d+)\/120 lessons completed$/, n => `${n}/120 lessons poore hue`], [/^(\d+) questions$/, n => `${n} questions`],
+  [/^Knowledge collection \((\d+)\/30\)$/, n => `Gyaan collection (${n}/30)`], [/^Lesson (\d+)$/, n => `Lesson ${n}`],
+  [/^Completed • Best (\d+)\/5$/, n => `Poora hua • Best ${n}/5`], [/^(\d+) of (\d+) correct$/, (a,b) => `${b} mein ${a} sahi`],
+  [/^Personal best for this selection: (\d+)\/(\d+)$/, (a,b) => `Is selection ka personal best: ${a}/${b}`],
+  [/^Knowledge cards collected: (\d+)\/30$/, n => `Knowledge cards mile: ${n}/30`], [/^Your question (\d+) of 5$/, n => `Aapka question ${n}/5`],
+  [/^Question (\d+) of (\d+)$/, (a,b) => `Question ${a}/${b}`],
+  [/^(\d+) questions available for this round\. No timer\.$/, n => `Is round ke liye ${n} questions available hain. Koi timer nahi.`],
+];
+export function quizHinglishCopy(en: string): string {
+  if (Object.hasOwn(quizHinglish, en)) return quizHinglish[en];
+  for (const [pattern, render] of templates) { const match = en.match(pattern); if (match) return render(...match.slice(1)); }
+  return en;
+}

@@ -39,6 +39,11 @@ class AlarmService : Service() {
 
   override fun onBind(intent: Intent?): IBinder? = null
 
+  override fun onCreate() {
+    super.onCreate()
+    activeService = this
+  }
+
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     AlarmLog.initialize(this)
     if (intent?.action == ACTION_STOP) {
@@ -67,10 +72,21 @@ class AlarmService : Service() {
     gradual = config.gradualVolume
     AlarmStore.setTest(this, test)
     AlarmStore.setRinging(this, true, startedAt, scheduledAt)
+    AlarmPresentation.begin(this)
     AlarmLog.event("service_start", "scheduledAt=$scheduledAt")
     acquireWakeLock()
-    createChannel()
-    startForeground(NOTIFICATION_ID, notification())
+    // Access may change between receiver delivery and foreground promotion.
+    val promoted = runCatching {
+      createChannel()
+      startForeground(NOTIFICATION_ID, notification())
+    }.onFailure {
+      AlarmLog.event("foreground_promotion_failed", it.javaClass.simpleName)
+    }.isSuccess
+    if (!promoted) {
+      AlarmPresentation.end(this)
+      stopAlarm("foreground-promotion-failed")
+      return START_NOT_STICKY
+    }
     // Notification is intentionally posted first: if Android rejects this
     // direct background launch, its full-screen PendingIntent remains the safe path.
     launchWakeScreenIfInteractive()
@@ -165,8 +181,8 @@ class AlarmService : Service() {
 
   private fun createChannel() {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-    val channel = NotificationChannel(CHANNEL_ID, "Morning ritual alarms", NotificationManager.IMPORTANCE_HIGH).apply {
-      description = "Shows the active Morning Ritual alarm"
+    val channel = NotificationChannel(CHANNEL_ID, AlarmStrings.text(this, "Morning ritual alarms"), NotificationManager.IMPORTANCE_HIGH).apply {
+      description = AlarmStrings.text(this@AlarmService, "Shows the active Morning Ritual alarm")
       setSound(null, null)
       enableVibration(false)
       lockscreenVisibility = Notification.VISIBILITY_PUBLIC
@@ -203,8 +219,8 @@ class AlarmService : Service() {
     return builder
       .setSmallIcon(applicationInfo.icon)
       .setColor(Color.rgb(229, 107, 39))
-      .setContentTitle("Your Morning Ritual is ready")
-      .setContentText("Alarm is ringing · tap to wake gently")
+      .setContentTitle(AlarmStrings.text(this, "Your Morning Ritual is ready"))
+      .setContentText(AlarmStrings.text(this, "Alarm is ringing · tap to wake gently"))
       .setPriority(Notification.PRIORITY_HIGH)
       .setCategory(Notification.CATEGORY_ALARM)
       .setVisibility(Notification.VISIBILITY_PUBLIC)
@@ -212,7 +228,7 @@ class AlarmService : Service() {
       .setAutoCancel(false)
       .setOnlyAlertOnce(true)
       .setContentIntent(open)
-      .addAction(Notification.Action.Builder(null, "Stop", PendingIntent.getBroadcast(this, 6202, Intent(this, AlarmStopReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)).build())
+      .addAction(Notification.Action.Builder(null, AlarmStrings.text(this, "Stop"), PendingIntent.getBroadcast(this, 6202, Intent(this, AlarmStopReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)).build())
       .apply {
         val allowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE || getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
         if (allowed) setFullScreenIntent(open, true)
@@ -237,7 +253,10 @@ class AlarmService : Service() {
     wakeLock = null
     AlarmStore.setRinging(this, false)
     AlarmStore.setTest(this, false)
-    if (reason == "timeout") AlarmActivity.finishVisible()
+    if (reason == "timeout") {
+      AlarmPresentation.end(this)
+      AlarmActivity.finishVisible()
+    }
     AlarmEvents.emit("alarmStopped", mapOf("reason" to reason))
     stopForeground(STOP_FOREGROUND_REMOVE)
     if (finishService) stopSelf()
@@ -249,11 +268,22 @@ class AlarmService : Service() {
   }
 
   override fun onDestroy() {
+    if (activeService === this) activeService = null
     if (player != null || wakeLock != null) stopAlarm("service-destroyed")
     super.onDestroy()
   }
 
   companion object {
+    @Volatile private var activeService: AlarmService? = null
+    fun refreshLanguage() {
+      val service = activeService ?: return
+      service.handler.post {
+        if (activeService === service && AlarmStore.isRinging(service)) {
+          service.createChannel()
+          service.getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, service.notification())
+        }
+      }
+    }
     const val CHANNEL_ID = "morning-ritual-native-alarm-v3"
     const val LEGACY_CHANNEL_V1 = "morning-ritual-native-alarm-v1"
     const val LEGACY_CHANNEL_V2 = "morning-ritual-native-alarm-v2"

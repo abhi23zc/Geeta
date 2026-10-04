@@ -1,3 +1,6 @@
+import { useLanguage } from '@/i18n/provider';
+import { translate } from '@/i18n/translations';
+import type { AppLanguage } from '@/i18n/model';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -96,30 +99,29 @@ function getAlarmIssue(snapshot: AlarmHomeSnapshot | null): AlarmIssue {
   return null;
 }
 
-function issueCopy(issue: AlarmIssue) {
+function issueCopy(issue: AlarmIssue, language: AppLanguage) {
   switch (issue) {
     case 'exact-alarm':
-      return 'Allow Alarms & reminders so Android can schedule this wake-up.';
+      return translate("Allow Alarms & reminders so Android can schedule this wake-up.", undefined, language);
     case 'notifications':
-      return 'Allow notifications so your alarm can appear over the lock screen.';
+      return translate("Allow notifications so your alarm can appear over the lock screen.", undefined, language);
     case 'full-screen':
-      return 'Full-screen access is off. Use the alarm notification to open or stop it.';
+      return translate("Full-screen access is off. Use the alarm notification to open or stop it.", undefined, language);
     case 'channel':
-      return 'Set the Morning Ritual alarm channel to High importance.';
+      return translate("Set the Morning Ritual alarm channel to High importance.", undefined, language);
     default:
-      return 'This alarm needs attention before it can wake you reliably.';
+      return translate("This alarm needs attention before it can wake you reliably.", undefined, language);
   }
 }
 
-function formatDays(days: readonly string[]) {
-  const labels: Record<string, string> = {
-    mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun',
-  };
-  if (days.length === 7) return 'Every day';
-  return days.map((day) => labels[day] ?? day).join(', ');
+function formatDays(days: readonly string[], language: AppLanguage) {
+  const labels = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' } as const;
+  if (days.length === 7) return translate('Every day', undefined, language);
+  return days.map(day => day in labels ? translate(labels[day as keyof typeof labels], undefined, language) : day).join(', ');
 }
 
 export default function Home() {
+  const { t: translate, text: translateText, language } = useLanguage();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isSmall = width < 360;
@@ -153,7 +155,7 @@ export default function Home() {
       setSnapshot(next);
       setAlarmError(null);
     } catch {
-      setAlarmError('We could not confirm your alarm status. Try again before relying on it.');
+      setAlarmError("We could not confirm your alarm status. Try again before relying on it.");
     }
   }, []);
 
@@ -190,7 +192,7 @@ export default function Home() {
     ? `${String(activeConfig.hour).padStart(2, '0')}:${String(activeConfig.minute).padStart(2, '0')}`
     : alarmTime;
   const formattedAlarm = formatAlarm(displayTime);
-  const displayTone = toneLabel(activeConfig?.tone.key ?? alarmTone);
+  const displayTone = translateText(toneLabel(activeConfig?.tone.key ?? alarmTone));
   const displayDays = activeConfig?.weekdays ?? alarmDays;
   const alarmRequested = activeConfig?.enabled ?? alarmEnabled;
   const reflectionComplete = completedDates.has(today);
@@ -217,7 +219,7 @@ export default function Home() {
       }
       await refreshAlarm();
     } catch (error) {
-      setAlarmError(error instanceof Error ? error.message : 'Please try again.');
+      setAlarmError(error instanceof Error ? error.message : translate("Please try again."));
       await refreshAlarm();
     } finally {
       setIsUpdating(false);
@@ -243,17 +245,17 @@ export default function Home() {
           break;
       }
     } catch {
-      setAlarmError('We could not open Android settings. Please open the app settings manually.');
+      setAlarmError("We could not open Android settings. Please open the app settings manually.");
     }
   };
 
   if (loading) {
     return (
       <Screen>
-        <Header eyebrow="Home" showActions={false} />
+        <Header eyebrow={translate("Home")} showActions={false} />
         <View style={s.loadingCard} accessibilityRole="progressbar">
-          <TextR serif style={s.loadingTitle}>Preparing your ritual</TextR>
-          <TextR style={s.loadingSub}>Checking your alarm and today&apos;s progress.</TextR>
+          <TextR serif style={s.loadingTitle}>{translate("Preparing your ritual")}</TextR>
+          <TextR style={s.loadingSub}>{translate("Checking your alarm and today's progress.")}</TextR>
         </View>
       </Screen>
     );
@@ -261,36 +263,38 @@ export default function Home() {
 
   return (
     <Screen>
-      <Header eyebrow="Home" showActions={false} />
+      <Header eyebrow={translate("Home")} showActions={false} />
+
+      <Pressable accessibilityRole="button" accessibilityLabel={translate('App language')} onPress={() => router.push('/language')} style={{ minHeight: 48, alignSelf: 'flex-end', justifyContent: 'center', paddingHorizontal: 14, marginBottom: 12 }}>
+        <TextR style={{ fontSize: 18 }}>{translate('Language')} · English / हिंदी / Hinglish</TextR>
+      </Pressable>
 
       {/* Sacred Top Greeting & Muhurta Badge */}
       <View style={s.topRow}>
         <View style={s.muhurtaBadge}>
           <View style={s.pulseDot} />
-          <TextR style={s.muhurtaText}>Today&apos;s ritual</TextR>
+          <TextR style={s.muhurtaText}>{translate("Today's ritual")}</TextR>
         </View>
         <View style={s.streakBadge}>
           <Flame size={15} color={C.saffron} fill={C.saffron} />
           <TextR style={s.streakText}>
-            {streak > 0 ? `${streak}-day streak` : 'Begin your streak'}
+            {streak > 0 ? translate('streakDays', { count: streak }) : translate("Begin your streak")}
           </TextR>
         </View>
       </View>
 
       <View style={s.greetingContainer}>
         <TextR serif style={[s.greetingTitle, isSmall && { fontSize: 26, lineHeight: 32 }]}>
-          Shubh Prabhat
-        </TextR>
+           {translate("Shubh Prabhat")} </TextR>
         <TextR style={s.greetingSub}>
-          Rise with calm intention & pure presence.
-        </TextR>
+           {translate("Rise with calm intention & pure presence.")} </TextR>
       </View>
 
       {/* Devotional Hero Alarm Card */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Open alarm setup"
-        accessibilityHint="Open alarm time, sound, and wake settings"
+        accessibilityLabel={translate("Open alarm setup")}
+        accessibilityHint={translate("Open alarm time, sound, and wake settings")}
         onPress={() => router.navigate('/alarm/setup')}
         style={({ pressed }) => [
           s.heroAlarmCard,
@@ -300,7 +304,7 @@ export default function Home() {
       >
         <View style={s.alarmHeaderRow}>
           <View style={{ flex: 1 }}>
-            <TextR style={s.alarmKicker}>AWAKENING SANKALPA</TextR>
+            <TextR style={s.alarmKicker}>{translate("AWAKENING SANKALPA")}</TextR>
             <View style={s.timeRow}>
               <TextR serif style={[s.alarmTime, isSmall && { fontSize: 40 }]}>
                 {formattedAlarm.time}
@@ -316,8 +320,8 @@ export default function Home() {
               void toggleAlarm();
             }}
             disabled={isUpdating || status === 'unavailable'}
-            accessibilityLabel="Alarm enabled"
-            accessibilityHint={alarmRequested ? 'Turn off your recurring alarm.' : 'Schedule your recurring alarm.'}
+            accessibilityLabel={translate("Alarm enabled")}
+            accessibilityHint={translateText(alarmRequested ? translate("Turn off your recurring alarm.") : translate("Schedule your recurring alarm."))}
             accessibilityRole="switch"
             accessibilityState={{ checked: alarmRequested, disabled: isUpdating || status === 'unavailable' }}
             style={[
@@ -345,51 +349,51 @@ export default function Home() {
           <Music size={18} color={C.primary} />
           <TextR style={s.toneText} numberOfLines={1}>{displayTone}</TextR>
         </View>
-        <TextR style={s.scheduleText}>{formatDays(displayDays)}</TextR>
+        <TextR style={s.scheduleText}>{formatDays(displayDays, language)}</TextR>
 
         <View style={s.alarmFooterRow}>
           <Link href="/alarm/setup" asChild>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Customize alarm"
-              accessibilityHint="Open alarm time, sound, and wake settings"
+              accessibilityLabel={translate("Customize alarm")}
+              accessibilityHint={translate("Open alarm time, sound, and wake settings")}
               style={s.customizeBtn}
             >
               <SlidersHorizontal size={16} color={C.saffron} />
-              <TextR style={s.customizeText}>Customize tone & ritual</TextR>
+              <TextR style={s.customizeText}>{translate("Customize tone & ritual")}</TextR>
             </Pressable>
           </Link>
           <View style={s.gentleWakeBadge}>
             <View style={s.greenDot} />
             <TextR style={s.gentleWakeText}>
-              {status === 'updating' ? 'UPDATING' : status === 'scheduled' ? 'SCHEDULED' : status === 'action-required' ? 'ACTION REQUIRED' : status === 'unavailable' ? 'ANDROID ONLY' : 'OFF'}
+              {status === 'updating' ? translate("UPDATING") : status === 'scheduled' ? translate("SCHEDULED") : status === 'action-required' ? translate("ACTION REQUIRED") : status === 'unavailable' ? translate("ANDROID ONLY") : translate("OFF")}
             </TextR>
           </View>
         </View>
         {status === 'action-required' && (
           <View style={s.alarmStatusAlert}>
-            <TextR style={s.alarmStatusText}>{issueCopy(issue)}</TextR>
+            <TextR style={s.alarmStatusText}>{issueCopy(issue, language)}</TextR>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Fix alarm permissions"
-              accessibilityHint="Open the Android setting needed for this alarm"
+              accessibilityLabel={translate("Fix alarm permissions")}
+              accessibilityHint={translate("Open the Android setting needed for this alarm")}
               onPress={(event) => {
                 event.stopPropagation();
                 void fixAlarm();
               }}
               style={({ pressed }) => [s.fixAlarmButton, pressed && s.pressedControl]}
             >
-              <TextR style={s.fixAlarmText}>Fix alarm</TextR>
+              <TextR style={s.fixAlarmText}>{translate("Fix alarm")}</TextR>
             </Pressable>
           </View>
         )}
         {status === 'scheduled' && !snapshot?.capabilities.fullScreenIntent && (
-          <TextR style={s.alarmStatusText}>Full-screen access is off. Use the alarm notification to open or stop it.</TextR>
+          <TextR style={s.alarmStatusText}>{translate("Full-screen access is off. Use the alarm notification to open or stop it.")}</TextR>
         )}
         {status === 'unavailable' && (
-          <TextR style={s.alarmStatusText}>Alarms are available in the Android development or release app.</TextR>
+          <TextR style={s.alarmStatusText}>{translate("Alarms are available in the Android development or release app.")}</TextR>
         )}
-        {alarmError && <TextR style={s.alarmErrorText}>{alarmError}</TextR>}
+        {alarmError && <TextR style={s.alarmErrorText}>{translateText(alarmError)}</TextR>}
       </Pressable>
 
       {/* Awakening Vibe Banner */}
@@ -398,19 +402,18 @@ export default function Home() {
           <DiyaGraphic size={isSmall ? 38 : 44} color={C.saffron} flameColor={C.gold} showAura={false} animated={!reducedMotion} />
         </View>
         <View style={s.vibeContent}>
-          <TextR style={s.vibeKicker}>AWAKENING VIBE</TextR>
-          <TextR style={s.vibeTitle}>Inner Light Sanctuary</TextR>
+          <TextR style={s.vibeKicker}>{translate("AWAKENING VIBE")}</TextR>
+          <TextR style={s.vibeTitle}>{translate("Inner Light Sanctuary")}</TextR>
           <TextR style={s.vibeSub} numberOfLines={2}>
-            Begin with a few quiet breaths before you enter today&apos;s ritual.
-          </TextR>
+             {translate("Begin with a few quiet breaths before you enter today's ritual.")} </TextR>
         </View>
       </View>
 
       {/* Quick Access Devotional Action Grid */}
       <View style={s.gatewaysSection}>
         <View style={s.sectionHeader}>
-          <TextR style={s.sectionTitle}>SACRED GATEWAYS</TextR>
-          <TextR style={s.sectionSubtitle}>Daily Rites</TextR>
+          <TextR style={s.sectionTitle}>{translate("SACRED GATEWAYS")}</TextR>
+          <TextR style={s.sectionSubtitle}>{translate("Daily Rites")}</TextR>
         </View>
 
         <View style={s.gridRow}>
@@ -418,41 +421,55 @@ export default function Home() {
             href="/alarm/setup"
             icon={<Bell size={isSmall ? 20 : 24} color="#271900" />}
             bgColor="#FEC24A"
-            title="Set Alarm"
+            title={translate("Set Alarm")}
           />
           <TactileTile
             href="/breathe"
             icon={<Leaf size={isSmall ? 20 : 24} color="#00210A" />}
             bgColor="#BDEFC1"
-            title="Sadhana"
+            title={translate("Sadhana")}
           />
           <TactileTile
             href="/gita"
             icon={<BookOpen size={isSmall ? 20 : 24} color="#351000" />}
             bgColor="#FFDBCC"
-            title="Daily Gita"
+            title={translate("Daily Gita")}
           />
           <TactileTile
             href="/night"
             icon={<Moon size={isSmall ? 20 : 24} color="#574239" />}
             bgColor="#F2DFD1"
-            title="Night Rest"
+            title={translate("Night Rest")}
           />
         </View>
       </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={translate("Open Culture Quiz, 600 offline questions in Hindi and English")}
+        onPress={() => router.navigate('/quiz')}
+        style={({ pressed }) => [s.shlokaCard, pressed && s.cardPressed]}
+      >
+        <View style={s.shlokaHeader}>
+          <BookOpen size={26} color={C.primary} />
+          <TextR style={s.sectionTitle}>{translate("CULTURE QUIZ · संस्कृति क्विज़")}</TextR>
+        </View>
+        <TextR serif style={s.greetingTitle}>{translate("Discover your traditions")}</TextR>
+        <TextR style={s.shlokaEnglish}>{translate("600 प्रश्न · Hindi & English · Fully offline")}</TextR>
+        <TextR style={s.reflectText}>{translate("Learn anytime, or play together with family →")}</TextR>
+      </Pressable>
 
       <View style={s.shlokaCard}>
         <View style={s.contentCachePillRow}>
           <Link href="/downloads" asChild>
             <Pressable style={s.cacheBadge}>
               <TextR style={s.cacheBadgeText}>
-                {fallback ? 'Offline practice' : 'Today’s downloaded practice'} · {Object.keys(content.days).length}/7 days · Downloads →
-              </TextR>
+                {fallback ? translate("Offline practice") : translate("Today’s downloaded practice")} · {Object.keys(content.days).length}{translate("/7 days · Downloads →")} </TextR>
             </Pressable>
           </Link>
           <Link href="/saved" asChild>
             <Pressable style={s.savedTeachingsBtn}>
-              <TextR style={s.savedTeachingsText}>Saved teachings →</TextR>
+              <TextR style={s.savedTeachingsText}>{translate("Saved teachings →")}</TextR>
             </Pressable>
           </Link>
         </View>
@@ -460,9 +477,9 @@ export default function Home() {
         <View style={s.shlokaHeader}>
           <View style={s.shlokaKickerGroup}>
             <View style={s.shlokaDot} />
-            <TextR style={s.shlokaKicker}>TODAY&apos;S SACRED SHLOKA</TextR>
+            <TextR style={s.shlokaKicker}>{translate("TODAY'S SACRED SHLOKA")}</TextR>
           </View>
-          <TextR style={s.shlokaChapter}>Adhyaya {todayVerse.chapter} · {todayVerse.verse}</TextR>
+          <TextR style={s.shlokaChapter}>{translate("Adhyaya")} {todayVerse.chapter} · {todayVerse.verse}</TextR>
         </View>
 
         <TextR serif style={[s.shlokaDevanagari, isSmall && { fontSize: 20, lineHeight: 28 }]}>
@@ -477,19 +494,19 @@ export default function Home() {
           <Pressable
             onPress={() => router.navigate('/gita')}
             accessibilityRole="button"
-            accessibilityLabel="Reflect on today&apos;s verse"
-            accessibilityHint="Open today&apos;s Bhagavad Gita reflection"
+            accessibilityLabel={translate("Reflect on today's verse")}
+            accessibilityHint={translate("Open today's Bhagavad Gita reflection")}
             style={({ pressed }) => [
               s.reflectBtn,
               pressed && { opacity: 0.88, transform: [{ scale: 0.97 }] },
             ]}
           >
-            <TextR style={s.reflectText}>Reflect on Verse {todayVerse.verse} →</TextR>
+            <TextR style={s.reflectText}>{translate("Reflect on Verse")} {todayVerse.verse} →</TextR>
           </Pressable>
           <Pressable
             onPress={() => { if (!bookmarked) void saveTeaching(todayVerse).catch(() => undefined); toggleBookmark(todayVerse.id); }}
             accessibilityRole="button"
-            accessibilityLabel={bookmarked ? 'Remove verse bookmark' : 'Bookmark today&apos;s verse'}
+            accessibilityLabel={translateText(bookmarked ? translate("Remove verse bookmark") : translate("Bookmark today's verse"))}
             style={({ pressed }) => [s.bookmarkBtn, pressed && s.pressedControl]}
           >
             <Bookmark
@@ -504,18 +521,18 @@ export default function Home() {
       <View
         accessible
         style={s.sadhanaStrip}
-        accessibilityLabel={`Today&apos;s ritual progress: ${ritualCount} of 2 complete`}
+        accessibilityLabel={translate('progressAccessibility', { count: ritualCount })}
       >
         <View style={s.sadhanaLeft}>
           <View style={s.sadhanaIconCircle}>
             <Flower2 size={20} color="#023314" />
           </View>
           <View style={{ flex: 1 }}>
-            <TextR style={s.sadhanaTitle}>Today&apos;s ritual · {ritualCount}/2</TextR>
+            <TextR style={s.sadhanaTitle}>{translate("Today's ritual ·")} {ritualCount}/2</TextR>
             <TextR style={s.sadhanaSub} numberOfLines={2}>
-              {reflectionComplete ? 'Gita reflection complete' : 'Gita reflection pending'}
+              {reflectionComplete ? translate("Gita reflection complete") : translate("Gita reflection pending")}
               {' · '}
-              {breathingComplete ? 'Breathing complete' : 'Breathing pending'}
+              {breathingComplete ? translate("Breathing complete") : translate("Breathing pending")}
             </TextR>
           </View>
         </View>

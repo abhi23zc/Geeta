@@ -1,3 +1,4 @@
+import { useLanguage } from '@/i18n/provider';
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
 import {
@@ -51,7 +52,7 @@ import {
 } from "@/data/gita-verses";
 import { useLocalDateKey } from "@/hooks/use-local-date-key";
 import { replaceAppRoute } from "@/navigation/route-actions";
-import { getAlarmPlaybackState } from "@/services/alarm";
+import { getAlarmPlaybackState, getAlarmPresentationState, requestRitualUnlock, setAlarmRitualScreenAwake } from "@/services/alarm";
 import { useGitaProgress } from "@/state/gita-store";
 import { useRitual } from "@/state/ritual-store";
 import { useContent } from "@/state/content-store";
@@ -130,6 +131,7 @@ function TactileRoundButton({
   style?: any;
   accessibilityLabel?: string;
 }) {
+  const { text: translateText } = useLanguage();
   const pressed = useSharedValue(0);
 
   const animStyle = useAnimatedStyle(() => ({
@@ -163,7 +165,7 @@ function TactileRoundButton({
   return (
     <AnimatedPressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={translateText(accessibilityLabel)}
       onPress={onPress}
       onPressIn={() => {
         pressed.value = 1;
@@ -201,6 +203,7 @@ function SacredShlokaLine({
   isSmall?: boolean;
   isTablet?: boolean;
 }) {
+
   const active = isPlaying && currentMs >= segment.startMs && currentMs < segment.endMs;
   const complete = currentMs >= segment.endMs;
   const focus = useSharedValue(0);
@@ -292,6 +295,7 @@ function MeaningSentenceRow({
   isSmall?: boolean;
   isTablet?: boolean;
 }) {
+
   const active = isPlaying && currentMs >= segment.startMs && currentMs < segment.endMs;
   const complete = currentMs >= segment.endMs;
   const focus = useSharedValue(0);
@@ -356,6 +360,7 @@ function MascotStage({
   isTablet?: boolean;
   animated?: boolean;
 }) {
+  const { t: translate } = useLanguage();
   const auraGlow = useSharedValue(0.55);
 
   useEffect(() => {
@@ -400,8 +405,8 @@ function MascotStage({
 
       {/* Interactive Meditative Mascot */}
       <Pressable
-        accessibilityHint="Shows a short morning blessing"
-        accessibilityLabel="Aru reading the Gita"
+        accessibilityHint={translate("Shows a short morning blessing")}
+        accessibilityLabel={translate("Aru reading the Gita")}
         accessibilityRole="button"
         onPress={onMascotPress}
         style={s.mascotTouch}
@@ -445,14 +450,15 @@ function WordMeaningsTray({
   isSmall?: boolean;
   isTablet?: boolean;
 }) {
+  const { t: translate, text: translateText } = useLanguage();
   return (
     <View style={s.padarthaContainer}>
       <View style={s.padarthaHeaderRow}>
         <View style={s.padarthaBadge}>
           <Sparkles size={isSmall ? 10 : 12} color="#9A3C08" />
-          <TextR style={[s.padarthaKicker, isSmall && { fontSize: 9.5 }]}>PADARTHA · SACRED ROOTS</TextR>
+          <TextR style={[s.padarthaKicker, isSmall && { fontSize: 9.5 }]}>{translate("PADARTHA · SACRED ROOTS")}</TextR>
         </View>
-        <TextR style={[s.padarthaSubtext, isSmall && { fontSize: 9.5 }]}>Tap to reveal depth</TextR>
+        <TextR style={[s.padarthaSubtext, isSmall && { fontSize: 9.5 }]}>{translate("Tap to reveal depth")}</TextR>
       </View>
 
       <View style={s.padarthaChipsRow}>
@@ -460,7 +466,7 @@ function WordMeaningsTray({
           const isSelected = selectedWord?.sanskrit === item.sanskrit;
           return (
             <Pressable
-              accessibilityLabel={`${item.sanskrit}: ${item.meaning}`}
+              accessibilityLabel={translateText(`${item.sanskrit}: ${item.meaning}`)}
               accessibilityRole="button"
               accessibilityState={{ selected: isSelected }}
               key={i}
@@ -503,7 +509,7 @@ function WordMeaningsTray({
           <View style={s.padarthaDetailGlow} />
           <TextR serif style={[s.padarthaDetailWord, isSmall && { fontSize: 14.5 }]}>{selectedWord.sanskrit}</TextR>
           <TextR style={[s.padarthaDetailMeaning, isSmall && { fontSize: 12 }]}>“{selectedWord.meaning}”</TextR>
-          <TextR style={[s.padarthaDetailHint, isSmall && { fontSize: 10 }]}>Reflect on how this applies to your actions today.</TextR>
+          <TextR style={[s.padarthaDetailHint, isSmall && { fontSize: 10 }]}>{translate("Reflect on how this applies to your actions today.")}</TextR>
         </Animated.View>
       )}
     </View>
@@ -512,6 +518,7 @@ function WordMeaningsTray({
 
 // ─── Main Gita Screen ────────────────────────────────────────────────────────
 export default function Gita() {
+  const { t: translate } = useLanguage();
   const { ready } = useGitaProgress();
   const { ready: contentReady } = useContent();
   const currentDate = useLocalDateKey();
@@ -521,7 +528,7 @@ export default function Gita() {
       <Screen>
         <View style={s.loading}>
           <MovingChakra size={32} color={C.saffron} />
-          <TextR style={s.loadingText}>Preparing today’s contemplation…</TextR>
+          <TextR style={s.loadingText}>{translate("Preparing today’s contemplation…")}</TextR>
         </View>
       </Screen>
     );
@@ -530,6 +537,7 @@ export default function Gita() {
 }
 
 function GitaContent({ today }: { today: string }) {
+  const { t: translate, text: translateText } = useLanguage();
   const navigation = useNavigation("/");
   const { entry } = useLocalSearchParams<{ entry?: "alarm" | "manual" }>();
   const { alarmTime } = useRitual();
@@ -563,6 +571,12 @@ function GitaContent({ today }: { today: string }) {
   const autoStartAttempted = useRef(false);
   const manualTabSelection = useRef(false);
   const blessingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playbackIntent = useRef(false);
+  const focusedRef = useRef(false);
+
+  useEffect(() => {
+    if (focused) void setAlarmRitualScreenAwake(!sessionComplete);
+  }, [focused, sessionComplete]);
 
   const segments = narration?.segments ?? EMPTY_SEGMENTS;
   const startMs = segments[0]?.startMs ?? 0;
@@ -570,11 +584,11 @@ function GitaContent({ today }: { today: string }) {
   const currentMs = Math.round(status.currentTime * 1000);
   const isPlaying = Boolean(narration && status.playing);
   const readerLabels = verse.readerLabels ?? {
-    primary: "श्लोक",
-    interpretation: "भावार्थ",
-    glossary: "पदार्थ",
+    primary: translate('Shloka'),
+    interpretation: translate('Meaning'),
+    glossary: translate('Word meanings'),
   };
-  const referenceLabel = verse.referenceLabel ?? `CHAPTER ${verse.chapter} · SHLOKA ${verse.verse}`;
+  const referenceLabel = verse.referenceLabel ?? translate('chapterVerse', { chapter: verse.chapter, verse: verse.verse });
 
   const sanskrit = segments.filter((item) => item.kind === "sanskrit");
   const hindi = segments.filter((item) => item.kind === "meaning");
@@ -586,17 +600,20 @@ function GitaContent({ today }: { today: string }) {
     : [];
 
   const pause = useCallback(() => {
+    playbackIntent.current = false;
     runPlayerCommand(() => player.pause());
   }, [player]);
 
   const startNarration = useCallback(() => {
     if (!narration) return;
+    playbackIntent.current = true;
     runPlayerCommand(() => player.seekTo(startMs / 1000));
     runPlayerCommand(() => player.play());
   }, [narration, player, startMs]);
 
   const playFromStart = useCallback(() => {
     if (!narration) return;
+    autoStartAttempted.current = true;
     setSessionComplete(false);
     manualTabSelection.current = false;
     setViewTab("shloka");
@@ -634,7 +651,9 @@ function GitaContent({ today }: { today: string }) {
   useFocusEffect(
     useCallback(() => {
       setFocused(true);
+      focusedRef.current = true;
       return () => {
+        focusedRef.current = false;
         setFocused(false);
         pause();
       };
@@ -644,6 +663,7 @@ function GitaContent({ today }: { today: string }) {
   useEffect(() => {
     if (
       !focused ||
+      sessionComplete ||
       entry !== "alarm" ||
       !narration ||
       !status.isLoaded ||
@@ -651,19 +671,28 @@ function GitaContent({ today }: { today: string }) {
     ) return;
 
     autoStartAttempted.current = true;
+    let cancelled = false;
+    const startIfVisible = () => {
+      if (!cancelled && focusedRef.current && AppState.currentState === 'active') startNarration();
+    };
     getAlarmPlaybackState()
       .then((alarm) => {
-        if (!alarm.ringing) startNarration();
+        if (!alarm.ringing) startIfVisible();
       })
-      .catch(startNarration);
-  }, [entry, focused, narration, startNarration, status.isLoaded]);
+      .catch(startIfVisible);
+    return () => { cancelled = true; };
+  }, [entry, focused, narration, sessionComplete, startNarration, status.isLoaded]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state !== "active") pause();
+      if (state !== "active") {
+        if (!getAlarmPresentationState().active) playbackIntent.current = false;
+        runPlayerCommand(() => player.pause());
+      }
+      else if (playbackIntent.current && focusedRef.current) runPlayerCommand(() => player.play());
     });
     return () => subscription.remove();
-  }, [pause]);
+  }, [player]);
 
   useEffect(() => {
     if (narration && currentMs >= completionMs && status.playing) {
@@ -683,8 +712,9 @@ function GitaContent({ today }: { today: string }) {
   }, []);
 
   const shareVerse = async () => {
+    if (!(await requestRitualUnlock())) return;
     await Share.share({
-      title: "Today’s Gita · " + verse.chapter + "." + verse.verse,
+      title: translate('Today’s Gita ·') + ' ' + verse.chapter + '.' + verse.verse,
       message:
         verse.sanskrit +
         "\n\n" +
@@ -718,18 +748,18 @@ function GitaContent({ today }: { today: string }) {
           <View style={[s.topAlarmPill, isSmall && { paddingHorizontal: 9, paddingVertical: 4 }]}>
             <Sunrise size={isSmall ? 11 : 13} color="#8A5D18" strokeWidth={2.3} />
             <TextR style={[s.topAlarmText, isSmall && { fontSize: 9.5 }]}>
-              MORNING ALARM RITUAL · {formatAlarmTime(alarmTime)}
+               {translate("MORNING ALARM RITUAL ·")} {formatAlarmTime(alarmTime)}
             </TextR>
           </View>
         </View>
       ) : null}
 
       {/* ─── 1. Sacred Header with Diya Streak Altar ────────────────────────── */}
-      {fallback ? <TextR>Offline practice — today’s download is unavailable.</TextR> : null}
+      {fallback ? <TextR>{translate("Offline practice — today’s download is unavailable.")}</TextR> : null}
       <View style={s.headerRow}>
         <TactileRoundButton
           onPress={exitToHome}
-          accessibilityLabel="Back to Home"
+          accessibilityLabel={translate("Back to Home")}
           size={headerBtnSize}
         >
           <ChevronLeft size={headerIconSize} color={C.ink} />
@@ -759,7 +789,7 @@ function GitaContent({ today }: { today: string }) {
         <View style={[s.headerActions, isSmall && { gap: 5 }]}>
           <TactileRoundButton
             onPress={() => { if (!isBookmarked) void saveTeaching(verse).catch(() => undefined); progressStore.toggleBookmark(verse.id); }}
-            accessibilityLabel={isBookmarked ? "Remove verse bookmark" : "Bookmark verse"}
+            accessibilityLabel={translateText(isBookmarked ? translate("Remove verse bookmark") : translate("Bookmark verse"))}
             size={headerBtnSize}
           >
             <Bookmark
@@ -771,7 +801,7 @@ function GitaContent({ today }: { today: string }) {
 
           <TactileRoundButton
             onPress={shareVerse}
-            accessibilityLabel="Share verse"
+            accessibilityLabel={translate("Share verse")}
             size={headerBtnSize}
           >
             <Share2 size={isSmall ? 14 : 16} color={C.ink} />
@@ -797,12 +827,12 @@ function GitaContent({ today }: { today: string }) {
               <Flower2 size={isSmall ? 11 : 13} color={C.saffron} />
               <TextR style={[s.modePillText, isSmall && { fontSize: 9.5 }, isTablet && { fontSize: 12 }]}>
                 {viewTab === "meaning"
-                  ? "SACRED BHAVARTHA"
+                  ? translate("SACRED BHAVARTHA")
                   : viewTab === "padartha"
-                  ? "WORD-BY-WORD PADARTHA"
+                  ? translate("WORD-BY-WORD PADARTHA")
                   : narration
-                    ? "GUIDED RECITATION"
-                    : "TODAY’S CONTEMPLATION"}
+                    ? translate("GUIDED RECITATION")
+                    : translate("TODAY’S CONTEMPLATION")}
               </TextR>
             </View>
           </View>
@@ -811,8 +841,8 @@ function GitaContent({ today }: { today: string }) {
             <View style={s.textOnlyNotice}>
               <Flower2 size={16} color={C.saffron} />
               <View style={s.textOnlyCopy}>
-                <TextR style={s.textOnlyTitle}>Today’s reading</TextR>
-                <TextR style={s.textOnlyText}>A reviewed recording is not available for this verse yet.</TextR>
+                <TextR style={s.textOnlyTitle}>{translate("Today’s reading")}</TextR>
+                <TextR style={s.textOnlyText}>{translate("A reviewed recording is not available for this verse yet.")}</TextR>
               </View>
             </View>
           ) : null}
@@ -830,7 +860,7 @@ function GitaContent({ today }: { today: string }) {
               {/* Tab Switcher */}
               <View style={[s.cardTabRow, isCompact && { marginBottom: 10 }]}>
                 <Pressable
-                  accessibilityLabel={readerLabels.primary}
+                  accessibilityLabel={translateText(readerLabels.primary)}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: viewTab === "shloka" }}
                   onPress={() => selectTab("shloka")}
@@ -849,7 +879,7 @@ function GitaContent({ today }: { today: string }) {
                 </Pressable>
 
                 <Pressable
-                  accessibilityLabel={readerLabels.interpretation}
+                  accessibilityLabel={translateText(readerLabels.interpretation)}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: viewTab === "meaning" }}
                   onPress={() => selectTab("meaning")}
@@ -868,7 +898,7 @@ function GitaContent({ today }: { today: string }) {
                 </Pressable>
 
                 <Pressable
-                  accessibilityLabel={readerLabels.glossary}
+                  accessibilityLabel={translateText(readerLabels.glossary)}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: viewTab === "padartha" }}
                   onPress={() => selectTab("padartha")}
@@ -973,8 +1003,8 @@ function GitaContent({ today }: { today: string }) {
           </View>
 
           <Pressable
-            accessibilityHint="Marks today’s Gita practice complete and updates your streak"
-            accessibilityLabel="Complete today’s contemplation"
+            accessibilityHint={translate("Marks today’s Gita practice complete and updates your streak")}
+            accessibilityLabel={translate("Complete today’s contemplation")}
             accessibilityRole="button"
             onPress={completePractice}
             style={({ pressed }) => [
@@ -986,8 +1016,7 @@ function GitaContent({ today }: { today: string }) {
           >
             <CheckCircle2 size={isSmall ? 18 : isTablet ? 23 : 20} color={C.white} strokeWidth={2.4} />
             <TextR style={[s.completeButtonText, isSmall && { fontSize: 13.5 }, isTablet && { fontSize: 17 }]}>
-              Complete today’s contemplation
-            </TextR>
+               {translate("Complete today’s contemplation")} </TextR>
           </Pressable>
         </Animated.View>
       ) : (
@@ -1061,8 +1090,7 @@ function GitaContent({ today }: { today: string }) {
               <View style={s.takeawayContent}>
                 <View style={s.takeawayKickerRow}>
                   <TextR style={[s.takeawayKicker, isSmall && { fontSize: 8.5 }, isTablet && { fontSize: 11 }]}>
-                    TODAY’S SANKALPA · ACTION
-                  </TextR>
+                     {translate("TODAY’S SANKALPA · ACTION")} </TextR>
                 </View>
                 <TextR style={[s.takeawayText, isSmall && { fontSize: 12.5, lineHeight: 18 }, isTablet && { fontSize: 16, lineHeight: 23 }]}>
                   {verse.takeaway}
@@ -1073,7 +1101,7 @@ function GitaContent({ today }: { today: string }) {
 
           {narration ? (
             <Pressable
-              accessibilityLabel="Listen to recitation again"
+              accessibilityLabel={translate("Listen to recitation again")}
               accessibilityRole="button"
               onPress={playFromStart}
               style={({ pressed }) => [
@@ -1085,12 +1113,11 @@ function GitaContent({ today }: { today: string }) {
             >
               <RotateCcw size={isSmall ? 13 : isTablet ? 16 : 14.5} color={C.saffron} />
               <TextR style={[s.relistenText, isSmall && { fontSize: 12.5 }, isTablet && { fontSize: 15 }]}>
-                Listen to recitation again
-              </TextR>
+                 {translate("Listen to recitation again")} </TextR>
             </Pressable>
           ) : (
             <Pressable
-              accessibilityLabel="Review today’s verse"
+              accessibilityLabel={translate("Review today’s verse")}
               accessibilityRole="button"
               onPress={() => setSessionComplete(false)}
               style={({ pressed }) => [
@@ -1102,8 +1129,7 @@ function GitaContent({ today }: { today: string }) {
             >
               <RotateCcw size={isSmall ? 13 : isTablet ? 16 : 14.5} color={C.saffron} />
               <TextR style={[s.relistenText, isSmall && { fontSize: 12.5 }, isTablet && { fontSize: 15 }]}>
-                Review today’s verse
-              </TextR>
+                 {translate("Review today’s verse")} </TextR>
             </Pressable>
           )}
         </Animated.View>

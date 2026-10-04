@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, {
+  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -54,7 +55,8 @@ function SpectrumBar({
       heightVal.value = withTiming(6, { duration: 300 });
       opacityVal.value = withTiming(0.4, { duration: 300 });
     }
-  }, [isPlaying]);
+    return () => { cancelAnimation(heightVal); cancelAnimation(opacityVal); };
+  }, [heightVal, index, isPlaying, maxHeight, opacityVal]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     height: heightVal.value,

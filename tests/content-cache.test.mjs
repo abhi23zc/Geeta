@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { Buffer } from 'node:buffer';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { DatabaseSync } from 'node:sqlite';

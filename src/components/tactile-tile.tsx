@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLanguage } from '@/i18n/provider';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, {
@@ -26,6 +27,7 @@ export function TactileTile({
   title,
   badgeText,
 }: TactileTileProps) {
+  const { t } = useLanguage();
   const router = useRouter();
   const pressed = useSharedValue(0);
   const { width } = useWindowDimensions();
@@ -56,7 +58,7 @@ export function TactileTile({
     <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={title}
-      accessibilityHint={`Open ${title}`}
+      accessibilityHint={t('openTask', { title })}
       onPress={() => {
         if (href) router.navigate(href);
       }}
@@ -98,9 +100,6 @@ export function TactileTile({
 
       {/* Title with font scaling and auto-fit */}
       <TextR
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.8}
         style={[
           styles.title,
           { fontSize: titleFontSize, lineHeight: Math.round(titleFontSize * 1.3) },
@@ -215,4 +214,3 @@ const styles = StyleSheet.create({
     color: C.white,
   },
 });
-
