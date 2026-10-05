@@ -444,21 +444,6 @@ export default function Home() {
         </View>
       </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={translate("Open Culture Quiz, 600 offline questions in Hindi and English")}
-        onPress={() => router.navigate('/quiz')}
-        style={({ pressed }) => [s.shlokaCard, pressed && s.cardPressed]}
-      >
-        <View style={s.shlokaHeader}>
-          <BookOpen size={26} color={C.primary} />
-          <TextR style={s.sectionTitle}>{translate("CULTURE QUIZ · संस्कृति क्विज़")}</TextR>
-        </View>
-        <TextR serif style={s.greetingTitle}>{translate("Discover your traditions")}</TextR>
-        <TextR style={s.shlokaEnglish}>{translate("600 प्रश्न · Hindi & English · Fully offline")}</TextR>
-        <TextR style={s.reflectText}>{translate("Learn anytime, or play together with family →")}</TextR>
-      </Pressable>
-
       <View style={s.shlokaCard}>
         <View style={s.contentCachePillRow}>
           <Link href="/downloads" asChild>

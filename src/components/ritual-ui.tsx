@@ -21,6 +21,7 @@ import {
   Flame,
   Sun,
   Moon,
+  Sparkles,
   ChevronLeft,
 } from 'lucide-react-native';
 import { C, R } from '@/constants/ritual-theme';
@@ -428,11 +429,12 @@ export function Header({
   );
 }
 
-type TabHref = '/' | '/today' | '/night';
+type TabHref = '/' | '/today' | '/quiz' | '/night';
 
 const tabs: { href: TabHref; label: string; IconComponent: typeof Flame }[] = [
   { href: '/', label: 'Home', IconComponent: Flame },
   { href: '/today', label: 'Today', IconComponent: Sun },
+  { href: '/quiz', label: 'Quiz', IconComponent: Sparkles },
   { href: '/night', label: 'Night', IconComponent: Moon },
 ];
 

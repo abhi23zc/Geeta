@@ -19,7 +19,7 @@ import { LanguageProvider } from '@/i18n/provider';
 const alarmScreenLayout: NonNullable<React.ComponentProps<typeof Stack>['screenLayout']> =
   ({ children }) => <AlarmNavigationGuard>{children}</AlarmNavigationGuard>;
 
-const TAB_ROUTES = new Set(['/', '/index', '/today', '/night']);
+const TAB_ROUTES = new Set(['/', '/index', '/today', '/quiz', '/quiz/index', '/night']);
 
 function AppChrome() {
   const presentation = useAlarmPresentation();

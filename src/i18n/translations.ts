@@ -52,7 +52,7 @@ export const catalog = {
   'Choose your language': ['अपनी भाषा चुनें', 'Apni language chunein'],
   'Language could not be saved. Please try again.': ['भाषा सेव नहीं हो सकी। फिर प्रयास करें।', 'Language save nahi hui. Phir try karein.'],
   'Recordings and published teachings stay in their available language.': ['रिकॉर्डिंग और प्रकाशित शिक्षाएं अपनी उपलब्ध भाषा में रहेंगी।', 'Recordings aur published teachings apni available language mein rahengi.'],
-  'Home': ['होम', 'Home'], 'Today': ['आज', 'Aaj'], 'Night': ['रात्रि', 'Raat'],
+  'Home': ['होम', 'Home'], 'Today': ['आज', 'Aaj'], 'Quiz': ['क्विज़', 'Quiz'], 'Night': ['रात्रि', 'Raat'],
   'Morning Ritual': ['प्रातः साधना', 'Morning Sadhana'],
   'Cancel': ['रद्द करें', 'Cancel karein'], 'Clear': ['हटाएं', 'Clear karein'],
   'Retry': ['फिर प्रयास करें', 'Phir try karein'], 'Reset': ['रीसेट करें', 'Reset karein'],
