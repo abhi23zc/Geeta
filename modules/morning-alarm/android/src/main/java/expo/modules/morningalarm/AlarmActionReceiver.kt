@@ -3,7 +3,10 @@ package expo.modules.morningalarm
 import android.content.Context
 
 object AlarmController {
-  fun dismiss(context: Context, finishActivity: Boolean = true): Long? {
+  fun dismiss(context: Context, finishActivity: Boolean = true, expectedAt: Long? = null): Long? = synchronized(AlarmScheduler) {
+    val occurrence = AlarmStore.scheduledAt(context)
+    if (!AlarmStore.isRinging(context) || (expectedAt != null && expectedAt != occurrence)) return null
+    val sessionId = AlarmPresentation.state(context)["sessionId"] as? String
     if (!finishActivity) runCatching { RitualRewards.awaken(context) }
       .onFailure { AlarmLog.event("reward_wake_failed", it.javaClass.simpleName) }
     val config = if (AlarmStore.isTest(context)) null else AlarmStore.get(context)?.takeIf { it.enabled && AlarmCapabilities.ready(context) }
@@ -11,14 +14,15 @@ object AlarmController {
     // Update shared state before resolving the JS call so the global route guard
     // cannot bounce a completed alarm back to the wake screen.
     AlarmStore.setRinging(context, false)
-    runCatching { context.startService(AlarmService.stopIntent(context, "start-my-day")) }
+    val reason = if (finishActivity) "notification-stop" else "start-my-day"
+    runCatching { context.startService(AlarmService.stopIntent(context, reason, occurrence)) }
       .onFailure {
         AlarmLog.event("stop_service_request_failed", it.javaClass.simpleName)
         // A stale notification must not start a forbidden background service.
         context.stopService(AlarmService.stopIntent(context, "start-my-day"))
       }
     if (finishActivity) {
-      AlarmPresentation.end(context)
+      AlarmPresentation.end(context, reason, sessionId)
       AlarmActivity.finishVisible()
     }
     AlarmLog.event("dismiss_complete", "next=$next")

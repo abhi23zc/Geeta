@@ -54,7 +54,8 @@ import {
 } from "@/data/gita-verses";
 import { useLocalDateKey } from "@/hooks/use-local-date-key";
 import { replaceAppRoute } from "@/navigation/route-actions";
-import { completeRewardStage, getRewardOccurrence, getAlarmPlaybackState, getAlarmPresentationState, requestRitualUnlock, setAlarmRitualScreenAwake } from "@/services/alarm";
+import { completeRewardStage, getRewardOccurrence, getAlarmPlaybackState, getAlarmPresentationState, getRitualCheckpoint, hasInvalidRitualCheckpoint, saveRitualCheckpoint, requestRitualUnlock, setAlarmRitualScreenAwake } from "@/services/alarm";
+import { advanceListening, canCompleteGita, validNarration, type GitaCheckpoint, type ListeningSample } from '@/services/ritual-checkpoint';
 import { useProgress } from '@/features/progress/provider';
 import { progressTransaction } from '@/features/progress/transactions';
 import { useGitaProgress } from "@/state/gita-store";
@@ -545,6 +546,8 @@ function GitaContent({ today }: { today: string }) {
   const navigation = useNavigation("/");
   const { entry } = useLocalSearchParams<{ entry?: "alarm" | "manual" }>();
   const rewardOccurrence = useRef(getRewardOccurrence());
+  const [sessionId] = useState(() => entry === 'alarm' ? getAlarmPresentationState().sessionId : null);
+  const [restored] = useState(() => { const c = getRitualCheckpoint('gita'); return entry === 'alarm' && c?.stage === 'gita' ? c : null; });
   const { progress: dailyProgress, refresh: refreshRewards } = useProgress();
   const completingReward = useRef(false);
   const { alarmTime } = useRitual();
@@ -556,7 +559,10 @@ function GitaContent({ today }: { today: string }) {
 
   const content = useContent();
   // Freeze this session's revision while the publisher or cache refreshes.
-  const [verse] = useState(() => content.practice);
+  const [verse] = useState(() => {
+    const selected = restored?.verse ?? content.practice;
+    return validNarration(selected.narration) ? selected : { ...selected, narration: undefined };
+  });
   const [fallback] = useState(() => content.fallback);
   useEffect(() => verse.narration?.assetId ? pinContent(verse.narration.assetId) : undefined, [verse]);
   const narration = verse.narration;
@@ -573,13 +579,44 @@ function GitaContent({ today }: { today: string }) {
   const [blessingMessage, setBlessingMessage] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(
-    entry !== 'alarm' && progressStore.completedDates.has(today),
+    restored?.complete ?? (entry !== 'alarm' && progressStore.completedDates.has(today)),
   );
+  const [readingAvailable, setReadingAvailable] = useState(!narration || !!restored?.readingAvailable);
+  const [readingConfirmed, setReadingConfirmed] = useState(!!restored?.readingConfirmed);
+  const [playedThroughMs, setPlayedThroughMs] = useState(restored?.playedThroughMs ?? (narration?.segments[0]?.startMs ?? 0));
+  const [checkpointError, setCheckpointError] = useState(() => hasInvalidRitualCheckpoint('gita') ? 'Saved practice could not be restored. This phase has restarted.' : '');
+  const [pointsPending, setPointsPending] = useState(() => !!restored?.complete && entry === 'alarm' && !getRewardOccurrence()?.test);
+  useEffect(() => {
+    if (restored?.complete && entry === 'alarm' && !rewardOccurrence.current?.test) void refreshRewards().then(ok => setPointsPending(!ok));
+  }, [entry, refreshRewards, restored]);
+  const checkpoint = useRef<GitaCheckpoint | null>(null);
+  const previousSample = useRef<ListeningSample | null>(null);
+  const latestPosition = useRef(restored?.positionMs ?? 0);
+  const latestThrough = useRef(restored?.playedThroughMs ?? (narration?.segments[0]?.startMs ?? 0));
+  const lastMovement = useRef(0);
+  useEffect(() => { lastMovement.current = Date.now(); }, []);
+  const restoredPosition = useRef(restored ? Math.min(restored.positionMs, restored.playedThroughMs) : null);
+  const commandGeneration = useRef(0);
+  const persist = useCallback(async (override?: Partial<GitaCheckpoint>) => {
+    if (checkpoint.current) await saveRitualCheckpoint({ ...checkpoint.current, positionMs: latestPosition.current, playedThroughMs: latestThrough.current, ...override });
+  }, []);
   const autoStartAttempted = useRef(false);
   const manualTabSelection = useRef(false);
   const blessingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playbackIntent = useRef(false);
   const focusedRef = useRef(false);
+  useEffect(() => {
+    checkpoint.current = sessionId ? { version: 1, sessionId, stage: 'gita', verse, positionMs: latestPosition.current, playedThroughMs: latestThrough.current,
+      completionMs: narration?.completionMs ?? 0, readingAvailable, readingConfirmed, complete: sessionComplete, paused: !playbackIntent.current } : null;
+    if (sessionId) void persist().then(() => setCheckpointError(error => error === 'Could not save ritual progress. Please retry.' ? '' : error)).catch(() => setCheckpointError('Could not save ritual progress. Please retry.'));
+  }, [narration, persist, readingAvailable, readingConfirmed, sessionComplete, sessionId, verse]);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (sessionId && focusedRef.current && AppState.currentState === 'active') void persist().then(() => setCheckpointError(error => error === 'Could not save ritual progress. Please retry.' ? '' : error)).catch(() => setCheckpointError('Could not save ritual progress. Please retry.'));
+      if (narration && !sessionComplete && (!status.isLoaded || playbackIntent.current) && Date.now() - lastMovement.current > 15000) setReadingAvailable(true);
+    }, 5000);
+    return () => { clearInterval(timer); void persist({ paused: true }).catch(() => undefined); };
+  }, [narration, persist, sessionComplete, sessionId, status.isLoaded]);
 
   useEffect(() => {
     if (focused) void setAlarmRitualScreenAwake(!sessionComplete);
@@ -607,21 +644,46 @@ function GitaContent({ today }: { today: string }) {
     : [];
 
   const pause = useCallback(() => {
+    commandGeneration.current++;
     playbackIntent.current = false;
+    previousSample.current = null;
     runPlayerCommand(() => player.pause());
-  }, [player]);
+    void persist({ paused: true }).catch(() => setCheckpointError('Could not save ritual progress. Please retry.'));
+  }, [persist, player]);
 
   const startNarration = useCallback(() => {
     if (!narration) return;
+    const command = ++commandGeneration.current;
     playbackIntent.current = true;
-    runPlayerCommand(() => player.seekTo(startMs / 1000));
-    runPlayerCommand(() => player.play());
+    lastMovement.current = Date.now();
+    previousSample.current = null;
+    void player.seekTo(startMs / 1000).then(() => {
+      if (command !== commandGeneration.current || !focusedRef.current || AppState.currentState !== 'active') return;
+      latestPosition.current = startMs;
+      player.play();
+    }).catch(() => { playbackIntent.current = false; setReadingAvailable(true); });
   }, [narration, player, startMs]);
+  const resumeNarration = useCallback(() => {
+    if (!narration || !focusedRef.current || AppState.currentState !== 'active') return;
+    const command = ++commandGeneration.current;
+    playbackIntent.current = true;
+    previousSample.current = null;
+    lastMovement.current = Date.now();
+    const position = restoredPosition.current;
+    const seek = position == null ? Promise.resolve() : player.seekTo(position / 1000);
+    void seek.then(() => {
+      if (command !== commandGeneration.current || !focusedRef.current || AppState.currentState !== 'active') return;
+      restoredPosition.current = null;
+      player.play();
+    }).catch(() => { playbackIntent.current = false; setReadingAvailable(true); });
+  }, [narration, player]);
 
   const playFromStart = useCallback(() => {
     if (!narration) return;
     autoStartAttempted.current = true;
     setSessionComplete(false);
+    setReadingAvailable(false);
+    setReadingConfirmed(false);
     manualTabSelection.current = false;
     setViewTab("shloka");
     startNarration();
@@ -633,22 +695,25 @@ function GitaContent({ today }: { today: string }) {
   }, []);
 
   const completePractice = useCallback(async () => {
-    if (completingReward.current) return;
+    if (completingReward.current || !focusedRef.current || !canCompleteGita(latestThrough.current, completionMs, readingAvailable && readingConfirmed)) return;
+    if (sessionId && (getAlarmPresentationState().sessionId !== sessionId || getAlarmPresentationState().stage !== 'gita')) return;
     completingReward.current = true;
     pause();
     try {
+      await persist({ readingAvailable, readingConfirmed, paused: true, complete: false });
       const occurrence = rewardOccurrence.current;
       if (entry === 'alarm' && occurrence?.id && !occurrence.test) {
         const saved = await progressTransaction(() => completeRewardStage(occurrence.id!, 'gita'));
         if (!saved) throw new Error('Ritual receipt unavailable');
-        await refreshRewards();
+        setPointsPending(!(await refreshRewards()));
       }
       progressStore.completeDailyPractice(localDateKey(), verse.id);
       setSessionComplete(true);
+      await persist({ readingAvailable, readingConfirmed, paused: true, complete: true });
     } catch {
       Alert.alert(translate('Progress'), translate('Could not save ritual progress. Please retry.'));
     } finally { completingReward.current = false; }
-  }, [entry, pause, progressStore, refreshRewards, translate, verse.id]);
+  }, [completionMs, entry, pause, persist, progressStore, readingAvailable, readingConfirmed, refreshRewards, sessionId, translate, verse.id]);
 
   const exitToHome = useCallback(() => {
     pause();
@@ -686,6 +751,7 @@ function GitaContent({ today }: { today: string }) {
       entry !== "alarm" ||
       !narration ||
       !status.isLoaded ||
+      restored ||
       autoStartAttempted.current
     ) return;
 
@@ -700,25 +766,37 @@ function GitaContent({ today }: { today: string }) {
       })
       .catch(startIfVisible);
     return () => { cancelled = true; };
-  }, [entry, focused, narration, sessionComplete, startNarration, status.isLoaded]);
+  }, [entry, focused, narration, restored, sessionComplete, startNarration, status.isLoaded]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
       if (state !== "active") {
+        commandGeneration.current++;
+        previousSample.current = null;
+        void persist({ paused: !playbackIntent.current }).catch(() => setCheckpointError('Could not save ritual progress. Please retry.'));
         if (!getAlarmPresentationState().active) playbackIntent.current = false;
         runPlayerCommand(() => player.pause());
       }
-      else if (playbackIntent.current && focusedRef.current) runPlayerCommand(() => player.play());
+      else if (playbackIntent.current && focusedRef.current) resumeNarration();
     });
     return () => subscription.remove();
-  }, [player]);
+  }, [persist, player, resumeNarration]);
 
   useEffect(() => {
-    if (narration && currentMs >= completionMs && status.playing) {
+    if (!narration || sessionComplete) return;
+    const sample = { positionMs: currentMs, now: Date.now(), playing: status.playing && !status.isBuffering, visible: focusedRef.current && AppState.currentState === 'active' };
+    if (currentMs !== latestPosition.current) lastMovement.current = sample.now;
+    latestPosition.current = Math.min(currentMs, completionMs);
+    const through = advanceListening(latestThrough.current, previousSample.current, sample, completionMs);
+    latestThrough.current = through;
+    previousSample.current = sample;
+    setPlayedThroughMs(through);
+    if (status.isLoaded && status.duration > 0 && status.duration * 1000 < completionMs - 150) setReadingAvailable(true);
+    if (currentMs >= completionMs && status.playing) {
       pause();
       runPlayerCommand(() => player.seekTo(completionMs / 1000));
     }
-  }, [completionMs, currentMs, narration, pause, player, status.playing]);
+  }, [completionMs, currentMs, narration, pause, player, readingAvailable, sessionComplete, status.duration, status.isBuffering, status.isLoaded, status.playing]);
 
   useEffect(() => {
     if (!narration || !isPlaying || manualTabSelection.current) return;
@@ -732,6 +810,7 @@ function GitaContent({ today }: { today: string }) {
 
   const shareVerse = async () => {
     if (!(await requestRitualUnlock())) return;
+    if (!navigation.isFocused() || (sessionId && (getAlarmPresentationState().sessionId !== sessionId || getAlarmPresentationState().stage !== 'gita'))) return;
     await Share.share({
       title: translate('Today’s Gita ·') + ' ' + verse.chapter + '.' + verse.verse,
       message:
@@ -762,6 +841,8 @@ function GitaContent({ today }: { today: string }) {
 
   return (
     <Screen contentContainerStyle={[s.screenContent, { paddingBottom: isCompact ? 46 : 60 }]}>
+      {checkpointError ? <Pressable accessibilityRole="button" onPress={() => { void persist().then(() => setCheckpointError('')).catch(() => setCheckpointError('Could not save ritual progress. Please retry.')); }}><TextR accessibilityRole="alert">{translateText(checkpointError)}</TextR></Pressable> : null}
+      {pointsPending ? <Pressable accessibilityRole="button" onPress={() => { void refreshRewards().then(ok => setPointsPending(!ok)); }} style={{ padding: 12 }}><TextR accessibilityRole="alert">{translate('Practice completed; points pending. Tap to retry.')}</TextR></Pressable> : null}
       {entry === "alarm" ? (
         <View style={s.topAlarmRow}>
           <View style={[s.topAlarmPill, isSmall && { paddingHorizontal: 9, paddingVertical: 4 }]}>
@@ -865,6 +946,14 @@ function GitaContent({ today }: { today: string }) {
               </View>
             </View>
           ) : null}
+          {narration ? <View style={s.recoveryActions}>
+            <Pressable accessibilityRole="button" onPress={isPlaying ? pause : resumeNarration} style={s.recoveryButton}><TextR>{translate(isPlaying ? 'Pause practice' : 'Resume practice')}</TextR></Pressable>
+            <Pressable accessibilityRole="button" onPress={playFromStart} style={s.recoveryButton}><TextR>{translate('Retry narration')}</TextR></Pressable>
+          </View> : null}
+          {readingAvailable ? <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: readingConfirmed }} onPress={() => setReadingConfirmed(value => !value)} style={[s.recoveryButton, readingConfirmed && { borderColor: C.greenDark }]}>
+            <TextR>{translate(narration ? 'Audio is unavailable. You can retry or complete after reading.' : 'Complete after reading')}</TextR>
+            <TextR>{translate(readingConfirmed ? 'Reading confirmed' : 'I have read and reflected on this teaching')}</TextR>
+          </Pressable> : null}
 
           {/* ─── 3. Unified Sacred Shloka Sanctum ───────────────────────────── */}
           <View style={[s.shlokaCardWrapper, isCompact && { marginBottom: 10 }]}>
@@ -1022,12 +1111,15 @@ function GitaContent({ today }: { today: string }) {
           </View>
 
           <Pressable
-            accessibilityHint={translate('Marks Gita practice complete. Daily points also require an alarm-led ritual and quiz.')}
+            accessibilityHint={translate('Finish the narration or confirm offline reading. An alarm-led ritual earns 10 points once daily.')}
             accessibilityLabel={translate("Complete today’s contemplation")}
             accessibilityRole="button"
+            accessibilityState={{ disabled: !canCompleteGita(playedThroughMs, completionMs, readingAvailable && readingConfirmed) }}
+            disabled={!canCompleteGita(playedThroughMs, completionMs, readingAvailable && readingConfirmed)}
             onPress={completePractice}
             style={({ pressed }) => [
               s.completeButton,
+              !canCompleteGita(playedThroughMs, completionMs, readingAvailable && readingConfirmed) && { opacity: 0.5 },
               isSmall && { minHeight: 48, borderRadius: 24 },
               isTablet && { minHeight: 62, borderRadius: 31 },
               pressed && s.completeButtonPressed,
@@ -1035,7 +1127,7 @@ function GitaContent({ today }: { today: string }) {
           >
             <CheckCircle2 size={isSmall ? 18 : isTablet ? 23 : 20} color={C.white} strokeWidth={2.4} />
             <TextR style={[s.completeButtonText, isSmall && { fontSize: 13.5 }, isTablet && { fontSize: 17 }]}>
-               {translate("Complete today’s contemplation")} </TextR>
+               {translate(canCompleteGita(playedThroughMs, completionMs, readingAvailable && readingConfirmed) ? "Complete today’s contemplation" : 'Finish narration to complete')} </TextR>
           </Pressable>
         </Animated.View>
       ) : (
@@ -1159,6 +1251,8 @@ function GitaContent({ today }: { today: string }) {
 
 // ─── Stylesheet ───────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
+  recoveryActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginVertical: 8 },
+  recoveryButton: { minHeight: 44, padding: 12, borderRadius: 14, backgroundColor: C.sand, borderWidth: 1, borderColor: C.hairline, justifyContent: 'center', flexShrink: 1 },
   screenContent: {
     paddingBottom: 36,
     maxWidth: 600,

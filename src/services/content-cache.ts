@@ -5,7 +5,7 @@ import * as Network from 'expo-network';
 import { Platform } from 'react-native';
 import { dateWindow, MB, parseWindow, toneKey, type AudioAsset, type ContentWindow, type PublishedPractice } from '../../shared/content';
 import { localDateKey, type GitaVerse } from '@/data/gita-verses';
-import { getNativeAlarmConfig, hashContentFile, installAlarmTone } from './alarm';
+import { getNativeAlarmConfig, getRitualCheckpoint, hashContentFile, installAlarmTone } from './alarm';
 
 export type CacheSnapshot = { days: Record<string, GitaVerse>; saved: GitaVerse[]; alarms: ContentWindow['alarms']; installedKey?: string; installedRevision?: string; wifiOnly: boolean; bytes: number; lastSync: number; error: string | null; syncing: boolean; progress: string; configured: boolean };
 type DayRow = { date: string; json: string; asset: string };
@@ -144,6 +144,8 @@ async function cleanup(start: string) {
   const fallback = !rows.some(r => r.date === start) ? rows.find(r => r.date < start) : undefined;
   for (const row of rows) if (!dates.includes(row.date) && row.date !== fallback?.date && !pins.has(row.asset) && !persistentPins.has(row.asset)) await d.runAsync('DELETE FROM days WHERE date=?', row.date);
   const keep = new Set((await d.getAllAsync<DayRow>('SELECT * FROM days')).map(r => r.asset));
+  const ritual = getRitualCheckpoint('gita');
+  if (ritual?.stage === 'gita' && ritual.verse.narration?.assetId) keep.add(ritual.verse.narration.assetId);
   const selected = toneKey((await getNativeAlarmConfig())?.tone.key ?? 'gita');
   const alarms = JSON.parse(await setting('alarms', '[]')) as ContentWindow['alarms'];
   const alarm = alarms.find(a => a.key === selected); if (alarm) keep.add(alarm.asset.id);
@@ -277,6 +279,8 @@ export async function clearContentDownloads() {
   if (!result.changes) throw new Error('A background refresh is running. Try again shortly.');
   try {
     const persistentPins = new Set((await d.getAllAsync<{ asset: string }>('SELECT asset FROM playback_pins WHERE expires>?', Date.now())).map(p => p.asset));
+    const ritual = getRitualCheckpoint('gita');
+    if (ritual?.stage === 'gita' && ritual.verse.narration?.assetId) persistentPins.add(ritual.verse.narration.assetId);
     for (const a of await d.getAllAsync<AssetRow>('SELECT * FROM assets')) {
       if (pins.has(a.id) || persistentPins.has(a.id)) continue;
       await d.runAsync('DELETE FROM days WHERE asset=?', a.id);

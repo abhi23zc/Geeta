@@ -1,5 +1,7 @@
 # Android alarm compatibility
 
+See [alarm reliability and recovery](alarm-reliability.md) for the current implementation and pending release acceptance matrix. Historical results below apply to the explicitly identified older APK.
+
 Android is the supported alarm platform. Expo SDK 57 targets API 36 and supports API 24+ (Android 7). The alarm module and app enable core library desugaring so `java.time` works on API 24–25. `plugins/with-alarm-desugaring.js` preserves this configuration on prebuild.
 
 Required: notifications, a High importance alarm channel, and exact alarm access. Full-screen access is optional; Android decides whether to display a full-screen intent. Background restriction and battery exemption are separate inspectable values. Manufacturer settings are advisory and only marked User confirmed after individual confirmation. Opening Settings never changes readiness by itself.
@@ -46,3 +48,5 @@ For each available release device:
 9. Force stop separately: no alarm is promised until the app is reopened. No alarm is promised while the phone is powered off. Do not reboot or alter clock, Doze, or permission state on a personal phone without arranging a test session.
 
 References: [Expo SDK 57](https://docs.expo.dev/versions/v57.0.0/), [Android alarms](https://developer.android.com/develop/background-work/services/alarms), [full-screen limits](https://source.android.com/docs/core/permissions/fsi-limits), [Doze guidance](https://developer.android.com/training/monitoring-device-state/doze-standby).
+
+Current session-bound startup implementation and APK/device acceptance status: [2026-10-07 release validation](alarm-startup-release-validation.md).

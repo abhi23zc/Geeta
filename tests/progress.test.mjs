@@ -261,7 +261,7 @@ test('timezone changes before any award rebase legacy flags without backfilling 
 
 test('UI derives earned points from ledger and distinguishes activity completion from awards', async () => {
   const card = await readFile(new URL('../src/features/progress/daily-goal-card.tsx', import.meta.url), 'utf8');
-  assert.match(card, /activityPoints\(p, today, 'quiz'\)/); assert.match(card, /activityPoints\(p, today, 'ritual'\)/);
+  assert.match(card, /activityPoints\(p, today, ['"]quiz['"]\)/); assert.match(card, /activityPoints\(p, today, ['"]ritual['"]\)/);
   assert.doesNotMatch(card, /Daily goal complete: \+20 points\./);
   const home = await readFile(new URL('../src/app/quiz/index.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(home, /Double Lotus Coins/);

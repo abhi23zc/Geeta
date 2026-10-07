@@ -40,7 +40,7 @@ test('prebuild adds the single-host lifecycle hooks without replacing the React 
   const original = 'import android.os.Bundle\nclass MainActivity : ReactActivity() {\n override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(null) }\n override fun createReactActivityDelegate() = ReactActivityDelegateWrapper()\n}';
   const result = transformMainActivity(original, 'kt');
   assert.ok(result.indexOf('setIntent(intent)') < result.indexOf('super.onNewIntent(intent)'));
-  assert.ok(result.indexOf('AlarmPresentation.prepare(this, intent)', result.indexOf('override fun onCreate')) < result.indexOf('super.onCreate(null)'));
+  assert.ok(result.indexOf('AlarmPresentation.prepare(this, intent, created = true)', result.indexOf('override fun onCreate')) < result.indexOf('super.onCreate(null)'));
   assert.match(result, /AlarmPresentation.attach\(this\)/);
   assert.match(result, /AlarmPresentation.detach\(this\)/);
   assert.match(result, /createReactActivityDelegate\(\) = ReactActivityDelegateWrapper\(\)/);

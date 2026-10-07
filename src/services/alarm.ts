@@ -4,6 +4,7 @@ import { NativeModule, requireOptionalNativeModule } from "expo-modules-core";
 import { Platform } from "react-native";
 import { toneKey } from "../../shared/content";
 import { translateText } from '@/i18n/translations';
+import { parseRitualCheckpoint, type RitualCheckpoint } from './ritual-checkpoint';
 
 export const ALARM_CHANNEL_ID = "morning-ritual-native-alarm-v3";
 const MIGRATION_KEY = "morning-ritual:native-alarm-migrated-v3";
@@ -75,6 +76,9 @@ export type AlarmHomeSnapshot = {
   config: NativeAlarmConfig | null;
   capabilities: AlarmCapabilityStatus;
   scheduled: boolean;
+  scheduleStatus?: 'scheduled' | 'disabled' | 'needs-access' | 'failed' | 'unknown';
+  scheduledAt?: number;
+  scheduleError?: string | null;
 };
 
 export type SettingsDestination = { destination: string; fallback: boolean };
@@ -82,15 +86,24 @@ export type SettingsDestination = { destination: string; fallback: boolean };
 type AlarmEvents = {
   alarmPresentationChanged(state: AlarmPresentationState): void;
   alarmTriggered(state: AlarmPlaybackState): void;
-  alarmStopped(event: { reason: string }): void;
+  alarmStopped(event: { reason: string; sessionId?: string }): void;
 };
 
 declare class MorningAlarmNativeModule extends NativeModule<AlarmEvents> {
   setAppLanguage(language: string): Promise<void>;
+  recordNavigationState?(route: string, top: string, focused: boolean, owned: boolean, foreground: boolean): Promise<void>;
   getPresentationState(): AlarmPresentationState;
+  getAlarmStartupState?(): AlarmStartupState;
+  acknowledgeRitualScreen?(identity: RitualPresentationIdentity): Promise<{ accepted: boolean; reason: string | null }>;
   setRitualStage(stage: AlarmRitualStage): Promise<void>;
+  advanceRitualStage?(id: string, stage: AlarmRitualStage): Promise<void>;
+  getRitualCheckpoint?(stage: string): string | null;
+  saveRitualCheckpoint?(id: string, stage: string, raw: string): Promise<boolean>;
+  dismissRitualOccurrence?(id: string): Promise<number | null>;
+  getHomeSnapshot?(): Promise<Omit<AlarmHomeSnapshot, 'available' | 'scheduled'>>;
   notifyRitualScreenReady(route: string): Promise<void>;
   endRitualPresentation(): Promise<void>;
+  endRitualOccurrence?(id: string): Promise<void>;
   setRitualScreenAwake(awake: boolean): Promise<void>;
   requestRitualUnlock(): Promise<boolean>;
   hashContentFile(uri: string): Promise<string>;
@@ -136,16 +149,51 @@ export async function setNativeAppLanguage(language: 'en' | 'hi' | 'hinglish') {
 }
 
 export type AlarmRitualStage = 'wake' | 'breathe' | 'gita';
-export type AlarmPresentationState = { active: boolean; locked: boolean; stage: AlarmRitualStage | null; loading: boolean };
+export type RitualPresentationIdentity = { sessionId: string; stage: AlarmRitualStage; hostGeneration: number; coverGeneration: number };
+export type AlarmStartupState = AlarmPresentationState & { validRitualIntent: boolean; language: 'en' | 'hi' | 'hinglish'; userUnlocked: boolean };
+export type AlarmPresentationState = { status: 'loading' | 'ready' | 'recovery' | 'inactive'; hostGeneration: number; coverGeneration: number; active: boolean; locked: boolean; stage: AlarmRitualStage | null; loading: boolean; sessionId?: string | null; terminationReason?: string | null };
 export function getAlarmPresentationState(): AlarmPresentationState {
-  return NativeAlarm?.getPresentationState?.() ?? { active: false, locked: false, stage: null, loading: false };
+  return NativeAlarm?.getPresentationState?.() ?? { active: false, locked: false, stage: null, loading: false, status: 'inactive', hostGeneration: 0, coverGeneration: 0 };
+}
+export function getAlarmStartupState(): AlarmStartupState {
+  return NativeAlarm?.getAlarmStartupState?.() ?? { ...getAlarmPresentationState(), validRitualIntent: false, language: 'en', userUnlocked: true };
+}
+export async function acknowledgeRitualScreen(identity: RitualPresentationIdentity) {
+  return await NativeAlarm?.acknowledgeRitualScreen?.(identity) ?? { accepted: false, reason: 'unsupported' };
+}
+export async function recordAlarmNavigationState(route: string, top: string, focused: boolean, owned: boolean, foreground: boolean) {
+  await NativeAlarm?.recordNavigationState?.(route, top, focused, owned, foreground);
 }
 export function addAlarmPresentationListener(listener: (state: AlarmPresentationState) => void) {
   return NativeAlarm?.addListener('alarmPresentationChanged', listener);
 }
-export async function setAlarmRitualStage(stage: AlarmRitualStage) { await NativeAlarm?.setRitualStage?.(stage); }
+export async function setAlarmRitualStage(stage: AlarmRitualStage, id?: string) {
+  if (id) {
+    if (!NativeAlarm?.advanceRitualStage) throw new Error('Update the Android app to restore ritual progress.');
+    await NativeAlarm.advanceRitualStage(id, stage);
+  } else await NativeAlarm?.setRitualStage?.(stage);
+}
+export function getRitualCheckpoint(stage: RitualCheckpoint['stage']) {
+  const state = getAlarmPresentationState();
+  return parseRitualCheckpoint(NativeAlarm?.getRitualCheckpoint?.(stage) ?? null, state.sessionId, stage);
+}
+export function hasInvalidRitualCheckpoint(stage: RitualCheckpoint['stage']) {
+  return !!NativeAlarm?.getRitualCheckpoint?.(stage) && !getRitualCheckpoint(stage);
+}
+let checkpointTail: Promise<unknown> = Promise.resolve();
+export function saveRitualCheckpoint(checkpoint: RitualCheckpoint): Promise<void> {
+  const raw = JSON.stringify(checkpoint);
+  const save = checkpointTail.then(async () => {
+    if (!NativeAlarm?.saveRitualCheckpoint || !(await NativeAlarm.saveRitualCheckpoint(checkpoint.sessionId, checkpoint.stage, raw))) throw new Error('Could not save ritual progress. Please retry.');
+  });
+  checkpointTail = save.catch(() => undefined);
+  return save;
+}
 export async function notifyRitualScreenReady(route: string) { await NativeAlarm?.notifyRitualScreenReady?.(route); }
-export async function endAlarmRitual() { await NativeAlarm?.endRitualPresentation?.(); }
+export async function endAlarmRitual(id?: string) {
+  if (id && NativeAlarm?.endRitualOccurrence) await NativeAlarm.endRitualOccurrence(id);
+  else if (!id || getAlarmPresentationState().sessionId === id) await NativeAlarm?.endRitualPresentation?.();
+}
 export async function setAlarmRitualScreenAwake(awake: boolean) { await NativeAlarm?.setRitualScreenAwake?.(awake); }
 export async function requestRitualUnlock() { return NativeAlarm?.requestRitualUnlock ? NativeAlarm.requestRitualUnlock() : true; }
 
@@ -224,12 +272,17 @@ export async function scheduleRecurringAlarm({
     gradualVolume: gradualVolume ?? existing?.gradualVolume ?? true,
     vibration: vibration ?? existing?.vibration ?? true,
   });
-  return { ...result, capabilities: await NativeAlarm.getCapabilityStatus() };
+  const snapshot = await getAlarmHomeSnapshot();
+  return { ...result, scheduled: snapshot.scheduled, scheduledAt: snapshot.scheduledAt, scheduleStatus: snapshot.scheduleStatus, scheduleError: snapshot.scheduleError, capabilities: snapshot.capabilities };
 }
 
 export async function cancelScheduledAlarm() { await NativeAlarm?.cancel(); }
-export async function dismissAlarmAndScheduleNext() {
+export async function dismissAlarmAndScheduleNext(sessionId?: string) {
   if (!NativeAlarm) throw new Error("Native alarm service is unavailable.");
+  if (sessionId) {
+    if (!NativeAlarm.dismissRitualOccurrence) throw new Error('Update the Android app to restore ritual progress.');
+    return NativeAlarm.dismissRitualOccurrence(sessionId);
+  }
   return NativeAlarm.dismissAndScheduleNext();
 }
 export async function getNativeAlarmConfig() { return NativeAlarm?.getConfig() ?? null; }
@@ -262,6 +315,11 @@ export async function getAlarmHomeSnapshot(): Promise<AlarmHomeSnapshot> {
     };
   }
 
+  if (NativeAlarm.getHomeSnapshot) {
+    const snapshot = await NativeAlarm.getHomeSnapshot();
+    return { ...snapshot, available: true, scheduled: snapshot.scheduleStatus === 'scheduled' && !!snapshot.config?.enabled && snapshot.capabilities.exactAlarm && snapshot.capabilities.notifications && snapshot.capabilities.notificationChannelReady };
+  }
+
   const [config, capabilities] = await Promise.all([
     NativeAlarm.getConfig(),
     NativeAlarm.getCapabilityStatus(),
@@ -270,7 +328,8 @@ export async function getAlarmHomeSnapshot(): Promise<AlarmHomeSnapshot> {
     available: true,
     config,
     capabilities,
-    scheduled: Boolean(config?.enabled && capabilities.exactAlarm && capabilities.notifications && capabilities.notificationChannelReady),
+    scheduleStatus: 'unknown',
+    scheduled: false,
   };
 }
 export async function openExactAlarmSettings() { return NativeAlarm?.openExactAlarmSettings(); }
@@ -285,7 +344,7 @@ export async function openBatterySettings() { return NativeAlarm?.openBatterySet
 export function addAlarmTriggeredListener(listener: (state: AlarmPlaybackState) => void) {
   return NativeAlarm?.addListener("alarmTriggered", listener);
 }
-export function addAlarmStoppedListener(listener: (event: { reason: string }) => void) {
+export function addAlarmStoppedListener(listener: (event: { reason: string; sessionId?: string }) => void) {
   return NativeAlarm?.addListener("alarmStopped", listener);
 }
 

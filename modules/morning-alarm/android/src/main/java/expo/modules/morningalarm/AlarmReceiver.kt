@@ -7,6 +7,7 @@ import android.os.Build
 
 class AlarmReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
+    synchronized(AlarmScheduler) {
     AlarmLog.initialize(context)
     AlarmLog.event("receiver_fired")
     val test = intent.getBooleanExtra("test", false)
@@ -23,7 +24,7 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 
     val scheduledAt = intent.getLongExtra(AlarmScheduler.EXTRA_SCHEDULED_AT, System.currentTimeMillis())
-    val service = AlarmService.startIntent(context, scheduledAt).putExtra("test", test)
+    val service = AlarmService.startIntent(context, scheduledAt).putExtra("test", test).putExtra(AlarmScheduler.EXTRA_REVISION, config.revision)
     runCatching {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(service)
       else context.startService(service)
@@ -33,5 +34,6 @@ class AlarmReceiver : BroadcastReceiver() {
     // Tests have independent scheduling identifiers and never create a recurrence.
     if (!test) runCatching { AlarmScheduler.scheduleNext(context, config) }
       .onFailure { AlarmLog.event("reschedule_failed", it.javaClass.simpleName) }
+    }
   }
 }

@@ -6,9 +6,10 @@ import {
   Sun,
   Sunrise,
 } from "lucide-react-native";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  AppState,
   BackHandler,
   Pressable,
   StyleSheet,
@@ -35,6 +36,7 @@ import {
   addAlarmTriggeredListener,
   dismissAlarmAndScheduleNext,
   getAlarmPlaybackState,
+  getAlarmPresentationState,
   notifyWakeScreenReady,
   setAlarmRitualStage,
   type AlarmPlaybackState,
@@ -84,6 +86,16 @@ export default function Wake() {
 
   // Animated Hold Progress (0 to 1)
   const holdProgress = useSharedValue(0);
+  const session = useRef(getAlarmPresentationState().sessionId);
+  const cancelHold = useCallback(() => {
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    holdTimerRef.current = null;
+    hapticPulseTimersRef.current.forEach(clearTimeout);
+    hapticPulseTimersRef.current = [];
+    cancelAnimation(holdProgress);
+    holdProgress.set(0);
+    if (mounted.current) setIsHolding(false);
+  }, [holdProgress]);
 
   useEffect(() => {
     mounted.current = true;
@@ -91,22 +103,34 @@ export default function Wake() {
     refresh();
     const timer = setInterval(refresh, 1_000);
     const triggered = addAlarmTriggeredListener(setPlayback);
-    const stopped = addAlarmStoppedListener(() =>
-      setPlayback((state) => ({ ...state, ringing: false })),
-    );
-    const back = BackHandler.addEventListener("hardwareBackPress", () => true);
+    const stopped = addAlarmStoppedListener(event => {
+      if (event.sessionId && event.sessionId !== session.current) return;
+      cancelHold();
+      setPlayback(state => ({ ...state, ringing: false }));
+      if (event.reason === 'notification-stop' || event.reason === 'timeout') {
+        if (navigation.isFocused()) replaceAppRoute(navigation, '/');
+      }
+    });
+    const foreground = AppState.addEventListener('change', state => { if (state !== 'active') cancelHold(); });
+    const blur = navigation.addListener('blur', cancelHold);
+    const back = BackHandler.addEventListener("hardwareBackPress", () => getAlarmPresentationState().active);
     return () => {
       clearInterval(timer);
       mounted.current = false;
+      cancelHold();
       triggered?.remove();
       stopped?.remove();
       back.remove();
+      foreground.remove();
+      blur();
       hapticPulseTimersRef.current.forEach(clearTimeout);
     };
-  }, []);
+  }, [cancelHold, navigation]);
 
   const handleStartDay = async () => {
     if (dismissing.current) return;
+    const state = getAlarmPresentationState();
+    if (!mounted.current || !navigation.isFocused() || AppState.currentState !== 'active' || !state.active || state.stage !== 'wake' || state.sessionId !== session.current) return;
 
     dismissing.current = true;
     setStarted(true);
@@ -116,8 +140,8 @@ export default function Wake() {
     } catch {}
 
     try {
-      await dismissAlarmAndScheduleNext();
-      await setAlarmRitualStage('breathe');
+      await dismissAlarmAndScheduleNext(session.current ?? undefined);
+      await setAlarmRitualStage('breathe', session.current ?? undefined);
       if (!mounted.current) return;
       if (!replaceAppRoute(navigation, "/breathe", { entry: "alarm" })) {
         throw new Error(translate("The breathing screen is not ready. Please try again."));
@@ -135,6 +159,7 @@ export default function Wake() {
 
   const onPressIn = () => {
     if (started || dismissing.current) return;
+    cancelHold();
     setIsHolding(true);
 
     // Initial tactile engagement
@@ -142,10 +167,10 @@ export default function Wake() {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch {}
 
-    holdProgress.value = withTiming(1, {
+    holdProgress.set(withTiming(1, {
       duration: HOLD_DURATION_MS,
       easing: Easing.linear,
-    });
+    }));
 
     // Rhythmic charging haptic pulses at 500ms and 1000ms
     hapticPulseTimersRef.current.forEach(clearTimeout);
@@ -184,7 +209,7 @@ export default function Wake() {
     } catch {}
 
     cancelAnimation(holdProgress);
-    holdProgress.value = withSpring(0, { damping: 15, stiffness: 220 });
+    holdProgress.set(withSpring(0, { damping: 15, stiffness: 220 }));
   };
 
   const formatted = useMemo(() => {
@@ -230,7 +255,7 @@ export default function Wake() {
         onLayout={() => {
           if (reportedReady.current) return;
           reportedReady.current = true;
-          requestAnimationFrame(() => notifyWakeScreenReady().catch(() => undefined));
+          void notifyWakeScreenReady().catch(() => undefined);
         }}
       >
         {/* ─── 1. Header Pill & Sacred Brahma Muhurta Time ───────────────────── */}

@@ -210,9 +210,9 @@ export default function Home() {
         setAlarmEnabled(false);
       } else {
         await scheduleRecurringAlarm({
-          time: alarmTime,
-          tone: alarmTone,
-          days: alarmDays,
+          time: displayTime,
+          tone: activeConfig?.tone.key ?? alarmTone,
+          days: displayDays,
         });
         setAlarmEnabled(true);
       }
@@ -404,6 +404,7 @@ export default function Home() {
         {status === 'unavailable' && (
           <TextR style={s.alarmStatusText}>{translate("Alarms are available in the Android development or release app.")}</TextR>
         )}
+        {alarmRequested && (snapshot?.scheduleStatus === 'failed' || snapshot?.scheduleStatus === 'unknown') ? <TextR style={s.alarmErrorText}>{translate('Alarm scheduling could not be confirmed. Open alarm setup and retry.')}</TextR> : null}
         {alarmError && <TextR style={s.alarmErrorText}>{translateText(alarmError)}</TextR>}
       </Pressable>
 
@@ -574,6 +575,8 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   greetingTitle: {
     fontSize: 27,

@@ -8,9 +8,10 @@ class RescheduleReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
     AlarmLog.initialize(context)
     AlarmLog.event("reschedule_receiver", intent.action ?: "unknown")
+    synchronized(AlarmScheduler) {
     val config = AlarmStore.get(context) ?: return
-    if (!config.enabled || !AlarmCapabilities.ready(context)) return
-    runCatching { AlarmScheduler.scheduleNext(context, config) }
+    runCatching { AlarmScheduler.scheduleNext(context, config, force = true) }
       .onFailure { AlarmLog.event("reschedule_failed", it.javaClass.simpleName) }
+    }
   }
 }

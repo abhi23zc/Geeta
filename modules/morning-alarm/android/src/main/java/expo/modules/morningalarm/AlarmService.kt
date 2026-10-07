@@ -22,10 +22,13 @@ import android.os.VibratorManager
 
 class AlarmService : Service() {
   private val handler = Handler(Looper.getMainLooper())
+  private val languageRefresh = NotificationRefresh()
   private var player: MediaPlayer? = null
   private var wakeLock: PowerManager.WakeLock? = null
   private var startedAt = 0L
   private var gradual = false
+  private var occurrenceAt = 0L
+  private var sessionId: String? = null
 
   private val volumeTick = object : Runnable {
     override fun run() {
@@ -47,8 +50,27 @@ class AlarmService : Service() {
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     AlarmLog.initialize(this)
     if (intent?.action == ACTION_STOP) {
+      val expected = intent.getLongExtra(AlarmScheduler.EXTRA_SCHEDULED_AT, -1L)
+      if (!AlarmPolicy.acceptsStop(expected, occurrenceAt)) {
+        if (occurrenceAt == 0L) stopSelf()
+        return if (occurrenceAt == 0L) START_NOT_STICKY else START_STICKY
+      }
       stopAlarm(intent.getStringExtra(EXTRA_REASON) ?: "stopped")
       return START_NOT_STICKY
+    }
+    if (intent != null) {
+      val test = intent.getBooleanExtra("test", false)
+      val at = intent.getLongExtra(AlarmScheduler.EXTRA_SCHEDULED_AT, -1L)
+      val state = AlarmPresentation.state(this)
+      val config = AlarmStore.get(this)
+      val stale = !test && (config?.enabled != true || intent.getLongExtra(AlarmScheduler.EXTRA_REVISION, -1L) != config.revision)
+      val ended = state["sessionId"] == "$at:$test" && state["terminationReason"] != null
+      val alreadyDismissed = state["sessionId"] == "$at:$test" && (state["stage"] != "wake" || !AlarmStore.isRinging(this))
+      if (stale || ended || alreadyDismissed) {
+        AlarmLog.event("service_start_rejected", "stale=$stale ended=$ended dismissed=$alreadyDismissed")
+        if (occurrenceAt == 0L) stopSelf()
+        return if (occurrenceAt == 0L) START_NOT_STICKY else START_STICKY
+      }
     }
 
     if (player != null) {
@@ -69,19 +91,22 @@ class AlarmService : Service() {
     val scheduledAt = intent?.getLongExtra(AlarmScheduler.EXTRA_SCHEDULED_AT, System.currentTimeMillis())
       ?: AlarmStore.scheduledAt(this).takeIf { it > 0L } ?: System.currentTimeMillis()
     startedAt = System.currentTimeMillis()
+    occurrenceAt = scheduledAt
     gradual = config.gradualVolume
     AlarmStore.setTest(this, test)
     AlarmStore.setRinging(this, true, startedAt, scheduledAt)
     // Reward storage must never prevent alarm delivery.
     runCatching { RitualRewards.begin(this, scheduledAt, test) }
       .onFailure { AlarmLog.event("reward_receipt_failed", it.javaClass.simpleName) }
-    AlarmPresentation.begin(this)
+    runCatching { AlarmPresentation.begin(this, scheduledAt, test) }
+      .onFailure { AlarmLog.event("session_save_failed", it.javaClass.simpleName) }
+    sessionId = AlarmPresentation.state(this)["sessionId"] as? String
     AlarmLog.event("service_start", "scheduledAt=$scheduledAt")
     acquireWakeLock()
     // Access may change between receiver delivery and foreground promotion.
     val promoted = runCatching {
       createChannel()
-      startForeground(NOTIFICATION_ID, notification())
+      startForeground(NOTIFICATION_ID, notification(initialDelivery = true))
     }.onFailure {
       AlarmLog.event("foreground_promotion_failed", it.javaClass.simpleName)
     }.isSuccess
@@ -100,7 +125,7 @@ class AlarmService : Service() {
         player?.release()
         player = null
       }
-    if (test) handler.postDelayed({ stopAlarm("timeout") }, 30_000L)
+    if (test) handler.postDelayed({ if (occurrenceAt == scheduledAt && AlarmStore.isTest(this)) stopAlarm("timeout") }, 30_000L)
     if (config.vibration) startVibration()
     AlarmEvents.emit("alarmTriggered", stateMap(this))
     return START_STICKY
@@ -115,7 +140,7 @@ class AlarmService : Service() {
   }
 
   private fun startSound(config: AlarmConfig) {
-    val local = runCatching { ContentFiles.resolve(this, ContentFiles.key(config.toneKey)) }.getOrNull()
+    val local = if (AlarmPolicy.useDownloadedTone(config.toneKind)) runCatching { ContentFiles.resolve(this, ContentFiles.key(config.toneKey)) }.getOrNull() else null
     val choices = listOfNotNull(
       local?.let { android.net.Uri.fromFile(it) to ContentFiles.key(config.toneKey) },
       RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)?.let { it to "system" },
@@ -125,7 +150,7 @@ class AlarmService : Service() {
     for ((uri, actual) in choices) {
       try {
         playUri(config, uri)
-        ContentFiles.report(this, actual, if (actual == "system" || actual == "notification") if (local == null) "Selected sound unavailable" else "Selected sound failed" else null)
+        ContentFiles.report(this, actual, if (config.toneKind != "system" && (actual == "system" || actual == "notification")) if (local == null) "Selected sound unavailable" else "Selected sound failed" else null)
         return
       } catch (error: Throwable) {
         failure = error
@@ -207,7 +232,7 @@ class AlarmService : Service() {
       .onFailure { AlarmLog.event("direct_activity_launch_failed", it.javaClass.simpleName) }
   }
 
-  private fun notification(): Notification {
+  private fun notification(initialDelivery: Boolean): Notification {
     val open = PendingIntent.getActivity(
       this,
       6201,
@@ -231,11 +256,11 @@ class AlarmService : Service() {
       .setAutoCancel(false)
       .setOnlyAlertOnce(true)
       .setContentIntent(open)
-      .addAction(Notification.Action.Builder(null, AlarmStrings.text(this, "Stop"), PendingIntent.getBroadcast(this, 6202, Intent(this, AlarmStopReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)).build())
+      .addAction(Notification.Action.Builder(null, AlarmStrings.text(this, "Stop"), PendingIntent.getBroadcast(this, 6202, Intent(this, AlarmStopReceiver::class.java).putExtra(AlarmScheduler.EXTRA_SCHEDULED_AT, occurrenceAt), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)).build())
       .apply {
         val allowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE || getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
-        if (allowed) setFullScreenIntent(open, true)
-        AlarmLog.event("notification_presented", "fullScreen=$allowed")
+        if (AlarmDeliveryPolicy.fullScreen(initialDelivery, allowed)) setFullScreenIntent(open, true)
+        AlarmLog.event("notification_presented", "purpose=${if (initialDelivery) "delivery" else "refresh"} fullScreen=${initialDelivery && allowed}")
       }
       .apply {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -248,6 +273,7 @@ class AlarmService : Service() {
   private fun stopAlarm(reason: String, finishService: Boolean = true) {
     AlarmLog.event("alarm_stop", reason)
     handler.removeCallbacksAndMessages(null)
+    languageRefresh.complete()
     player?.runCatching { stop() }
     player?.release()
     player = null
@@ -256,11 +282,11 @@ class AlarmService : Service() {
     wakeLock = null
     AlarmStore.setRinging(this, false)
     AlarmStore.setTest(this, false)
-    if (reason == "timeout") {
-      AlarmPresentation.end(this)
+    if (reason == "timeout" || reason == "foreground-promotion-failed" || reason == "service-destroyed") {
+      AlarmPresentation.end(this, reason, sessionId)
       AlarmActivity.finishVisible()
     }
-    AlarmEvents.emit("alarmStopped", mapOf("reason" to reason))
+    AlarmEvents.emit("alarmStopped", mapOf("reason" to reason, "sessionId" to sessionId))
     stopForeground(STOP_FOREGROUND_REMOVE)
     if (finishService) stopSelf()
   }
@@ -280,10 +306,12 @@ class AlarmService : Service() {
     @Volatile private var activeService: AlarmService? = null
     fun refreshLanguage() {
       val service = activeService ?: return
+      if (!service.languageRefresh.request()) return
       service.handler.post {
+        service.languageRefresh.complete()
         if (activeService === service && AlarmStore.isRinging(service)) {
           service.createChannel()
-          service.getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, service.notification())
+          service.getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, service.notification(initialDelivery = false))
         }
       }
     }
@@ -301,14 +329,15 @@ class AlarmService : Service() {
         .setAction(ACTION_START)
         .putExtra(AlarmScheduler.EXTRA_SCHEDULED_AT, scheduledAt)
 
-    fun stopIntent(context: Context, reason: String) =
+    fun stopIntent(context: Context, reason: String, occurrence: Long = AlarmStore.scheduledAt(context)) =
       Intent(context, AlarmService::class.java)
         .setAction(ACTION_STOP)
         .putExtra(EXTRA_REASON, reason)
+        .putExtra(AlarmScheduler.EXTRA_SCHEDULED_AT, occurrence)
 
     fun stateMap(context: Context): Map<String, Any?> {
       val triggeredAt = AlarmStore.triggeredAt(context)
-      val progress = if (!AlarmStore.isRinging(context)) 0.0 else
+      val progress = if (!AlarmStore.isRinging(context)) 0.0 else if (AlarmStore.isTest(context) || AlarmStore.get(context)?.gradualVolume == false) 1.0 else
         ((System.currentTimeMillis() - triggeredAt).toDouble() / GRADUAL_MS).coerceIn(0.0, 1.0)
       return mapOf(
         "ringing" to AlarmStore.isRinging(context),

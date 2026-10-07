@@ -1,5 +1,7 @@
 # Alarm ritual over the Android lock screen
 
+Current scheduling, checkpoint recovery, audio-first completion, and Stop behaviour are described in [alarm reliability](alarm-reliability.md). Device results below are historical and do not certify the new recovery changes.
+
 The real React wake, breathing, and Gita screens now use MainActivity, the single Expo Router host. Native alarm notifications target that activity. A native cover hides the previous page during startup or alarm restoration; it is removed only when the focused, expected ritual screen has rendered. AlarmActivity remains a native emergency fallback and never mounts another React root.
 
 Private native presentation state in device-protected storage tracks wake/breathe/Gita independently of alarm audio. Holding Start my day stops playback, advances to breathing, and retains lock-screen window presentation. Gita completion/replay remains available. Unlocking is designed to keep the same mounted screen and progress; temporary background transitions preserve playback intent, while explicit pause remains paused. The completion screen follows the ordinary screen timeout; replay restores the awake flag. No new wake lock or permanent service is added.
@@ -36,3 +38,5 @@ Release builds of this change were checked on Xiaomi M2101K7BI / Android 13 on O
 | Final device-protected storage safeguard | Native compilation/unit tests passed; reboot-before-first-unlock behavior remains untested. |
 
 Other manufacturers, API 24–25 credential confirmation, permission-denial presentation, and activity recreation require additional device coverage. Android and OEM rules control automatic full-screen presentation; the alarm notification remains the entry point when automatic presentation is blocked. No Force stop or data clearing was used. Cold restoration restores the ritual stage; progress across process death is not claimed. The native alarm fallback remains available if React cannot render, while full breathing/Gita content requires React startup.
+
+Current session-bound startup implementation and APK/device acceptance status: [2026-10-07 release validation](alarm-startup-release-validation.md).

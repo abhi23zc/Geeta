@@ -286,8 +286,6 @@ function SetupContent() {
   const [mode, setMode] = useState<ModeKey>(
     modes.find((item) => item.tone === alarmTone)?.key ?? "gita",
   );
-  const [gradual] = useState(true);
-  const [haptics] = useState(true);
   const [initializing, setInitializing] = useState(true);
   const [saving, setSaving] = useState(false);
   const [capabilities, setCapabilities] = useState<AlarmCapabilityStatus | null>(null);
@@ -383,8 +381,6 @@ function SetupContent() {
         time,
         tone: selectedMode.tone,
         days: selectedDayIds,
-        gradualVolume: gradual,
-        vibration: haptics,
       });
       setAlarmTone(selectedMode.tone);
       setAlarmTime(time);
@@ -397,6 +393,10 @@ function SetupContent() {
         result.capabilities.notificationChannelReady;
       if (!resultCoreReady) {
         setReadinessExpanded(true);
+        if (result.scheduleStatus === 'failed' || result.scheduleStatus === 'unknown') {
+          setSaveError(translate('Alarm scheduling could not be confirmed. Open alarm setup and retry.'));
+          return;
+        }
         setReadinessMessage("Alarm saved. Complete the highlighted Android setting so it can ring reliably.");
         return;
       }

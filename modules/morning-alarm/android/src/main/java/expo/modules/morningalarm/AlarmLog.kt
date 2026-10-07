@@ -6,7 +6,12 @@ import org.json.JSONArray
 
 object AlarmLog {
   private var context: Context? = null
-  fun initialize(value: Context) { context = value.applicationContext }
+  fun initialize(value: Context) {
+    if (context != null) return
+    context = value.applicationContext
+    val info = value.packageManager.getPackageInfo(value.packageName, 0)
+    event("build", "handoff=v2 version=${info.versionName} code=${if (android.os.Build.VERSION.SDK_INT >= 28) info.longVersionCode else info.versionCode.toLong()} debug=${value.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0}")
+  }
   @Synchronized fun event(name: String, detail: String = "") {
     val message = "${System.currentTimeMillis()} $name ${detail.take(240)}"
     Log.i("MorningAlarm", message)

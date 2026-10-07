@@ -57,7 +57,7 @@
     "test:language": "node --test tests/language.test.mjs",
     "test:progress": "node --test tests/progress.test.mjs",
     "test:tasks": "node --test tests/tasks-model.test.mjs tests/snapshot-writer.test.mjs",
-    "test:alarm-navigation": "node --test tests/alarm-navigation.test.mjs tests/alarm-presentation.test.mjs",
+    "test:alarm-navigation": "node --test tests/alarm-navigation.test.mjs tests/alarm-presentation.test.mjs tests/alarm-recovery.test.mjs tests/alarm-device.test.mjs tests/ritual-readiness.test.mjs tests/route-removal-protection.test.mjs tests/ritual-route-restoration.test.mjs",
     "test:content": "node --test tests/content-contract.test.mjs tests/content-cache.test.mjs",
     "content:emulators": "firebase/functions/node_modules/.bin/firebase emulators:start --project demo-geeta",
     "test:firebase": "npm --prefix firebase/functions run build && firebase/functions/node_modules/.bin/firebase emulators:exec --project demo-geeta --only auth,firestore,storage,functions 'npm --prefix firebase/functions test'"

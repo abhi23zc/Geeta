@@ -14,7 +14,7 @@ const require = createRequire(import.meta.url), ts = require('typescript');
 const source = ts.transpileModule(readFileSync(new URL('../src/services/content-cache.ts',import.meta.url),'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 function harness() {
   const root=mkdtempSync(join(tmpdir(),'geeta-cache-test-')), sqlite=new DatabaseSync(':memory:');
-  let today='2026-10-03', manifest, network=true, free=1024*1024*1024;
+  let today='2026-10-03', manifest, network=true, free=1024*1024*1024, ritualCheckpoint=null;
   const payloads=new Map(), downloads=[], installs=[];
   class File {
     constructor(...parts) { this.path=join(...parts.map(p => typeof p==='string' ? p.startsWith('file:') ? fileURLToPath(p) : p : p.path)); }
@@ -31,14 +31,14 @@ function harness() {
     'react-native':{Platform:{OS:'android'}},
     '../../shared/content':require('../shared/content.ts'),
     '@/data/gita-verses':{localDateKey:()=>today},
-    './alarm':{getNativeAlarmConfig:async()=>({tone:{key:'gita'}}),hashContentFile:async uri=>createHash('sha256').update(readFileSync(fileURLToPath(uri))).digest('hex'),installAlarmTone:async value=>{installs.push(value);}},
+    './alarm':{getRitualCheckpoint:()=>ritualCheckpoint,getNativeAlarmConfig:async()=>({tone:{key:'gita'}}),hashContentFile:async uri=>createHash('sha256').update(readFileSync(fileURLToPath(uri))).digest('hex'),installAlarmTone:async value=>{installs.push(value);}},
   };
   const exports={};
   runInNewContext(source,{exports,require:name=>{if(!(name in mocks))throw new Error(`Unexpected dependency ${name}`);return mocks[name];},process:{env:{EXPO_PUBLIC_CONTENT_API_URL:'https://demo.web.app/api/v1/content-window'}},URL,__DEV__:false,AbortController,setInterval,clearInterval,setTimeout:(fn,ms)=>setTimeout(fn,ms<31000?0:ms),clearTimeout,fetch:async()=>({ok:true,status:200,headers:{get:()=> '"release"'},text:async()=>JSON.stringify(manifest)})});
   function asset(id,body=id){const bytes=Buffer.from(body),url=`https://storage.googleapis.com/demo/${id}`;payloads.set(url,bytes);return{id,url,sha256:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length,durationMs:5000,mimeType:'audio/mpeg'};}
   function practice(id){return{id,revision:id,kind:'gita',chapter:10,verse:'20',theme:id,sanskrit:'श्लोक',transliteration:'Shloka',meaning:'Meaning',takeaway:'Takeaway',context:'Context',reflectionPrompt:'Prompt',words:[],narration:{asset:asset(id),completionMs:5000,segments:[{kind:'sanskrit',text:'श्लोक',startMs:0,endMs:2000},{kind:'meaning',text:'Meaning',startMs:2500,endMs:5000}]}};}
   function release(start=today){manifest={schemaVersion:1,releaseId:'release',publishedAt:'2026-10-03T00:00:00Z',enabled:true,locale:'hi-IN',days:dateWindow(start).map((date,i)=>({date,practice:practice(`p-${date}`)})),alarms:[{key:'gita',revision:'tone1',title:'Morning',description:'Music',asset:asset('alarm')}]};return manifest;}
-  return {cache:exports,downloads,installs,sqlite,release,practice,asset,setToday:v=>{today=v;},offline:()=>{network=false;},lowDisk:()=>{free=1;},payloads,dispose:()=>{sqlite.close();rmSync(root,{recursive:true,force:true});}};
+  return {cache:exports,downloads,installs,sqlite,release,practice,asset,setRitualCheckpoint:v=>{ritualCheckpoint=v;},setToday:v=>{today=v;},offline:()=>{network=false;},lowDisk:()=>{free=1;},payloads,dispose:()=>{sqlite.close();rmSync(root,{recursive:true,force:true});}};
 }
 test('seven-day downloads deduplicate and remain readable without connectivity',async()=>{
   const h=harness();try{h.release();await h.cache.syncContent(true);assert.equal(h.downloads.length,8);assert.equal(Object.keys((await h.cache.readContent()).days).length,7);await h.cache.syncContent(true);assert.equal(h.downloads.length,8);h.offline();await h.cache.syncContent(true);assert.match((await h.cache.readContent()).error,/Offline/);assert.equal(Object.keys((await h.cache.readContent()).days).length,7);}finally{h.dispose();}
@@ -63,4 +63,17 @@ test('finalized files recover after a crash before metadata commit without downl
 });
 test('expired bookmarked audio downloads on demand and its text remains saved',async()=>{
   const h=harness();let release;try{h.release();await h.cache.syncContent(true);await h.cache.saveTeaching((await h.cache.readContent()).days['2026-10-03']);h.setToday('2026-10-04');h.release('2026-10-04');await h.cache.syncContent(true);const replay=await h.cache.prepareSavedReplay('p-2026-10-03');release=replay.release;assert.equal(replay.practice.id,'p-2026-10-03');assert.ok(replay.practice.narration);assert.equal(h.downloads.length,10);assert.equal((await h.cache.readContent()).saved.length,1);}finally{release?.();await new Promise(r=>setTimeout(r,5));h.dispose();}
+});
+test('an interrupted ritual retains its frozen recording through refill and clear downloads',async()=>{
+  const h=harness();try{
+    h.release();await h.cache.syncContent(true);
+    const practice=(await h.cache.readContent()).days['2026-10-03'];
+    h.setRitualCheckpoint({stage:'gita',verse:practice});
+    h.setToday('2026-10-04');h.release('2026-10-04');await h.cache.syncContent(true);
+    assert.ok(h.sqlite.prepare('SELECT * FROM assets WHERE id=?').get(practice.narration.assetId));
+    await h.cache.clearContentDownloads();
+    assert.ok(h.sqlite.prepare('SELECT * FROM assets WHERE id=?').get(practice.narration.assetId));
+    h.setRitualCheckpoint(null);await h.cache.clearContentDownloads();
+    assert.equal(h.sqlite.prepare('SELECT * FROM assets WHERE id=?').get(practice.narration.assetId),undefined);
+  }finally{h.dispose();}
 });

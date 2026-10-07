@@ -123,3 +123,32 @@ test('native catalog covers fallback layout copy using device-protected preferen
   }
   assert.ok(kotlin.includes('createDeviceProtectedStorageContext()'));
 });
+
+test('delayed alarm language hydration does not save its provisional choice over the stored preference', async () => {
+  const { hydrateLanguagePreference } = await import('../src/i18n/model.ts');
+  let resolveRead, saves = [];
+  const read = new Promise(resolve => { resolveRead = resolve; });
+  const pending = hydrateLanguagePreference({ getItem: () => read, setItem: async (...args) => saves.push(args) }, 'hi');
+  assert.deepEqual(saves, []);
+  resolveRead('"hinglish"');
+  assert.equal(await pending, 'hinglish');
+  assert.deepEqual(saves, []);
+});
+test('failed hydration leaves provisional alarm preference untouched and retry can load it', async () => {
+  const { hydrateLanguagePreference } = await import('../src/i18n/model.ts');
+  let fail = true, saves = [];
+  const storage = { getItem: async () => { if (fail) throw Error('storage unavailable'); return '"hi"'; }, setItem: async (...args) => saves.push(args) };
+  await assert.rejects(hydrateLanguagePreference(storage, 'hinglish'), /storage unavailable/);
+  assert.deepEqual(saves, []);
+  fail = false;
+  assert.equal(await hydrateLanguagePreference(storage, 'hinglish'), 'hi');
+  assert.deepEqual(saves, []);
+});
+test('provisional preference writes are refused until hydration completes', async () => {
+  let hydrated = false, events = [];
+  const writer = createLanguageWriter(async language => events.push(`save:${language}`), language => events.push(`publish:${language}`), () => hydrated);
+  await assert.rejects(writer('en'), /still loading/);
+  assert.deepEqual(events, []);
+  hydrated = true; await writer('hi');
+  assert.deepEqual(events, ['save:hi', 'publish:hi']);
+});

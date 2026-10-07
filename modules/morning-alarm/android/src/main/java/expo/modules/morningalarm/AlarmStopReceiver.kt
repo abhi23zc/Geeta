@@ -6,6 +6,6 @@ import android.content.Intent
 
 class AlarmStopReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
-    AlarmController.dismiss(context)
+    AlarmController.dismiss(context, expectedAt = intent.getLongExtra(AlarmScheduler.EXTRA_SCHEDULED_AT, -1L))
   }
 }

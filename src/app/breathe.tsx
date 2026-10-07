@@ -7,7 +7,6 @@ import {
   Flower2,
   Leaf,
   PauseCircle,
-  RotateCcw,
   Timer,
   Wind,
 } from "lucide-react-native";
@@ -39,7 +38,8 @@ import { AruMascot } from "@/components/aru-mascot";
 import { Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
 import { replaceAppRoute } from "@/navigation/route-actions";
-import { completeRewardStage, getRewardOccurrence, getAlarmPresentationState, setAlarmRitualStage } from "@/services/alarm";
+import { completeRewardStage, getRewardOccurrence, getAlarmPresentationState, getRitualCheckpoint, hasInvalidRitualCheckpoint, saveRitualCheckpoint, setAlarmRitualStage } from "@/services/alarm";
+import { breathingEntryState, type BreathingCheckpoint } from '@/services/ritual-checkpoint';
 import { useGitaProgress } from "@/state/gita-store";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -79,7 +79,7 @@ const TOTAL_ROUNDS = 5;
 const ROUND_DURATION_SEC = 14; // 4s + 4s + 6s
 const TOTAL_SESSION_SEC = TOTAL_ROUNDS * ROUND_DURATION_SEC; // 70s
 const PREPARATION_SECONDS = 3;
-type BreathingLifecycle = "preparing" | "active" | "paused" | "complete";
+type BreathingLifecycle = "preparing" | "active" | "complete";
 
 // ─── 3D Tactile Round Button ──────────────────────────────────────────────────
 function TactileRoundButton({
@@ -154,7 +154,7 @@ function TactileRoundButton({
 export default function Breathe() {
   const { t: translate, text: translateText } = useLanguage();
   const navigation = useNavigation("/");
-  const { width, height } = useWindowDimensions();
+  const { width, height, fontScale } = useWindowDimensions();
   const isSmall = width < 360;
   const isTablet = width >= 768;
   const isCompact = height < 750;
@@ -163,18 +163,47 @@ export default function Breathe() {
   const { completeBreathing } = useGitaProgress();
   const { entry } = useLocalSearchParams<{ entry?: "alarm" | "manual" }>();
   const rewardOccurrence = useRef(getRewardOccurrence());
-
-  const [lifecycle, setLifecycle] = useState<BreathingLifecycle>("preparing");
-  const [preparationSecondsLeft, setPreparationSecondsLeft] = useState(PREPARATION_SECONDS);
-  const preparationRemaining = useRef(PREPARATION_SECONDS);
-  const [elapsedTotalSeconds, setElapsedTotalSeconds] = useState(0);
-  const elapsed = useRef(0);
+  const [sessionId] = useState(() => entry === 'alarm' ? getAlarmPresentationState().sessionId : null);
+  const [restored] = useState(() => { const c = getRitualCheckpoint('breathe'); return entry === 'alarm' && c?.stage === 'breathe' ? c : null; });
+  const [checkpointError, setCheckpointError] = useState(() => hasInvalidRitualCheckpoint('breathe') ? 'Saved practice could not be restored. This phase has restarted.' : '');
+  const [initial] = useState(() => breathingEntryState(restored));
+  const [lifecycle, setLifecycle] = useState<BreathingLifecycle>(initial.lifecycle);
+  const lifecycleRef = useRef<BreathingLifecycle>(initial.lifecycle);
+  const [preparationSecondsLeft, setPreparationSecondsLeft] = useState(initial.preparation);
+  const preparationRemaining = useRef(initial.preparation);
+  const preparationEpoch = useRef(0);
+  const [preparationCycle, setPreparationCycle] = useState(0);
+  const [elapsedTotalSeconds, setElapsedTotalSeconds] = useState(initial.elapsed);
+  const elapsed = useRef(initial.elapsed);
+  const continuing = useRef(false);
+  const checkpoint = useRef<BreathingCheckpoint | null>(null);
+  const persist = useCallback(async (override?: Partial<BreathingCheckpoint>) => {
+    const value = checkpoint.current;
+    if (!value) return;
+    await saveRitualCheckpoint({ ...value, elapsed: elapsed.current, preparation: preparationRemaining.current, ...override });
+  }, []);
+  useEffect(() => {
+    checkpoint.current = sessionId ? { version: 1, sessionId, stage: 'breathe', elapsed: elapsedTotalSeconds, preparation: preparationRemaining.current, lifecycle } : null;
+    if (sessionId && (elapsedTotalSeconds % 5 === 0 || lifecycle !== 'active')) void persist().then(() => setCheckpointError(error => error === 'Could not save ritual progress. Please retry.' ? '' : error)).catch(() => setCheckpointError('Could not save ritual progress. Please retry.'));
+  }, [elapsedTotalSeconds, lifecycle, persist, sessionId]);
+  useEffect(() => () => { void persist(elapsed.current === TOTAL_SESSION_SEC ? { lifecycle: 'complete' } : breathingEntryState(null)).catch(() => undefined); }, [persist]);
   const [focused, setFocused] = useState(false);
   const focusedRef = useRef(false);
   const [foreground, setForeground] = useState(AppState.currentState === "active");
   const completionHandled = useRef(false);
   const appState = useRef(AppState.currentState);
-  const resumeOnForeground = useRef(false);
+  const resetPreparation = useCallback(() => {
+    if (elapsed.current === TOTAL_SESSION_SEC) return;
+    lifecycleRef.current = 'preparing';
+    preparationEpoch.current += 1;
+    setPreparationCycle(preparationEpoch.current);
+    elapsed.current = 0;
+    preparationRemaining.current = PREPARATION_SECONDS;
+    setElapsedTotalSeconds(0);
+    setPreparationSecondsLeft(PREPARATION_SECONDS);
+    setLifecycle('preparing');
+    void persist(breathingEntryState(null)).catch(() => setCheckpointError('Could not save ritual progress. Please retry.'));
+  }, [persist]);
 
   const preparing = lifecycle === "preparing";
   const active = lifecycle === "active" && focused && foreground;
@@ -311,10 +340,10 @@ export default function Breathe() {
     if (!active) return;
 
     const id = setInterval(() => {
-      if (appState.current !== "active" || !focusedRef.current) return;
+      if (appState.current !== "active" || !focusedRef.current || lifecycleRef.current !== "active") return;
       elapsed.current = Math.min(elapsed.current + 1, TOTAL_SESSION_SEC);
       setElapsedTotalSeconds(elapsed.current);
-      if (elapsed.current === TOTAL_SESSION_SEC) setLifecycle("complete");
+      if (elapsed.current === TOTAL_SESSION_SEC) { lifecycleRef.current = "complete"; setLifecycle("complete"); }
     }, 1000);
 
     return () => clearInterval(id);
@@ -323,13 +352,14 @@ export default function Breathe() {
   // Preparation seconds countdown with tactile pulses.
   useEffect(() => {
     if (!preparing || !focused || !foreground) return;
+    const epoch = preparationEpoch.current;
     let remaining = preparationRemaining.current;
     try {
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch {}
 
     const timer = setInterval(() => {
-      if (appState.current !== "active" || !focusedRef.current) return;
+      if (appState.current !== "active" || !focusedRef.current || lifecycleRef.current !== "preparing" || epoch !== preparationEpoch.current) return;
       remaining -= 1;
       preparationRemaining.current = remaining;
       if (remaining === 0) {
@@ -337,6 +367,7 @@ export default function Breathe() {
         try {
           void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         } catch {}
+        lifecycleRef.current = "active";
         setLifecycle("active");
       } else {
         try {
@@ -346,7 +377,7 @@ export default function Breathe() {
       }
     }, 1_000);
     return () => clearInterval(timer);
-  }, [focused, foreground, preparing]);
+  }, [focused, foreground, preparationCycle, preparing]);
 
   useFocusEffect(useCallback(() => {
     focusedRef.current = true;
@@ -354,28 +385,18 @@ export default function Breathe() {
     return () => {
       focusedRef.current = false;
       setFocused(false);
-      preparationRemaining.current = PREPARATION_SECONDS;
-      setPreparationSecondsLeft(PREPARATION_SECONDS);
-      setLifecycle((current) => current === "active" ? "paused" : current);
+      resetPreparation();
     };
-  }, []));
+  }, [resetPreparation]));
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
-      const wasActive = appState.current === 'active';
       appState.current = nextState;
       setForeground(nextState === "active");
-      if (nextState !== 'active') {
-        if (wasActive) resumeOnForeground.current = lifecycle === 'active' && getAlarmPresentationState().active;
-        setLifecycle(current => current === 'active' ? 'paused' : current);
-      } else {
-        const resume = resumeOnForeground.current && focusedRef.current;
-        resumeOnForeground.current = false;
-        setLifecycle(current => resume && current === 'paused' ? 'active' : current);
-      }
+      if (nextState !== 'active') resetPreparation();
     });
     return () => subscription.remove();
-  }, [lifecycle]);
+  }, [resetPreparation]);
 
   // Distinct Sensory Tactile Haptics on Breath Phase Transitions
   const prevPhaseKeyRef = useRef<string | null>(null);
@@ -452,26 +473,16 @@ export default function Breathe() {
     transform: [{ scale: celebrateScale.value }],
   }));
 
-  const handleRestart = useCallback(() => {
-    setLifecycle("preparing");
-    preparationRemaining.current = PREPARATION_SECONDS;
-    setPreparationSecondsLeft(PREPARATION_SECONDS);
-    elapsed.current = 0;
-    setElapsedTotalSeconds(0);
-    completionHandled.current = false;
-    // eslint-disable-next-line react-hooks/immutability
-    celebrateScale.value = 0.7;
-  }, [celebrateScale]);
-
   const handleContinueToGita = useCallback(() => {
-    if (elapsed.current < TOTAL_SESSION_SEC) return;
-    setLifecycle("paused");
+    if (elapsed.current < TOTAL_SESSION_SEC || continuing.current || !navigation.isFocused()) return;
+    if (sessionId && (getAlarmPresentationState().sessionId !== sessionId || getAlarmPresentationState().stage !== 'breathe')) return;
+    continuing.current = true;
     const occurrence = rewardOccurrence.current;
-    const save = entry === 'alarm' && occurrence?.id && !occurrence.test
-      ? completeRewardStage(occurrence.id, 'breathe') : Promise.resolve(true);
+    const save = persist({ elapsed: 70, preparation: 0, lifecycle: 'complete' }).then(() => entry === 'alarm' && occurrence?.id && !occurrence.test
+      ? completeRewardStage(occurrence.id, 'breathe') : true);
     void save.then(ok => {
       if (!ok) throw new Error(translate('Could not save ritual progress. Please retry.'));
-      return setAlarmRitualStage('gita');
+      if (sessionId) return setAlarmRitualStage('gita', sessionId);
     }).then(() => {
       if (!navigation.isFocused()) return;
       replaceAppRoute(navigation, "/gita", {
@@ -480,8 +491,8 @@ export default function Breathe() {
     }).catch(() => {
       setLifecycle('complete');
       Alert.alert(translate('Progress'), translate('Could not save ritual progress. Please retry.'));
-    });
-  }, [entry, navigation, translate]);
+    }).finally(() => { continuing.current = false; });
+  }, [entry, navigation, persist, sessionId, translate]);
 
   const exitToHome = useCallback(() => {
     if (navigation.canGoBack()) {
@@ -501,7 +512,7 @@ export default function Breathe() {
   const headerIconSize = isSmall ? 16 : isTablet ? 20 : 18;
 
   return (
-    <Screen scroll={false}>
+    <Screen scroll={height < 700 || fontScale > 1.2}>
       <View style={s.singleViewportContainer}>
         {/* ─── 1. Top Header Row with Addictive 5-Bead Sadhana Tracker ────────── */}
         <View style={s.topHeaderRow}>
@@ -539,6 +550,8 @@ export default function Breathe() {
             </View>
           </View>
         </View>
+        {checkpointError ? <Pressable accessibilityRole="button" onPress={() => { void persist().then(() => setCheckpointError('')).catch(() => setCheckpointError('Could not save ritual progress. Please retry.')); }}><TextR accessibilityRole="alert">{translateText(checkpointError)}</TextR></Pressable> : null}
+
 
         {/* ─── 2. Meditative Dais & Aru Breathing Sanctum ────────────────────── */}
         <View style={s.sanctumCenter}>
@@ -808,7 +821,7 @@ export default function Breathe() {
           transparent
           animationType="fade"
           statusBarTranslucent
-          onRequestClose={handleRestart}
+          onRequestClose={exitToHome}
         >
           <View style={s.modalBackdrop}>
             <Animated.View
@@ -843,18 +856,7 @@ export default function Breathe() {
                      {translate("Continue to Gita")} </TextR>
                 </Pressable>
 
-                {/* Restart (secondary action) */}
-                <Pressable
-                  onPress={handleRestart}
-                  style={({ pressed }) => [
-                    s.restartButton,
-                    pressed && { opacity: 0.7 },
-                  ]}
-                >
-                  <RotateCcw size={15} color={C.inkSoft} />
-                  <TextR style={[s.restartText, isSmall && { fontSize: 13 }, isTablet && { fontSize: 15 }]}>
-                     {translate("Breathe Again")} </TextR>
-                </Pressable>
+
               </Animated.View>
             </Animated.View>
           </View>
@@ -1338,19 +1340,7 @@ const s = StyleSheet.create({
     fontWeight: "800",
     color: C.white,
   },
-  restartButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  restartText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: C.inkSoft,
-  },
+
   pressed: {
     opacity: 0.88,
     transform: [{ scale: 0.985 }],

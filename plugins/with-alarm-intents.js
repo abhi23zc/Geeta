@@ -2,6 +2,9 @@ const { withMainActivity } = require('expo/config-plugins');
 
 function transformMainActivity(source, language) {
   if (source.includes('// morning-alarm: ritual presentation')) {
+    // Both generated and existing hosts explicitly identify activity creation.
+    source = source.replace('AlarmPresentation.prepare(this, intent)\n    super.onCreate(null)', 'AlarmPresentation.prepare(this, intent, created = true)\n    super.onCreate(null)');
+    source = source.replace('    AlarmPresentation.onResume(this)\n  }\n\n  // morning-alarm: ritual presentation', '    AlarmPresentation.onWindowFocus(this, hasFocus)\n  }\n\n  // morning-alarm: ritual presentation');
     source = source.replace('    super.onNewIntent(intent)', '    if (!AlarmPresentation.isRitualIntent(this, intent)) super.onNewIntent(intent)');
     if (!source.includes('AlarmPresentation.blockVolume(this, event)')) {
       source = source.replace('import android.os.Bundle', 'import android.os.Bundle\nimport android.view.KeyEvent');
@@ -12,7 +15,7 @@ function transformMainActivity(source, language) {
 
   override fun onWindowFocusChanged(hasFocus: Boolean) {
     super.onWindowFocusChanged(hasFocus)
-    AlarmPresentation.onResume(this)
+    AlarmPresentation.onWindowFocus(this, hasFocus)
   }
 
   // morning-alarm: ritual presentation`);

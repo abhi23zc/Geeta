@@ -11,6 +11,7 @@ import {
   Flame,
   Flower2,
   RefreshCw,
+  Sparkles,
   Sun,
   X,
 } from "lucide-react-native";
@@ -56,8 +57,8 @@ export function DailyGoalCard({
   const isCompletedToday = Boolean(d?.rewarded);
 
   const completedCount = (ritualDone ? 1 : 0) + (quizDone ? 1 : 0);
-  const quizEarned = p ? activityPoints(p, today, 'quiz') : 0;
-  const ritualEarned = p ? activityPoints(p, today, 'ritual') : 0;
+  const quizEarned = p ? activityPoints(p, today, "quiz") : 0;
+  const ritualEarned = p ? activityPoints(p, today, "ritual") : 0;
   const earnedToday = quizEarned + ritualEarned;
 
   if (!p) {
@@ -101,27 +102,19 @@ export function DailyGoalCard({
 
   return (
     <View style={s.cardContainer}>
-      {/* ── 3D Textured Background Surface ───────────────────────────────── */}
+      {/* ── Soft Sunlit Ambience (Seamless zero-bleed at bottom) ───────────── */}
       <View style={StyleSheet.absoluteFill} pointerEvents="none">
         <Svg width="100%" height="100%">
           <Defs>
-            <LinearGradient id="goalCardGrad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor="#FFFDF9" stopOpacity="0.99" />
-              <Stop offset="45%" stopColor="#FFF7EC" stopOpacity="0.97" />
-              <Stop offset="100%" stopColor="#FFF0E0" stopOpacity="0.95" />
-            </LinearGradient>
-            <LinearGradient id="topGlowRim" x1="0" y1="0" x2="1" y2="0">
-              <Stop offset="0%" stopColor="#F4B942" stopOpacity="0.85" />
-              <Stop offset="50%" stopColor="#FFF8E1" stopOpacity="1" />
-              <Stop offset="100%" stopColor="#E56B27" stopOpacity="0.85" />
-            </LinearGradient>
+            <RadialGradient id="goalCardAmbience" cx="25%" cy="12%" r="85%">
+              <Stop offset="0%" stopColor="#FEE4C3" stopOpacity="0.35" />
+              <Stop offset="55%" stopColor="#FFF2DE" stopOpacity="0.12" />
+              <Stop offset="100%" stopColor="#FFF8F2" stopOpacity="0" />
+            </RadialGradient>
           </Defs>
-          <Rect width="100%" height="100%" rx={24} fill="url(#goalCardGrad)" />
+          <Rect width="100%" height="100%" fill="url(#goalCardAmbience)" />
         </Svg>
       </View>
-
-      {/* Top 3D Golden Specular Rim */}
-      <View style={s.topSpecularLine} pointerEvents="none" />
 
       {/* ── 1. Header: Goal Title & 3D Sacred Points Coin ──────────────────── */}
       <View style={s.headerRow}>
@@ -138,11 +131,6 @@ export function DailyGoalCard({
               <TextR style={s.cardKicker}>
                 {t("Daily goal").toUpperCase()}
               </TextR>
-              {p.current > 0 && (
-                <View style={s.streakPillSmall}>
-                  <TextR style={s.streakPillSmallText}>🔥 {p.current}d</TextR>
-                </View>
-              )}
             </View>
             <TextR style={s.streakSubtitle}>
               {p.current > 0
@@ -236,38 +224,11 @@ export function DailyGoalCard({
       <View style={s.stepperSection}>
         <View style={s.stepperHeader}>
           <View style={s.stepperLabelGroup}>
-            <View
-              style={[
-                s.stepperDot,
-                completedCount === 2 && s.stepperDotComplete,
-              ]}
-            />
+            <View style={s.stepperDot} />
             <TextR style={s.stepperStatusText}>
-              {completedCount === 2
-                ? t("Both activities complete—daily streak advanced.")
-                : `${completedCount} / 2 ${t("Complete")}`}
+              {`${completedCount} / 2 ${t("Complete")}`}
             </TextR>
           </View>
-          {link &&
-            (completedCount < 2 ? (
-              <View style={s.rewardBadgePill}>
-                <Flower2 size={12} color={C.saffron} />
-                <TextR style={s.rewardBadgeText}>
-                  {t("{count} points earned today", {
-                    count: formatNumber(earnedToday),
-                  })}
-                </TextR>
-              </View>
-            ) : (
-              <View style={s.rewardCompletePill}>
-                <Check size={11} color={C.greenDark} strokeWidth={2.8} />
-                <TextR style={s.rewardCompleteText}>
-                  {t("{count} points earned today", {
-                    count: formatNumber(earnedToday),
-                  })}
-                </TextR>
-              </View>
-            ))}
         </View>
 
         {/* 2-Segmented Stepper Track */}
@@ -276,7 +237,7 @@ export function DailyGoalCard({
             style={[
               s.stepperSegment,
               ritualDone && s.stepperSegmentActive,
-              { marginRight: 6 },
+              { marginRight: 8 },
             ]}
           >
             {ritualDone && <View style={s.segmentShine} />}
@@ -290,10 +251,15 @@ export function DailyGoalCard({
       {/* ── 3. 3D Tactile Task 1: Awakening Ritual ─────────────────────────── */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${t("Alarm-led ritual")}: ${ritualDone ? t("Complete") : t("Start ritual")}. ${ritualEarned ? t("10 points earned today") : t("Ritual: +10 points once daily")}`}
+        accessibilityLabel={`${t("Alarm-led ritual")}: ${ritualDone ? t("Completed") : t("Start ritual")}. ${ritualEarned ? t("10 points earned today") : t("Ritual: +10 points once daily")}`}
         onPress={() => {
-          if (onStartRitual) onStartRitual();
-          else router.push("/today");
+          if (onStartRitual) {
+            onStartRitual();
+          } else if (ritualDone) {
+            router.push("/gita");
+          } else {
+            router.push("/alarm/setup");
+          }
         }}
         style={({ pressed }) => [
           s.taskTile3D,
@@ -308,18 +274,14 @@ export function DailyGoalCard({
               ritualDone ? s.taskIconCircleComplete : s.taskIconCirclePending,
             ]}
           >
-            {ritualDone ? (
-              <Check size={18} color={C.greenDark} strokeWidth={2.8} />
-            ) : (
-              <Sun size={18} color={C.saffron} />
-            )}
+            <Sun size={18} color={C.saffron} />
           </View>
           <View style={s.taskTextGroup}>
             <TextR style={s.taskTitle}>{t("Alarm-led ritual")}</TextR>
             <TextR style={s.taskSub}>
-              {ritualEarned
+              {ritualDone
                 ? t("10 points earned today")
-                : t("Ritual: +10 points once daily")}
+                : t("Rise with morning chants")}
             </TextR>
           </View>
         </View>
@@ -327,8 +289,8 @@ export function DailyGoalCard({
         <View style={s.taskRight}>
           {ritualDone ? (
             <View style={s.statusPillDone3D}>
-              <Check size={13} color={C.greenDark} strokeWidth={2.8} />
-              <TextR style={s.statusPillDoneText}>{t("Complete")}</TextR>
+              <Check size={13} color="#8C5E0D" strokeWidth={2.8} />
+              <TextR style={s.statusPillDoneText}>{t("Completed")}</TextR>
             </View>
           ) : (
             <View style={s.actionPillPrimary3D}>
@@ -344,7 +306,7 @@ export function DailyGoalCard({
       {/* ── 4. 3D Tactile Task 2: Daily Gita Quiz ──────────────────────────── */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${t("Quiz round")}: ${quizDone ? t("Complete") : t("Play quiz")}. ${quizEarned ? t("10 points earned today") : t("Quiz: +10 points once daily")}`}
+        accessibilityLabel={`${t("Quiz round")}: ${quizDone ? t("Completed") : t("Play quiz")}. ${quizEarned ? t("10 points earned today") : t("Quiz: +10 points once daily")}`}
         onPress={() => {
           if (onStartQuiz) onStartQuiz();
           else router.push("/quiz");
@@ -362,18 +324,14 @@ export function DailyGoalCard({
               quizDone ? s.taskIconCircleComplete : s.taskIconCirclePending,
             ]}
           >
-            {quizDone ? (
-              <Check size={18} color={C.greenDark} strokeWidth={2.8} />
-            ) : (
-              <BookOpen size={18} color={C.saffron} />
-            )}
+            <BookOpen size={18} color={C.saffron} />
           </View>
           <View style={s.taskTextGroup}>
             <TextR style={s.taskTitle}>{t("Quiz round")}</TextR>
             <TextR style={s.taskSub}>
-              {quizEarned
+              {quizDone
                 ? t("10 points earned today")
-                : t("Quiz: +10 points once daily")}
+                : t("5 quick wisdom questions")}
             </TextR>
           </View>
         </View>
@@ -381,29 +339,17 @@ export function DailyGoalCard({
         <View style={s.taskRight}>
           {quizDone ? (
             <View style={s.statusPillDone3D}>
-              <Check size={13} color={C.greenDark} strokeWidth={2.8} />
-              <TextR style={s.statusPillDoneText}>{t("Complete")}</TextR>
+              <Check size={13} color="#8C5E0D" strokeWidth={2.8} />
+              <TextR style={s.statusPillDoneText}>{t("Completed")}</TextR>
             </View>
           ) : (
             <View style={s.actionPillPrimary3D}>
-              <BookOpen size={13} color={C.white} />
+              <Sparkles size={12} color={C.white} />
               <TextR style={s.actionPillPrimaryText}>{t("Play quiz")} →</TextR>
             </View>
           )}
         </View>
       </Pressable>
-
-      {/* ── 5. Unlocked / Completed Celebration Plaque ─────────────────────── */}
-      {isCompletedToday && (
-        <View style={s.celebrationPlaque}>
-          <View style={s.celebrationLotusWrap}>
-            <Flower2 size={16} color="#7A4D00" />
-          </View>
-          <TextR style={s.celebrationText}>
-            {t("Both activities complete—daily streak advanced.")}
-          </TextR>
-        </View>
-      )}
 
       {/* ── 6. First-Time Enrolment Guidance ──────────────────────────────── */}
       {!p.activated && !isCompletedToday && (
@@ -458,25 +404,24 @@ export function DailyGoalCard({
       {/* ── 8. Devotional Ledger Notices ──────────────────────────────────── */}
       {notice.length > 0 && (
         <View accessibilityLiveRegion="polite" style={s.noticeContainer3D}>
-          {notice.map((e) => (
-            <View key={e.id} style={s.noticeRow}>
-              <Award size={16} color={C.saffron} />
-              <TextR style={s.noticeText}>
-                {t(pointsEntryLabel(e))}: {e.amount > 0 ? "+" : ""}
-                {formatNumber(e.amount)} ·{" "}
-                {e.kind === "milestone"
-                  ? t("daysCount", { count: e.milestone! })
-                  : t("daysCount", { count: e.days })}
-              </TextR>
-            </View>
-          ))}
+          <View style={s.noticeRow}>
+            <Award size={14} color={C.saffron} />
+            <TextR style={s.noticeText}>
+              {notice
+                .map(
+                  (e) =>
+                    `${t(pointsEntryLabel(e))}: ${e.amount > 0 ? "+" : ""}${formatNumber(e.amount)}`,
+                )
+                .join(" · ")}
+            </TextR>
+          </View>
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={t("Close")}
             style={s.dismissNoticeBtn}
             onPress={dismissNotice}
           >
-            <X size={14} color={C.ink} />
-            <TextR style={s.dismissNoticeText}>{t("Close")}</TextR>
+            <X size={13} color={C.muted} />
           </Pressable>
         </View>
       )}
@@ -504,33 +449,27 @@ export function DailyGoalCard({
 
 const s = StyleSheet.create({
   cardContainer: {
-    backgroundColor: "#FFFDF9",
-    borderRadius: 26,
-    padding: 18,
+    backgroundColor: "rgba(255, 248, 242, 0.94)",
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.95)",
     borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(140, 64, 16, 0.22)",
+    borderBottomColor: "rgba(140, 64, 16, 0.18)",
     borderBottomWidth: 3.5,
-    marginBottom: 16,
-    shadowColor: "#8C4010",
+    marginBottom: 14,
+    shadowColor: C.saffron,
     shadowOpacity: 0.14,
     shadowRadius: 18,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 5,
-    gap: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+    gap: 10,
     position: "relative",
     overflow: "hidden",
   },
-  topSpecularLine: {
-    position: "absolute",
-    top: 0,
-    left: 20,
-    right: 20,
-    height: 2,
-    backgroundColor: "rgba(244, 185, 66, 0.65)",
-    borderRadius: 1,
-  },
+
   headerRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -542,8 +481,8 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    flexGrow: 1,
-    flexBasis: 180,
+    flex: 1,
+    minWidth: 140,
   },
   goalIconCircle: {
     width: 38,
@@ -561,9 +500,11 @@ const s = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
+    flexShrink: 0,
   },
   headerTextWrap: {
     flex: 1,
+    minWidth: 0,
   },
   headerKickerRow: {
     flexDirection: "row",
@@ -644,19 +585,17 @@ const s = StyleSheet.create({
     color: "#8C5E0D",
   },
   stepperSection: {
-    gap: 6,
+    gap: 8,
   },
   stepperHeader: {
-    flexDirection: "column",
+    flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 6,
+    alignItems: "center",
   },
   stepperLabelGroup: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    flex: 1,
+    gap: 7,
   },
   stepperDot: {
     width: 7,
@@ -665,62 +604,65 @@ const s = StyleSheet.create({
     backgroundColor: C.saffron,
   },
   stepperDotComplete: {
-    backgroundColor: C.greenDark,
+    backgroundColor: C.saffron,
   },
   stepperStatusText: {
-    flexShrink: 1,
     fontSize: 13,
     fontWeight: "700",
     color: C.ink,
   },
+  stepperStatusTextComplete: {
+    color: C.ink,
+    fontWeight: "700",
+  },
   rewardBadgePill: {
-    maxWidth: "100%",
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(229, 107, 39, 0.1)",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    backgroundColor: "rgba(254, 236, 220, 0.75)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(229, 107, 39, 0.25)",
+    borderColor: "rgba(229, 107, 39, 0.28)",
   },
   rewardBadgeText: {
-    flexShrink: 1,
     fontSize: 11.5,
     fontWeight: "800",
     color: C.saffron,
   },
   rewardCompletePill: {
-    maxWidth: "100%",
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "rgba(94, 158, 104, 0.15)",
+    backgroundColor: "rgba(244, 185, 66, 0.18)",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(94, 158, 104, 0.35)",
+    borderColor: "rgba(244, 185, 66, 0.4)",
   },
   rewardCompleteText: {
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: "800",
-    color: C.greenDark,
+    color: "#8C5E0D",
   },
   stepperTrack: {
     flexDirection: "row",
     height: 8,
-    borderRadius: 4,
-    overflow: "hidden",
+    alignItems: "center",
   },
   stepperSegment: {
     flex: 1,
-    backgroundColor: "rgba(222, 192, 180, 0.35)",
-    borderRadius: 4,
+    height: 8,
+    backgroundColor: "rgba(222, 192, 180, 0.45)",
+    borderRadius: 999,
     overflow: "hidden",
   },
   stepperSegmentActive: {
+    backgroundColor: C.saffron,
+  },
+  stepperSegmentComplete: {
     backgroundColor: C.saffron,
   },
   segmentShine: {
@@ -728,7 +670,7 @@ const s = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 2,
+    height: 2.5,
     backgroundColor: "rgba(255, 255, 255, 0.6)",
   },
   taskTile3D: {
@@ -747,8 +689,9 @@ const s = StyleSheet.create({
     elevation: 2,
   },
   taskTileCompleted: {
-    backgroundColor: "rgba(238, 250, 242, 0.85)",
-    borderBottomColor: "rgba(42, 92, 51, 0.22)",
+    backgroundColor: "rgba(255, 250, 244, 0.96)",
+    borderColor: "rgba(244, 185, 66, 0.32)",
+    borderBottomColor: "rgba(229, 107, 39, 0.22)",
     borderBottomWidth: 2.5,
   },
   taskTilePending: {
@@ -765,6 +708,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     flex: 1,
+    minWidth: 0,
   },
   taskIconCircle3D: {
     width: 36,
@@ -778,11 +722,12 @@ const s = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
+    flexShrink: 0,
   },
   taskIconCircleComplete: {
-    backgroundColor: "#D1F2DD",
-    borderColor: "rgba(94, 158, 104, 0.4)",
-    borderBottomColor: "rgba(42, 92, 51, 0.3)",
+    backgroundColor: "#FFF2DC",
+    borderColor: "rgba(244, 185, 66, 0.55)",
+    borderBottomColor: "rgba(180, 115, 20, 0.3)",
     borderBottomWidth: 2,
   },
   taskIconCirclePending: {
@@ -793,6 +738,7 @@ const s = StyleSheet.create({
   },
   taskTextGroup: {
     flex: 1,
+    minWidth: 0,
   },
   taskTitle: {
     fontSize: 15.5,
@@ -807,25 +753,26 @@ const s = StyleSheet.create({
   },
   taskRight: {
     marginLeft: 8,
+    flexShrink: 0,
   },
   statusPillDone3D: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: "#D8F4E2",
+    backgroundColor: "#FFF4E3",
     paddingHorizontal: 11,
-    paddingVertical: 7,
+    paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "rgba(94, 158, 104, 0.5)",
+    borderColor: "rgba(244, 185, 66, 0.65)",
     borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(42, 92, 51, 0.3)",
+    borderBottomColor: "rgba(180, 115, 20, 0.35)",
     borderBottomWidth: 2,
   },
   statusPillDoneText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: "800",
-    color: C.greenDark,
+    color: "#8C5E0D",
   },
   actionPillPending3D: {
     paddingHorizontal: 12,
@@ -866,33 +813,6 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontWeight: "800",
     color: C.white,
-  },
-  celebrationPlaque: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(255, 248, 220, 0.95)",
-    padding: 10,
-    borderRadius: 14,
-    borderWidth: 1.2,
-    borderColor: "#F4B942",
-    borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(140, 94, 13, 0.35)",
-    borderBottomWidth: 2,
-  },
-  celebrationLotusWrap: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "#FFE8A3",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  celebrationText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#6E4300",
-    flex: 1,
   },
   guidanceCard: {
     backgroundColor: "rgba(254, 236, 220, 0.45)",
@@ -948,37 +868,34 @@ const s = StyleSheet.create({
     color: C.saffron,
   },
   noticeContainer3D: {
-    backgroundColor: "#FFF8F2",
-    padding: 12,
-    borderRadius: 16,
-    borderWidth: 1.2,
-    borderColor: "rgba(229, 107, 39, 0.25)",
-    borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(140, 64, 16, 0.15)",
-    borderBottomWidth: 2,
+    backgroundColor: "rgba(255, 248, 240, 0.95)",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(229, 107, 39, 0.2)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 8,
   },
   noticeRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
+    flex: 1,
   },
   noticeText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "700",
     color: C.ink,
     flex: 1,
   },
   dismissNoticeBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-end",
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    padding: 4,
   },
   dismissNoticeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
     color: C.ink,
   },
@@ -986,7 +903,8 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 8,
+    paddingTop: 10,
+    paddingBottom: 2,
     borderTopWidth: 1,
     borderTopColor: "rgba(140, 64, 16, 0.08)",
   },

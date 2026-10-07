@@ -10,6 +10,12 @@ import java.util.UUID
 object RitualRewards {
   private fun prefs(context: Context) = context.createDeviceProtectedStorageContext()
     .getSharedPreferences("morning-alarm-rewards-v1", Context.MODE_PRIVATE)
+  private fun matchesSession(context: Context): Boolean {
+    val p = prefs(context)
+    val session = AlarmPresentation.state(context)["sessionId"] as? String ?: return false
+    // Existing upgraded sessions retain their original proof; new deliveries must match exactly.
+    return AlarmPolicy.matchesRewardSession(session, p.getLong("scheduledAt", -1L), p.getBoolean("test", true))
+  }
   @Synchronized fun begin(context: Context, scheduledAt: Long, test: Boolean) {
     val p = prefs(context)
     if (p.getLong("scheduledAt", -1L) == scheduledAt && p.getBoolean("test", false) == test) return
@@ -19,7 +25,7 @@ object RitualRewards {
   }
   @Synchronized fun awaken(context: Context) {
     val p = prefs(context)
-    if (p.getBoolean("test", true) || !AlarmStore.isRinging(context) || AlarmPresentation.state(context)["stage"] != "wake") return
+    if (p.getBoolean("test", true) || !matchesSession(context) || !AlarmStore.isRinging(context) || AlarmPresentation.state(context)["stage"] != "wake") return
     check(p.edit().putString("wakeAt", Instant.now().toString()).commit()) { "Could not save wake receipt" }
   }
   @Synchronized fun occurrence(context: Context): Map<String, Any?> {
@@ -29,13 +35,17 @@ object RitualRewards {
   }
   @Synchronized fun complete(context: Context, id: String, stage: String): Boolean {
     val p = prefs(context)
-    if (p.getString("id", null) != id || p.getBoolean("test", true) || !p.contains("wakeAt") || AlarmPresentation.state(context)["active"] != true || AlarmPresentation.state(context)["stage"] != stage) return false
+    if (p.getString("id", null) != id || p.getBoolean("test", true) || !matchesSession(context) || !p.contains("wakeAt") || AlarmPresentation.state(context)["active"] != true || AlarmPresentation.state(context)["stage"] != stage) return false
+    val checkpoint = AlarmPresentation.checkpoint(context, stage)?.let { runCatching { JSONObject(it) }.getOrNull() } ?: return false
+    if (checkpoint.optString("sessionId") != AlarmPresentation.state(context)["sessionId"]) return false
     if (stage == "breathe") {
+      if (checkpoint.optInt("elapsed", 0) < 70) return false
       if (p.contains("breathingAt")) return true
       check(p.edit().putString("breathingAt", Instant.now().toString()).commit()) { "Could not save breathing receipt" }
       return true
     }
     if (stage != "gita" || !p.contains("breathingAt")) return false
+    if (!AlarmPolicy.completedGita(checkpoint.optBoolean("readingAvailable", false), checkpoint.optBoolean("readingConfirmed", false), checkpoint.optDouble("completionMs", 0.0), checkpoint.optDouble("playedThroughMs", 0.0))) return false
     if (p.contains("completedAt")) return true
     val completed = Instant.now().toString()
     val pending = JSONArray(p.getString("pending", "[]"))

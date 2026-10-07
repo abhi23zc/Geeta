@@ -27,3 +27,14 @@ export function ritualRemovalAllowed(
   }
   return false;
 }
+
+/** A saved phase must restore even when alarm playback has already stopped. */
+export function ritualRouteTarget(
+  state: { active: boolean; locked: boolean; loading: boolean; stage: keyof typeof ritualRoutes | null },
+  route: string,
+): string | null {
+  if (!state.active) return route === 'alarm/wake' ? 'index' : null;
+  const expected = state.stage ? ritualRoutes[state.stage] : null;
+  if (!expected || expected === route) return null;
+  return state.loading || state.locked || state.stage === 'wake' || isRitualRoute(route) ? expected : null;
+}

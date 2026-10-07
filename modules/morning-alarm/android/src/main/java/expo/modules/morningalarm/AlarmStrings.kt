@@ -15,11 +15,19 @@ object AlarmStrings {
   fun locale(context: Context): Locale = if (language(context) == "hi") Locale.forLanguageTag("hi-IN-u-nu-latn") else Locale.forLanguageTag("en-IN")
   fun setLanguage(context: Context, language: String) {
     require(language in setOf("en", "hi", "hinglish")) { "Invalid app language" }
+    if (!AlarmDeliveryPolicy.refreshLanguage(prefs(context).contains("language"), language(context), language)) {
+      AlarmLog.event("language_unchanged")
+      return
+    }
     check(prefs(context).edit().putString("language", language).commit()) { "Could not persist alarm language" }
     AlarmPresentation.refreshLanguage(context)
     AlarmService.refreshLanguage()
   }
   private val strings = mapOf(
+    "The app screen could not finish loading. Try again." to Pair("ऐप की स्क्रीन लोड नहीं हो सकी। फिर प्रयास करें।", "App ki screen load nahi ho saki. Phir try karein."),
+    "Try again" to Pair("फिर प्रयास करें", "Phir try karein"),
+    "Continue after unlock" to Pair("अनलॉक के बाद जारी रखें", "Unlock ke baad jaari rakhein"),
+    "Unlock your phone to continue the ritual" to Pair("साधना जारी रखने के लिए फ़ोन अनलॉक करें", "Sadhana jaari rakhne ke liye phone unlock karein"),
     "Morning ritual alarms" to Pair("प्रातः साधना अलार्म", "Morning sadhana alarms"),
     "Shows the active Morning Ritual alarm" to Pair("सक्रिय प्रातः साधना अलार्म दिखाता है", "Active morning sadhana alarm dikhata hai"),
     "Your Morning Ritual is ready" to Pair("आपकी प्रातः साधना तैयार है", "Aapki morning sadhana taiyar hai"),

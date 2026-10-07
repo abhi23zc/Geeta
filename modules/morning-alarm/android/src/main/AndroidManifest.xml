@@ -11,6 +11,7 @@
   <application>
     <activity
       android:name="expo.modules.morningalarm.AlarmActivity"
+      android:directBootAware="true"
       android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode|smallestScreenSize|assetsPaths"
       android:excludeFromRecents="true"
       android:exported="false"
@@ -27,7 +28,7 @@
       android:foregroundServiceType="mediaPlayback"
       android:stopWithTask="false" />
 
-    <receiver android:name="expo.modules.morningalarm.AlarmStopReceiver" android:exported="false" />
+    <receiver android:directBootAware="true" android:name="expo.modules.morningalarm.AlarmStopReceiver" android:exported="false" />
     <receiver
       android:name="expo.modules.morningalarm.AlarmReceiver"
       android:directBootAware="true"

@@ -28,11 +28,35 @@ object AlarmScheduler {
     return null
   }
 
-  fun scheduleNext(context: Context, config: AlarmConfig): Long? {
-    cancel(context)
-    val at = nextOccurrence(config, Instant.now())?.toEpochMilli() ?: return null
-    scheduleAt(context, config, at)
-    return at
+  private fun prefs(context: Context) = context.createDeviceProtectedStorageContext()
+    .getSharedPreferences("morning-alarm-schedule-v1", Context.MODE_PRIVATE)
+
+  @Synchronized fun status(context: Context): Map<String, Any?> {
+    val p = prefs(context)
+    return mapOf("scheduleStatus" to p.getString("status", "unknown"),
+      "scheduledAt" to p.getLong("at", 0L).toDouble(), "revision" to p.getLong("revision", -1L),
+      "scheduleError" to p.getString("error", null))
+  }
+
+  @Synchronized fun scheduleNext(context: Context, config: AlarmConfig, force: Boolean = false): Long? {
+    val at = nextOccurrence(config, Instant.now())?.toEpochMilli()
+    if (!config.enabled || at == null) { cancel(context); return null }
+    if (!AlarmCapabilities.ready(context)) { cancel(context, "needs-access"); return null }
+    val p = prefs(context)
+    val operation = PendingIntent.getBroadcast(context, REQUEST_ALARM, Intent(context, AlarmReceiver::class.java), PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE)
+    if (AlarmPolicy.reuseSchedule(force, operation != null, p.getString("status", null), p.getLong("revision", -1L), config.revision, p.getLong("at", 0L), at)) return at
+    cancel(context, "unknown")
+    try {
+      scheduleAt(context, config, at)
+      check(p.edit().putString("status", "scheduled").putLong("at", at)
+        .putLong("revision", config.revision).putLong("updatedAt", System.currentTimeMillis()).remove("error").commit())
+      return at
+    } catch (error: Exception) {
+      cancel(context, "failed")
+      p.edit().putString("error", error.javaClass.simpleName).commit()
+      AlarmLog.event("schedule_failed", error.javaClass.simpleName)
+      return null
+    }
   }
 
   private fun scheduleAt(context: Context, config: AlarmConfig, at: Long, test: Boolean = false) {
@@ -52,7 +76,8 @@ object AlarmScheduler {
     val show = PendingIntent.getActivity(
       context,
       if (test) 6112 else REQUEST_SHOW,
-      AlarmActivity.intent(context),
+      (context.packageManager.getLaunchIntentForPackage(context.packageName) ?: Intent(context, AlarmActivity::class.java))
+        .setAction(Intent.ACTION_VIEW).setData(android.net.Uri.parse("geeta:///alarm/setup")),
       PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
     AlarmLog.initialize(context)
@@ -60,13 +85,13 @@ object AlarmScheduler {
     AlarmLog.event("scheduled", "at=$at test=$test")
   }
 
-  fun scheduleTest(context: Context): Long {
+  @Synchronized fun scheduleTest(context: Context): Long {
     val at = System.currentTimeMillis() + 30_000L
     scheduleAt(context, AlarmConfig(hour = 0, minute = 0, weekdays = emptySet(), enabled = true, gradualVolume = false, vibration = true, revision = 0), at, test = true)
     return at
   }
 
-  fun cancel(context: Context) {
+  @Synchronized fun cancel(context: Context, status: String = "disabled") {
     val operation = PendingIntent.getBroadcast(
       context,
       REQUEST_ALARM,
@@ -77,6 +102,8 @@ object AlarmScheduler {
       context.getSystemService(AlarmManager::class.java).cancel(operation)
       operation.cancel()
     }
+    check(prefs(context).edit().putString("status", status).remove("at").remove("revision")
+      .remove("error").putLong("updatedAt", System.currentTimeMillis()).commit())
   }
 
   fun canScheduleExact(context: Context): Boolean {

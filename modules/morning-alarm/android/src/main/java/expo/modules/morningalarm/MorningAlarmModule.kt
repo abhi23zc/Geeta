@@ -19,19 +19,38 @@ class MorningAlarmModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("MorningAlarm")
     Events("alarmTriggered", "alarmStopped", "alarmPresentationChanged")
-    AsyncFunction("setAppLanguage") { language: String -> AlarmStrings.setLanguage(context, language) }
+    AsyncFunction("setAppLanguage") { language: String -> AlarmStrings.setLanguage(context, language) }.runOnQueue(Queues.MAIN)
+    Function("getAlarmStartupState") { AlarmPresentation.startupState(context) }
+    AsyncFunction("acknowledgeRitualScreen") { input: ReadableArguments ->
+      AlarmPresentation.acknowledge(appContext.currentActivity, input.getString("sessionId"), input.getString("stage"), input.getInt("hostGeneration"), input.getInt("coverGeneration"))
+    }.runOnQueue(Queues.MAIN)
+    AsyncFunction("recordNavigationState") { route: String, top: String, focused: Boolean, owned: Boolean, foreground: Boolean ->
+      val names = setOf("index", "alarm/wake", "breathe", "gita")
+      val snapshot = AlarmPresentation.state(context)
+      AlarmLog.event("ritual_navigation", "route=${if (route in names) route else "other"} top=${if (top in names) top else "other"} focus=$focused owned=$owned foreground=$foreground stage=${snapshot["stage"]} status=${snapshot["status"]} loading=${snapshot["loading"]}")
+    }.runOnQueue(Queues.MAIN)
     Function("getPresentationState") { AlarmPresentation.state(context) }
     Function("getRewardOccurrence") { RitualRewards.occurrence(context) }
     AsyncFunction("completeRewardStage") { id: String, stage: String -> RitualRewards.complete(context, id, stage) }
+    Function("getRitualCheckpoint") { stage: String -> AlarmPresentation.checkpoint(context, stage) }
+    AsyncFunction("saveRitualCheckpoint") { id: String, stage: String, raw: String ->
+      AlarmPresentation.saveCheckpoint(context, id, stage, raw)
+    }.runOnQueue(Queues.MAIN)
     AsyncFunction("getPendingRewardReceipts") { RitualRewards.pending(context) }
     AsyncFunction("acknowledgeRewardReceipts") { ids: List<String> -> RitualRewards.acknowledge(context, ids) }
     AsyncFunction("setRitualStage") { stage: String ->
       appContext.currentActivity?.let { AlarmPresentation.setStage(it, stage) }
     }.runOnQueue(Queues.MAIN)
+    AsyncFunction("advanceRitualStage") { id: String, stage: String ->
+      val activity = appContext.currentActivity ?: throw IllegalStateException("Ritual screen unavailable")
+      require(AlarmPresentation.state(context)["active"] == true) { "Alarm session ended" }
+      AlarmPresentation.setStage(activity, stage, id)
+    }.runOnQueue(Queues.MAIN)
     AsyncFunction("notifyRitualScreenReady") { route: String ->
       appContext.currentActivity?.let { AlarmPresentation.rendered(it, route) }
     }.runOnQueue(Queues.MAIN)
     AsyncFunction("endRitualPresentation") { AlarmPresentation.end(context) }.runOnQueue(Queues.MAIN)
+    AsyncFunction("endRitualOccurrence") { id: String -> AlarmPresentation.end(context, "exit", id) }.runOnQueue(Queues.MAIN)
     AsyncFunction("setRitualScreenAwake") { awake: Boolean ->
       appContext.currentActivity?.let { AlarmPresentation.setAwake(it, awake) }
     }.runOnQueue(Queues.MAIN)
@@ -54,7 +73,8 @@ class MorningAlarmModule : Module() {
       AlarmEvents.listener = null
     }
 
-    AsyncFunction("schedule") { input: ReadableArguments ->
+    AsyncFunction("schedule") { input: ReadableArguments -> synchronized(AlarmScheduler) {
+      require(!AlarmStore.isRinging(context)) { "Complete Start my day before changing an active alarm" }
       val tone = input.getArguments("tone")
       val config = AlarmConfig(
         hour = input.getInt("hour").coerceIn(0, 23),
@@ -75,19 +95,21 @@ class MorningAlarmModule : Module() {
       val scheduledAt = if (stored.enabled && AlarmCapabilities.ready(context)) {
         AlarmScheduler.scheduleNext(context, stored)
       } else { AlarmScheduler.cancel(context); null }
-      mapOf("scheduled" to (scheduledAt != null), "scheduledAt" to scheduledAt?.toDouble())
-    }
+      mapOf("scheduled" to (scheduledAt != null), "scheduledAt" to scheduledAt?.toDouble()) + AlarmScheduler.status(context)
+    } }
 
-    AsyncFunction("cancel") {
+    AsyncFunction("cancel") { synchronized(AlarmScheduler) {
       require(!AlarmStore.isRinging(context)) { "Complete Start my day before changing an active alarm" }
       AlarmScheduler.cancel(context)
       AlarmStore.setEnabled(context, false)
       mapOf("cancelled" to true)
-    }
+    } }
 
-    AsyncFunction("dismissAndScheduleNext") {
+    AsyncFunction("dismissAndScheduleNext") { AlarmController.dismiss(context, finishActivity = false)?.toDouble() }.runOnQueue(Queues.MAIN)
+    AsyncFunction("dismissRitualOccurrence") { id: String ->
+      require(AlarmPresentation.state(context)["sessionId"] == id && AlarmStore.isRinging(context)) { "Alarm session changed" }
       AlarmController.dismiss(context, finishActivity = false)?.toDouble()
-    }
+    }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("getConfig") {
       AlarmStore.get(context)?.let(::configMap)
@@ -101,6 +123,10 @@ class MorningAlarmModule : Module() {
       reconcile()
       capabilityMap(context)
     }
+    AsyncFunction("getHomeSnapshot") { synchronized(AlarmScheduler) {
+      reconcile()
+      mapOf("config" to AlarmStore.get(context)?.let(::configMap), "capabilities" to capabilityMap(context)) + AlarmScheduler.status(context)
+    } }
 
     AsyncFunction("reconcile") { reconcile() }
 
@@ -179,12 +205,12 @@ class MorningAlarmModule : Module() {
 
   private fun capabilityMap(context: Context) = AlarmCapabilities.status(context)
 
-  private fun reconcile(): Boolean {
+  private fun reconcile(): Boolean = synchronized(AlarmScheduler) {
     val config = AlarmStore.get(context) ?: return false
-    if (!config.enabled) return false
+    if (!config.enabled) { AlarmScheduler.cancel(context); return false }
     val status = capabilityMap(context)
     if (status["exactAlarm"] != true || status["notifications"] != true || status["notificationChannelReady"] != true) {
-      AlarmScheduler.cancel(context)
+      AlarmScheduler.cancel(context, "needs-access")
       AlarmLog.event("schedule_paused", "required access missing; config retained")
       return false
     }

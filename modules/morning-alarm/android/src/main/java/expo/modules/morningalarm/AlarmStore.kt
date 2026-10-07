@@ -43,7 +43,7 @@ object AlarmStore {
       .putBoolean("vibration", next.vibration)
       .remove("snooze_minutes")
       .putLong("revision", next.revision)
-      .apply()
+      .commit().also { check(it) { "Could not save alarm settings" } }
     return next
   }
 
