@@ -13,7 +13,7 @@ import {
 import { TextR } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
 import { useLanguage } from '@/i18n/provider';
-import { shiftDay } from './model';
+import { activityPoints, shiftDay } from './model';
 import type { DailyProgress } from './model';
 
 interface SadhanaCalendarProps {
@@ -249,7 +249,7 @@ export function SadhanaCalendar({ progress: p, today }: SadhanaCalendarProps) {
                   <Minus size={10} color={C.muted} />
                 )}
               </View>
-              <TextR style={s.activityLabel}>{t('Alarm-led ritual')}</TextR>
+              <TextR style={s.activityLabel}>{t('Alarm-led ritual')} · +{formatNumber(activityPoints(p, inspectedDate, 'ritual'))} {t('Points')}</TextR>
             </View>
 
             <View style={s.inspectorActivity}>
@@ -265,9 +265,12 @@ export function SadhanaCalendar({ progress: p, today }: SadhanaCalendarProps) {
                   <Minus size={10} color={C.muted} />
                 )}
               </View>
-              <TextR style={s.activityLabel}>{t('Quiz round')}</TextR>
+              <TextR style={s.activityLabel}>{t('Quiz round')} · +{formatNumber(activityPoints(p, inspectedDate, 'quiz'))} {t('Points')}</TextR>
             </View>
           </View>
+          {(inspectedDayData?.quiz || inspectedDayData?.ritual) && !inspectedDayData?.rewarded && <TextR style={s.activityLabel}>
+            {t('Partial days keep points but break the streak. Only inactive days deduct up to 10 points; points never fall below zero.')}
+          </TextR>}
         </View>
       )}
     </View>
@@ -486,8 +489,8 @@ const s = StyleSheet.create({
     fontWeight: '800',
   },
   inspectorActivitiesRow: {
-    flexDirection: 'row',
-    gap: 16,
+    flexDirection: 'column',
+    gap: 10,
   },
   inspectorActivity: {
     flexDirection: 'row',
@@ -507,6 +510,7 @@ const s = StyleSheet.create({
     backgroundColor: C.green,
   },
   activityLabel: {
+    flexShrink: 1,
     fontSize: 12,
     fontWeight: '600',
     color: C.ink,

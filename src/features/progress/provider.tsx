@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { acknowledgeRewardReceipts, getPendingRewardReceipts, isRewardAlarmAvailable } from '@/services/alarm';
-import { applyReceipts, createProgressWriter, dayKey, emptyDailyProgress, parseDailyProgress, prepareTimezone, PROGRESS_KEY, shiftDay, validReceipt } from './model';
+import { applyReceipts, createProgressWriter, dayKey, emptyDailyProgress, migrateDailyProgress, parseDailyProgress, prepareTimezone, PROGRESS_KEY, shiftDay, validReceipt } from './model';
 import type { CompletionReceipt, DailyProgress, PointsEntry } from './model';
 import { progressTransaction } from './transactions';
 import { parseProgress as parseQuizProgress, QUIZ_STORAGE_KEY } from '../quiz/storage';
@@ -33,22 +33,23 @@ export function ProgressProvider({ children }: React.PropsWithChildren) {
         const earliest = receipts.reduce((time, r) => Math.min(time, Date.parse(r.completedAt)), now.getTime());
         p = emptyDailyProgress(new Date(earliest), p.timezone);
       }
-      p = prepareTimezone(p, zone, now);
-      const date = dayKey(now, p.timezone);
-      const next = applyReceipts(p, receipts, now);
+      const migrating = p.version === 1;
+      const prepared = p.version === 1 ? migrateDailyProgress(p, receipts, now, zone) : prepareTimezone(p, zone, now);
+      const date = dayKey(now, prepared.timezone);
+      const next = migrating ? prepared : applyReceipts(prepared, receipts, now);
       if (!current.current || JSON.stringify(next) !== JSON.stringify(original)) await writer.current.save(next);
       current.current = next;
       if (mounted.current) {
-        setProgress(next); setToday(date); setClockWarning(date < p.lastObserved || receipts.some(r => Date.parse(r.completedAt) > now.getTime())); setError(null);
+        setProgress(next); setToday(date); setClockWarning(date < prepared.lastObserved || receipts.some(r => Date.parse(r.completedAt) > now.getTime())); setError(null);
         const oldIds = new Set(original.ledger.map(e => e.id));
         const added = next.ledger.filter(e => !oldIds.has(e.id)).map(e => {
           const previous = p.ledger.at(-1);
           return e.kind === 'missed' && previous?.kind === 'missed' && e.from === previous.from
             ? { ...e, from: shiftDay(previous.to, 1), amount: e.amount - previous.amount, days: e.days - previous.days } : e;
         });
-        if (added.length) setNotice(added);
+        if (!migrating && added.length) setNotice(added);
       }
-      if (date < p.lastObserved || receipts.some(r => Date.parse(r.completedAt) > now.getTime())) return false;
+      if (date < prepared.lastObserved || receipts.some(r => Date.parse(r.completedAt) > now.getTime())) return false;
       await acknowledgeRewardReceipts(pendingNative.map(r => r.id));
       return true;
     } catch (e) {

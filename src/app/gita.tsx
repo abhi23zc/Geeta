@@ -56,7 +56,6 @@ import { useLocalDateKey } from "@/hooks/use-local-date-key";
 import { replaceAppRoute } from "@/navigation/route-actions";
 import { completeRewardStage, getRewardOccurrence, getAlarmPlaybackState, getAlarmPresentationState, requestRitualUnlock, setAlarmRitualScreenAwake } from "@/services/alarm";
 import { useProgress } from '@/features/progress/provider';
-import { DailyGoalCard } from '@/features/progress/daily-goal-card';
 import { progressTransaction } from '@/features/progress/transactions';
 import { useGitaProgress } from "@/state/gita-store";
 import { useRitual } from "@/state/ritual-store";
@@ -1042,7 +1041,6 @@ function GitaContent({ today }: { today: string }) {
       ) : (
         /* ─── 5. Completed Contemplation & Daily Morning Sankalpa Altar ───── */
         <Animated.View entering={FadeIn.duration(320)} style={s.completedScreen}>
-          <DailyGoalCard link={false} />
           {/* Meditative Hero Mascot Stage */}
           <MascotStage
             onMascotPress={handleMascotTap}

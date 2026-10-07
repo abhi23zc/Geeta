@@ -1,5 +1,4 @@
 import React from 'react';
-import { GoalStreakBadge } from '@/features/progress/goal-streak-badge';
 import { useProgress } from '@/features/progress/provider';
 import { useLanguage } from '@/i18n/provider';
 import {
@@ -9,11 +8,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
-  BookOpen,
-  Crown,
-  Shield,
-  Landmark,
-  Feather,
   Flame,
   RotateCcw,
   Zap,
@@ -22,6 +16,7 @@ import {
   Settings,
   ChevronRight,
   Flower2,
+  History,
   Users,
 } from 'lucide-react-native';
 import Animated, {
@@ -33,31 +28,11 @@ import Animated, {
 
 import { AruMascot } from '@/components/aru-mascot';
 import { useQuiz } from '@/features/quiz/provider';
-import { StartButton } from '@/features/quiz/start-button';
-import { Button, Copy, Panel, QuizScreen, useCopy } from '@/features/quiz/ui';
+import { Button, Copy, QuizScreen, useCopy } from '@/features/quiz/ui';
+import { dayKey } from '@/features/progress/model';
 import { C } from '@/constants/ritual-theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-const TOPIC_ICON_MAP: Record<string, typeof BookOpen> = {
-  gita: BookOpen,
-  ramayana: Crown,
-  mahabharata: Shield,
-  temples: Landmark,
-  sanskrit: Feather,
-  deities: Flower2,
-  festivals: Flame,
-};
-
-const TOPIC_COLORS: Record<string, { bg: string; border: string; accent: string }> = {
-  gita: { bg: '#FFF8F2', border: 'rgba(229, 107, 39, 0.35)', accent: C.saffron },
-  ramayana: { bg: '#F4F9FF', border: 'rgba(37, 99, 235, 0.3)', accent: '#2563EB' },
-  mahabharata: { bg: '#FFF5F6', border: 'rgba(190, 18, 60, 0.3)', accent: '#BE123C' },
-  temples: { bg: '#FDF8F2', border: 'rgba(180, 83, 9, 0.3)', accent: '#B45309' },
-  sanskrit: { bg: '#FAF6FF', border: 'rgba(126, 34, 206, 0.3)', accent: '#7E22CE' },
-  deities: { bg: '#FFFDF0', border: 'rgba(217, 119, 6, 0.3)', accent: '#D97706' },
-  festivals: { bg: '#F4FDF6', border: 'rgba(21, 128, 61, 0.3)', accent: '#15803D' },
-};
 
 function PathwayCard({
   title,
@@ -111,14 +86,24 @@ function PathwayCard({
 }
 
 export default function QuizHome() {
-  const { progress: daily } = useProgress();
-  const { t: appCopy } = useLanguage();
-  const { bank, progress } = useQuiz();
+  const { progress: daily, today } = useProgress();
+  const { t: appCopy, formatNumber } = useLanguage();
+  const { progress } = useQuiz();
   const router = useRouter();
   const t = useCopy();
 
   const completedLessons = Object.values(progress?.lessons ?? {}).filter(l => l.complete).length;
-  const lang = progress?.settings.language ?? 'hi';
+
+  // A results-phase session from a previous day should not block starting a fresh quiz.
+  // Treat it as "no active session" so the user sees "Start Today's Quest" instead of "View Results".
+  const rawActive = progress?.active ?? null;
+  const effectiveActive = (() => {
+    if (!rawActive) return null;
+    if (rawActive.phase !== 'results') return rawActive;
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const sessionDay = dayKey(new Date(rawActive.startedAt), timezone);
+    return sessionDay === today ? rawActive : null;
+  })();
 
   return (
     <QuizScreen
@@ -144,32 +129,58 @@ export default function QuizHome() {
         </Pressable>
       }
     >
-      <View style={{ marginBottom: 14, alignItems: 'center' }}>
-        <GoalStreakBadge />
-      </View>
-      {/* ── 1. Daily Sacred Quest Hero Card (Primary Hook) ───────────────────── */}
+      {/* ── 1. Daily Sacred Quest / Active Session Hero Card ───────────────── */}
       <View style={s.heroCard}>
         <View style={s.heroLeft}>
           <View style={s.questChip}>
-            <Flower2 size={12} color={C.goldDark} />
+            {effectiveActive ? (
+              <Zap size={12} color={C.goldDark} />
+            ) : (
+              <Flower2 size={12} color={C.goldDark} />
+            )}
             <Copy small style={s.questChipText}>
-              {t("TODAY'S SACRED QUEST", 'आज का दैनिक अभ्यास')}
+              {effectiveActive
+                ? effectiveActive.phase === 'results'
+                  ? t('ROUND COMPLETED', 'क्विज़ पूरी हुई')
+                  : t('IN PROGRESS', 'प्रगति पर है')
+                : t("TODAY'S SACRED QUEST", 'आज का दैनिक अभ्यास')}
             </Copy>
           </View>
 
           <Copy serif title style={s.heroTitle}>
-            {t('Daily 5-Minute Shloka Quest', 'दैनिक 5-मिनट ज्ञान प्रश्नोत्तरी')}
+            {effectiveActive
+              ? effectiveActive.phase === 'results'
+                ? t('Review Your Results', 'अपने परिणाम देखें')
+                : t('Continue Your Quiz', 'अपनी क्विज़ जारी रखें')
+              : t('Daily 5-Minute Shloka Quest', 'दैनिक 5-मिनट ज्ञान प्रश्नोत्तरी')}
           </Copy>
 
           <Copy small style={s.heroSub}>
-            {t('5 curated questions · Double Lotus Coins', '5 चुनिंदा प्रश्न • दोहरा ज्ञान पुरस्कार')}
+            {effectiveActive
+              ? effectiveActive.phase === 'results'
+                ? t('Check your score and shloka insights', 'अपने अंक और श्लोक ज्ञान देखें')
+                : t(`Question ${effectiveActive.index + 1} of ${effectiveActive.questions.length}`, `प्रश्न ${effectiveActive.index + 1}/${effectiveActive.questions.length}`)
+              : appCopy('Complete a quiz round: +10 points once daily')}
           </Copy>
 
           <View style={s.heroButtonWrap}>
-            <StartButton
-              label={t("Start Today's Quest →", 'आज का अभ्यास शुरू करें →')}
-              options={{ mode: 'quick', count: 5, topic: 'all', difficulty: 'any' }}
-            />
+            {effectiveActive ? (
+              <Button
+                primary
+                label={
+                  effectiveActive.phase === 'results'
+                    ? t('View results →', 'परिणाम देखें →')
+                    : t('Resume quiz now →', 'क्विज़ जारी रखें →')
+                }
+                onPress={() => router.push('/quiz/play')}
+              />
+            ) : (
+              <Button
+                primary
+                label={t("Start Today's Quest →", 'आज का अभ्यास शुरू करें →')}
+                onPress={() => router.push('/quiz/setup')}
+              />
+            )}
           </View>
         </View>
 
@@ -179,39 +190,7 @@ export default function QuizHome() {
         </View>
       </View>
 
-      {/* ── 2. Active Session Banner (If active) ────────────────────────────── */}
-      {progress?.active && (
-        <Panel gold glow style={s.activeResumeCard}>
-          <View style={s.resumeHeader}>
-            <View style={s.resumeIconBadge}>
-              <Zap size={18} color={C.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Copy title style={{ fontSize: 16, lineHeight: 20 }}>
-                {progress.active.phase === 'results'
-                  ? t('Round completed', 'क्विज़ पूरी हुई')
-                  : t('Round in progress', 'क्विज़ प्रगति पर है')}
-              </Copy>
-              <Copy small>
-                {progress.active.phase === 'results'
-                  ? t('Review your score and answers', 'अपने अंक व उत्तर देखें')
-                  : t(`Question ${progress.active.index + 1} of ${progress.active.questions.length}`, `प्रश्न ${progress.active.index + 1}/${progress.active.questions.length}`)}
-              </Copy>
-            </View>
-          </View>
-          <Button
-            primary
-            label={
-              progress.active.phase === 'results'
-                ? t('View results →', 'परिणाम देखें →')
-                : t('Resume quiz now →', 'क्विज़ जारी रखें →')
-            }
-            onPress={() => router.push('/quiz/play')}
-          />
-        </Panel>
-      )}
-
-      {/* ── 3. Balanced Pathways Grid ────────────────────────────────────────── */}
+      {/* ── 2. Balanced Pathways Grid ────────────────────────────────────────── */}
       <View style={s.sectionTitleRow}>
         <View style={s.sectionDot} />
         <Copy title style={s.sectionHeading}>
@@ -231,7 +210,7 @@ export default function QuizHome() {
 
         <PathwayCard
           title={t('Play with Family', 'परिवार के साथ')}
-          subtitle={t('Pass-and-play on one phone', 'एक फोन पर मिलकर खेलें')}
+          subtitle={t('Play together on one phone', 'एक फोन पर मिलकर खेलें')}
           icon={<Users size={20} color="#7E22CE" />}
           bgColor="#FAF6FF"
           borderColor="rgba(126, 34, 206, 0.25)"
@@ -240,7 +219,7 @@ export default function QuizHome() {
 
         <PathwayCard
           title={t('Practice & Revisit', 'दोबारा अभ्यास')}
-          subtitle={t('Smart spaced recall for missed questions', 'गलत प्रश्नों का अभ्यास')}
+          subtitle={t('Revise questions you missed', 'गलत प्रश्नों का पुनः अभ्यास')}
           icon={<RotateCcw size={20} color={C.greenDark} />}
           bgColor="#F4FDF6"
           borderColor="rgba(21, 128, 61, 0.25)"
@@ -251,64 +230,6 @@ export default function QuizHome() {
             })
           }
         />
-      </View>
-
-      {/* ── 4. Sacred Subjects (Pure Lucide Vector Icons) ───────────────────── */}
-      <View style={[s.sectionTitleRow, { marginTop: 10 }]}>
-        <View style={s.sectionDot} />
-        <Copy title style={s.sectionHeading}>
-          {t('SACRED SUBJECTS', 'पवित्र विषय')}
-        </Copy>
-      </View>
-
-      <View style={s.topicsList}>
-        {bank?.topics.map(topic => {
-          const styleConfig = TOPIC_COLORS[topic.id] ?? {
-            bg: '#FFF8F2',
-            border: 'rgba(215, 188, 165, 0.4)',
-            accent: C.primary,
-          };
-          const IconComp = TOPIC_ICON_MAP[topic.id] ?? BookOpen;
-          const topicTitle = topic.title[lang];
-
-          return (
-            <Pressable
-              key={topic.id}
-              accessibilityRole="button"
-              onPress={() =>
-                router.push({
-                  pathname: '/quiz/journey',
-                  params: { topic: topic.id },
-                })
-              }
-              style={({ pressed }) => [
-                s.topicItem,
-                { backgroundColor: styleConfig.bg, borderColor: styleConfig.border },
-                pressed && { opacity: 0.88, transform: [{ scale: 0.99 }] },
-              ]}
-            >
-              <View
-                style={[
-                  s.topicIconCircle,
-                  { backgroundColor: '#FFFFFF', borderColor: styleConfig.border },
-                ]}
-              >
-                <IconComp size={20} color={styleConfig.accent} />
-              </View>
-
-              <View style={s.topicInfo}>
-                <Copy title style={s.topicTitle}>{topicTitle}</Copy>
-                <Copy small style={s.topicCount}>
-                  {t(`${topic.count} questions • 4 lessons`, `${topic.count} प्रश्न • 4 पाठ`)}
-                </Copy>
-              </View>
-
-              <View style={s.topicChevronWrap}>
-                <ChevronRight size={18} color={styleConfig.accent} />
-              </View>
-            </Pressable>
-          );
-        })}
       </View>
 
       {/* ── 5. Treasury & Saved Wisdom Cards ─────────────────────────────────── */}
@@ -366,6 +287,21 @@ export default function QuizHome() {
           <ChevronRight size={16} color="#4A5568" />
         </Pressable>
       </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={appCopy('Quiz History')}
+        onPress={() => router.push('/quiz/history')}
+        style={({ pressed }) => [s.treasuryCard, { minHeight: 48, backgroundColor: '#F5F9FF', borderColor: 'rgba(37, 99, 235, 0.25)' }, pressed && { opacity: 0.88 }]}
+      >
+        <View style={[s.treasuryIconCircle, { backgroundColor: '#EAF1FF' }]}>
+          <History size={20} color="#2563EB" />
+        </View>
+        <View style={{ flex: 1, gap: 4 }}>
+          <Copy title style={s.treasuryTitle}>{appCopy('Quiz History')}</Copy>
+          <Copy small>{appCopy('{count} completed rounds', { count: formatNumber(progress?.history.length ?? 0) })}</Copy>
+        </View>
+        <ChevronRight size={16} color="#2563EB" />
+      </Pressable>
     </QuizScreen>
   );
 }
@@ -439,15 +375,16 @@ const s = StyleSheet.create({
     letterSpacing: 0.5,
   },
   heroTitle: {
-    fontSize: 18,
-    lineHeight: 23,
-    color: C.ink,
+    fontSize: 19,
+    lineHeight: 24,
+    color: '#241407',
     fontWeight: '800',
   },
   heroSub: {
-    fontSize: 12,
-    lineHeight: 16,
-    color: C.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    color: '#705139',
+    fontWeight: '500',
   },
   heroButtonWrap: {
     marginTop: 4,
@@ -531,56 +468,16 @@ const s = StyleSheet.create({
     borderColor: 'rgba(220, 200, 185, 0.6)',
   },
   pathwayTitle: {
-    fontSize: 15,
-    lineHeight: 19,
-    fontWeight: '700',
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '800',
+    color: '#2A1808',
   },
   pathwaySub: {
-    fontSize: 11,
-    color: C.muted,
-  },
-  topicsList: {
-    gap: 8,
-  },
-  topicItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderBottomWidth: 2.5,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 12,
-    shadowColor: '#5C2B0B',
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  topicIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  topicInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  topicTitle: {
-    fontSize: 15,
-    lineHeight: 19,
-    fontWeight: '700',
-  },
-  topicCount: {
-    fontSize: 11,
-    color: C.muted,
-  },
-  topicChevronWrap: {
-    width: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontSize: 13,
+    lineHeight: 17,
+    color: '#6E4D36',
+    fontWeight: '500',
   },
   treasuryRow: {
     gap: 8,

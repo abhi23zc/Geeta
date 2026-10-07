@@ -1,6 +1,6 @@
 # Independent offline culture quiz
 
-Home → Culture Quiz opens a standalone learning area. It has 600 questions in Hindi, English and Hinglish, 120 five-question lessons, quick quizzes, three revision filters, cooperative family play, 2–4-player turn-taking, saved explanations, 30 knowledge cards, personal bests and resumable rounds. There are no quiz hooks in the alarm/Gita/breathing completion flows.
+Home → Culture Quiz opens a standalone learning area. It has 600 questions in Hindi, English and Hinglish, 120 five-question lessons, quick quizzes, three revision filters, cooperative family play, 2–4-player turn-taking, saved explanations, 30 knowledge cards, personal bests and resumable rounds. Quiz remains independently accessible and is not inserted into the alarm/Gita/breathing flow. Its first completed round each day earns 10 shared progress points; additional rounds earn no extra points. Quiz and the real alarm-led ritual together advance the daily streak, without an extra combined points award.
 
 ## Data and implementation
 
@@ -13,6 +13,16 @@ Quiz state uses only `geeta:quiz-progress-v1` in AsyncStorage. Every submitted a
 The active session stores frozen question snapshots and option order. History retains the latest 50 summaries; best scores and lifetime totals persist independently. Solo mastery advances after correct recalls on three different local dates. Reviews are scheduled after 1, 3 and 7 days; a wrong answer resets mastery and schedules tomorrow. Family rounds never modify solo mastery, lessons or best scores. The device's local calendar drives review scheduling; this offline feature cannot authenticate the device clock.
 
 Reset removes only the quiz storage key after confirmation. Read/validation failures are displayed without automatically overwriting the existing record. An additive v1 migration supplies an empty best-score map when absent; unsupported versions require explicit recovery rather than destructive automatic reset.
+
+## Quiz History
+
+Quiz Home → Wisdom Treasury → Quiz History shows the latest 50 completed round summaries saved on this device, newest first. All / Solo / Family filters preserve completion order even when dates match. Solo includes Learning Journey, Quick Quiz and Revision; Family includes Play Together and Take Turns. Unfinished rounds appear only in Resume, not History.
+
+Each summary shows its localized calendar date, mode, subject and score. Quick/Revision show selected difficulty; Take Turns shows its balanced Easy + Medium selection and each saved player's score out of five. Cooperative play shows only the group score. Newly unlocked knowledge-card counts appear when relevant. User-entered names remain unchanged; missing subjects have a localized fallback. English, Hindi and Hinglish are supported.
+
+History is read-only: opening it does not start/replay a round, award points or change quiz progress. Normal provider recovery of previously earned pending rewards still applies. No question snapshots, answer review, replay, delete controls or storage migration are added. Existing summaries are used unchanged, and lifetime totals/bests survive summary eviction. Confirmed quiz reset clears history with other quiz data but leaves shared points/streaks, alarms and global language unchanged.
+
+Automated history tests cover filtering, ordering, difficulty labels, timezone-safe dates, existing storage compatibility, translations and read-only route wiring. The existing engine tests cover the 50-summary limit and duplicate completion. Before release, check populated/empty/empty-filter states, returning from an active round, large fonts and long family names, all languages and screen-reader filter selection on a device. Load errors must show Retry rather than a false empty-history state.
 
 ## Content editing and editorial review
 

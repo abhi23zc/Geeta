@@ -10,6 +10,7 @@ import { TextR } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
 import { useLanguage } from '@/i18n/provider';
 import type { PointsEntry } from './model';
+import { pointsEntryLabel } from './model';
 
 interface LedgerListProps {
   entries: PointsEntry[];
@@ -64,13 +65,7 @@ export function LedgerList({ entries }: LedgerListProps) {
 
                 <View style={s.entryInfo}>
                   <TextR style={s.entryTitle}>
-                    {t(
-                      isMilestone
-                        ? 'Milestone bonus'
-                        : isMissed
-                        ? 'Missed-day deduction'
-                        : 'Daily reward'
-                    )}
+                    {t(pointsEntryLabel(e))}
                   </TextR>
                   <TextR style={s.entryDate}>
                     {e.from}
