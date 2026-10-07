@@ -21,7 +21,7 @@ import {
   Flame,
   Sun,
   Moon,
-  Sparkles,
+  BookOpen,
   ChevronLeft,
 } from 'lucide-react-native';
 import { C, R } from '@/constants/ritual-theme';
@@ -381,6 +381,7 @@ export function Header({
   back = false,
   logo,
   showActions = true,
+  rightAction,
 }: {
   eyebrow: string;
   title?: string;
@@ -388,6 +389,7 @@ export function Header({
   back?: boolean;
   logo?: ReactNode;
   showActions?: boolean;
+  rightAction?: ReactNode;
 }) {
   const { text: translateText } = useLanguage();
   const color = night ? '#F1F3F9' : C.ink;
@@ -415,7 +417,9 @@ export function Header({
           </View>
         </View>
       </View>
-      {showActions && (
+      {rightAction ? (
+        <View style={styles.headerActions}>{rightAction}</View>
+      ) : showActions ? (
         <View style={styles.headerActions}>
           <Pressable style={[styles.actionBtn, night && { backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.08)' }]}>
             <Bell size={20} color={night ? '#7D86A9' : C.inkSoft} />
@@ -424,7 +428,7 @@ export function Header({
             <User size={18} color="#0B0D19" strokeWidth={2.5} />
           </View>
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
@@ -434,7 +438,7 @@ type TabHref = '/' | '/today' | '/quiz' | '/night';
 const tabs: { href: TabHref; label: string; IconComponent: typeof Flame }[] = [
   { href: '/', label: 'Home', IconComponent: Flame },
   { href: '/today', label: 'Today', IconComponent: Sun },
-  { href: '/quiz', label: 'Quiz', IconComponent: Sparkles },
+  { href: '/quiz', label: 'Quiz', IconComponent: BookOpen },
   { href: '/night', label: 'Night', IconComponent: Moon },
 ];
 

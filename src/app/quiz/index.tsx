@@ -1,4 +1,7 @@
 import React from 'react';
+import { GoalStreakBadge } from '@/features/progress/goal-streak-badge';
+import { useProgress } from '@/features/progress/provider';
+import { useLanguage } from '@/i18n/provider';
 import {
   Pressable,
   StyleSheet,
@@ -11,7 +14,6 @@ import {
   Shield,
   Landmark,
   Feather,
-  Sparkles,
   Flame,
   RotateCcw,
   Zap,
@@ -43,7 +45,7 @@ const TOPIC_ICON_MAP: Record<string, typeof BookOpen> = {
   mahabharata: Shield,
   temples: Landmark,
   sanskrit: Feather,
-  deities: Sparkles,
+  deities: Flower2,
   festivals: Flame,
 };
 
@@ -109,11 +111,12 @@ function PathwayCard({
 }
 
 export default function QuizHome() {
+  const { progress: daily } = useProgress();
+  const { t: appCopy } = useLanguage();
   const { bank, progress } = useQuiz();
   const router = useRouter();
   const t = useCopy();
 
-  const explored = Object.keys(progress?.questions ?? {}).length;
   const completedLessons = Object.values(progress?.lessons ?? {}).filter(l => l.complete).length;
   const lang = progress?.settings.language ?? 'hi';
 
@@ -126,7 +129,7 @@ export default function QuizHome() {
         <View style={s.streakHeaderPill}>
           <Flame size={15} color={C.saffron} />
           <Copy small style={s.streakHeaderText}>
-            {explored > 0 ? `${explored}` : t('Daily', 'दैनिक')}
+            {appCopy('streakDays', { count: daily?.current ?? 0 })}
           </Copy>
         </View>
       }
@@ -141,11 +144,14 @@ export default function QuizHome() {
         </Pressable>
       }
     >
+      <View style={{ marginBottom: 14, alignItems: 'center' }}>
+        <GoalStreakBadge />
+      </View>
       {/* ── 1. Daily Sacred Quest Hero Card (Primary Hook) ───────────────────── */}
       <View style={s.heroCard}>
         <View style={s.heroLeft}>
           <View style={s.questChip}>
-            <Sparkles size={12} color={C.goldDark} />
+            <Flower2 size={12} color={C.goldDark} />
             <Copy small style={s.questChipText}>
               {t("TODAY'S SACRED QUEST", 'आज का दैनिक अभ्यास')}
             </Copy>

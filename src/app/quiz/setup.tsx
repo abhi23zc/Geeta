@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import {
+  BookOpen,
+  Flower2,
   RotateCcw,
-  Sparkles,
 } from 'lucide-react-native';
 
 import { revisionPool } from '@/features/quiz/engine';
@@ -86,7 +87,7 @@ export default function QuizSetup() {
             ]}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Sparkles size={12} color={topic === 'all' ? '#FFFFFF' : C.primary} />
+              <BookOpen size={12} color={topic === 'all' ? '#FFFFFF' : C.primary} />
               <Copy small style={[s.chipText, topic === 'all' && s.chipTextSelected]}>
                 {t('All Subjects', 'सभी विषय')}
               </Copy>
@@ -153,7 +154,7 @@ export default function QuizSetup() {
         </View>
 
         <View style={s.eligibleBadge}>
-          <Sparkles size={14} color={C.primary} />
+          <Flower2 size={14} color={C.primary} />
           <Copy small style={{ color: C.inkSoft }}>
             {t(
               `${Math.min(count, eligible)} questions ready for this round. No time limit.`,

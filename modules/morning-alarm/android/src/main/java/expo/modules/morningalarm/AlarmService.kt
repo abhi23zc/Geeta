@@ -67,11 +67,14 @@ class AlarmService : Service() {
       return START_NOT_STICKY
     }
     val scheduledAt = intent?.getLongExtra(AlarmScheduler.EXTRA_SCHEDULED_AT, System.currentTimeMillis())
-      ?: System.currentTimeMillis()
+      ?: AlarmStore.scheduledAt(this).takeIf { it > 0L } ?: System.currentTimeMillis()
     startedAt = System.currentTimeMillis()
     gradual = config.gradualVolume
     AlarmStore.setTest(this, test)
     AlarmStore.setRinging(this, true, startedAt, scheduledAt)
+    // Reward storage must never prevent alarm delivery.
+    runCatching { RitualRewards.begin(this, scheduledAt, test) }
+      .onFailure { AlarmLog.event("reward_receipt_failed", it.javaClass.simpleName) }
     AlarmPresentation.begin(this)
     AlarmLog.event("service_start", "scheduledAt=$scheduledAt")
     acquireWakeLock()

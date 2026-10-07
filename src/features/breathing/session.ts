@@ -61,7 +61,7 @@ export const PRANAYAMA_PATTERNS: readonly PranayamaPattern[] = [
     title: "Sama Vritti · Box Breath",
     subtitle: "Equal rhythm for supreme mental focus",
     sanskritName: "समवृत्ति प्राणायाम",
-    icon: "Sparkles",
+    icon: "Flower2",
     phases: [
       {
         id: "inhale",

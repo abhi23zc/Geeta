@@ -21,6 +21,10 @@ class MorningAlarmModule : Module() {
     Events("alarmTriggered", "alarmStopped", "alarmPresentationChanged")
     AsyncFunction("setAppLanguage") { language: String -> AlarmStrings.setLanguage(context, language) }
     Function("getPresentationState") { AlarmPresentation.state(context) }
+    Function("getRewardOccurrence") { RitualRewards.occurrence(context) }
+    AsyncFunction("completeRewardStage") { id: String, stage: String -> RitualRewards.complete(context, id, stage) }
+    AsyncFunction("getPendingRewardReceipts") { RitualRewards.pending(context) }
+    AsyncFunction("acknowledgeRewardReceipts") { ids: List<String> -> RitualRewards.acknowledge(context, ids) }
     AsyncFunction("setRitualStage") { stage: String ->
       appContext.currentActivity?.let { AlarmPresentation.setStage(it, stage) }
     }.runOnQueue(Queues.MAIN)

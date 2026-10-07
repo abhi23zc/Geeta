@@ -4,15 +4,16 @@ import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router
 import {
   CheckCircle2,
   ChevronLeft,
+  Flower2,
   Leaf,
   PauseCircle,
   RotateCcw,
-  Sparkles,
   Timer,
   Wind,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Alert,
   AppState,
   Modal,
   Pressable,
@@ -38,7 +39,7 @@ import { AruMascot } from "@/components/aru-mascot";
 import { Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
 import { replaceAppRoute } from "@/navigation/route-actions";
-import { getAlarmPresentationState, setAlarmRitualStage } from "@/services/alarm";
+import { completeRewardStage, getRewardOccurrence, getAlarmPresentationState, setAlarmRitualStage } from "@/services/alarm";
 import { useGitaProgress } from "@/state/gita-store";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -161,6 +162,7 @@ export default function Breathe() {
 
   const { completeBreathing } = useGitaProgress();
   const { entry } = useLocalSearchParams<{ entry?: "alarm" | "manual" }>();
+  const rewardOccurrence = useRef(getRewardOccurrence());
 
   const [lifecycle, setLifecycle] = useState<BreathingLifecycle>("preparing");
   const [preparationSecondsLeft, setPreparationSecondsLeft] = useState(PREPARATION_SECONDS);
@@ -462,13 +464,23 @@ export default function Breathe() {
   }, [celebrateScale]);
 
   const handleContinueToGita = useCallback(() => {
+    if (elapsed.current < TOTAL_SESSION_SEC) return;
     setLifecycle("paused");
-    void setAlarmRitualStage('gita').then(() => {
+    const occurrence = rewardOccurrence.current;
+    const save = entry === 'alarm' && occurrence?.id && !occurrence.test
+      ? completeRewardStage(occurrence.id, 'breathe') : Promise.resolve(true);
+    void save.then(ok => {
+      if (!ok) throw new Error(translate('Could not save ritual progress. Please retry.'));
+      return setAlarmRitualStage('gita');
+    }).then(() => {
       if (!navigation.isFocused()) return;
       replaceAppRoute(navigation, "/gita", {
         entry: entry === "alarm" ? "alarm" : "manual",
       });
-    }).catch(error => console.error(translate("Could not open Gita practice"), error));
+    }).catch(() => {
+      setLifecycle('complete');
+      Alert.alert(translate('Progress'), translate('Could not save ritual progress. Please retry.'));
+    });
   }, [entry, navigation, translate]);
 
   const exitToHome = useCallback(() => {
@@ -783,7 +795,7 @@ export default function Breathe() {
               </TextR>
             </View>
             <View style={s.flowPatternBadge}>
-              <Sparkles size={isSmall ? 9 : 11} color="#C2410C" />
+              <Flower2 size={isSmall ? 9 : 11} color="#C2410C" />
               <TextR style={[s.flowPatternKicker, isSmall && { fontSize: 9 }, isTablet && { fontSize: 11.5 }]}>
                  {translate("4 · 4 · 6 PRANAYAMA")} </TextR>
             </View>

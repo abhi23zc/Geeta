@@ -9,12 +9,13 @@ import {
   Flower2,
   RotateCcw,
   Share2,
-  Sparkles,
+  Sun,
   Sunrise,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   AppState,
+  Alert,
   Pressable,
   Share,
   StyleSheet,
@@ -49,10 +50,14 @@ import { C } from "@/constants/ritual-theme";
 import {
   GitaNarrationSegment,
   GitaWord,
+  localDateKey,
 } from "@/data/gita-verses";
 import { useLocalDateKey } from "@/hooks/use-local-date-key";
 import { replaceAppRoute } from "@/navigation/route-actions";
-import { getAlarmPlaybackState, getAlarmPresentationState, requestRitualUnlock, setAlarmRitualScreenAwake } from "@/services/alarm";
+import { completeRewardStage, getRewardOccurrence, getAlarmPlaybackState, getAlarmPresentationState, requestRitualUnlock, setAlarmRitualScreenAwake } from "@/services/alarm";
+import { useProgress } from '@/features/progress/provider';
+import { DailyGoalCard } from '@/features/progress/daily-goal-card';
+import { progressTransaction } from '@/features/progress/transactions';
 import { useGitaProgress } from "@/state/gita-store";
 import { useRitual } from "@/state/ritual-store";
 import { useContent } from "@/state/content-store";
@@ -428,7 +433,7 @@ function MascotStage({
           exiting={FadeOut.duration(200)}
           style={[s.blessingBubble, isSmall && { paddingHorizontal: 10, paddingVertical: 4.5 }]}
         >
-          <Sparkles size={isSmall ? 12 : 14} color="#D97706" />
+          <Flower2 size={isSmall ? 12 : 14} color="#D97706" />
           <TextR style={[s.blessingText, isSmall && { fontSize: 10 }, isTablet && { fontSize: 13 }]}>{blessingMessage}</TextR>
         </Animated.View>
       )}
@@ -455,7 +460,7 @@ function WordMeaningsTray({
     <View style={s.padarthaContainer}>
       <View style={s.padarthaHeaderRow}>
         <View style={s.padarthaBadge}>
-          <Sparkles size={isSmall ? 10 : 12} color="#9A3C08" />
+          <Flower2 size={isSmall ? 10 : 12} color="#9A3C08" />
           <TextR style={[s.padarthaKicker, isSmall && { fontSize: 9.5 }]}>{translate("PADARTHA · SACRED ROOTS")}</TextR>
         </View>
         <TextR style={[s.padarthaSubtext, isSmall && { fontSize: 9.5 }]}>{translate("Tap to reveal depth")}</TextR>
@@ -540,6 +545,9 @@ function GitaContent({ today }: { today: string }) {
   const { t: translate, text: translateText } = useLanguage();
   const navigation = useNavigation("/");
   const { entry } = useLocalSearchParams<{ entry?: "alarm" | "manual" }>();
+  const rewardOccurrence = useRef(getRewardOccurrence());
+  const { progress: dailyProgress, refresh: refreshRewards } = useProgress();
+  const completingReward = useRef(false);
   const { alarmTime } = useRitual();
   const { width, height } = useWindowDimensions();
   const isSmall = width < 360;
@@ -566,7 +574,7 @@ function GitaContent({ today }: { today: string }) {
   const [blessingMessage, setBlessingMessage] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(
-    progressStore.completedDates.has(today),
+    entry !== 'alarm' && progressStore.completedDates.has(today),
   );
   const autoStartAttempted = useRef(false);
   const manualTabSelection = useRef(false);
@@ -593,7 +601,7 @@ function GitaContent({ today }: { today: string }) {
   const sanskrit = segments.filter((item) => item.kind === "sanskrit");
   const hindi = segments.filter((item) => item.kind === "meaning");
   const isBookmarked = progressStore.bookmarks.has(verse.id);
-  const currentStreak = progressStore.streak;
+  const currentStreak = dailyProgress?.current ?? 0;
 
   const transliterationLines = verse.transliteration
     ? verse.transliteration.split("\n").map(toSimpleEnglish)
@@ -625,11 +633,23 @@ function GitaContent({ today }: { today: string }) {
     setViewTab(tab);
   }, []);
 
-  const completePractice = useCallback(() => {
+  const completePractice = useCallback(async () => {
+    if (completingReward.current) return;
+    completingReward.current = true;
     pause();
-    progressStore.completeDailyPractice(today, verse.id);
-    setSessionComplete(true);
-  }, [pause, progressStore, today, verse.id]);
+    try {
+      const occurrence = rewardOccurrence.current;
+      if (entry === 'alarm' && occurrence?.id && !occurrence.test) {
+        const saved = await progressTransaction(() => completeRewardStage(occurrence.id!, 'gita'));
+        if (!saved) throw new Error('Ritual receipt unavailable');
+        await refreshRewards();
+      }
+      progressStore.completeDailyPractice(localDateKey(), verse.id);
+      setSessionComplete(true);
+    } catch {
+      Alert.alert(translate('Progress'), translate('Could not save ritual progress. Please retry.'));
+    } finally { completingReward.current = false; }
+  }, [entry, pause, progressStore, refreshRewards, translate, verse.id]);
 
   const exitToHome = useCallback(() => {
     pause();
@@ -780,7 +800,7 @@ function GitaContent({ today }: { today: string }) {
           {currentStreak > 0 && (
             <View style={[s.streakBadge, isSmall && { paddingHorizontal: 4, paddingVertical: 1 }]}>
               <Flame size={isSmall ? 10 : 12} color="#D97706" fill="#F59E0B" />
-              <TextR style={[s.streakBadgeText, isSmall && { fontSize: 9 }]}>{currentStreak}d</TextR>
+              <TextR style={[s.streakBadgeText, isSmall && { fontSize: 9 }]}>{translate('daysCount', { count: currentStreak })}</TextR>
             </View>
           )}
         </View>
@@ -1003,7 +1023,7 @@ function GitaContent({ today }: { today: string }) {
           </View>
 
           <Pressable
-            accessibilityHint={translate("Marks today’s Gita practice complete and updates your streak")}
+            accessibilityHint={translate('Marks Gita practice complete. Daily points also require an alarm-led ritual and quiz.')}
             accessibilityLabel={translate("Complete today’s contemplation")}
             accessibilityRole="button"
             onPress={completePractice}
@@ -1022,6 +1042,7 @@ function GitaContent({ today }: { today: string }) {
       ) : (
         /* ─── 5. Completed Contemplation & Daily Morning Sankalpa Altar ───── */
         <Animated.View entering={FadeIn.duration(320)} style={s.completedScreen}>
+          <DailyGoalCard link={false} />
           {/* Meditative Hero Mascot Stage */}
           <MascotStage
             onMascotPress={handleMascotTap}
@@ -1085,7 +1106,7 @@ function GitaContent({ today }: { today: string }) {
               ]}
             >
               <View style={[s.takeawayIconWrap, isSmall && { width: 28, height: 28 }, isTablet && { width: 36, height: 36 }]}>
-                <Sparkles size={isSmall ? 13 : isTablet ? 18 : 16} color="#D97706" />
+                <Sun size={isSmall ? 13 : isTablet ? 18 : 16} color="#D97706" />
               </View>
               <View style={s.takeawayContent}>
                 <View style={s.takeawayKickerRow}>

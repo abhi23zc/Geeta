@@ -55,6 +55,7 @@
     "validate:quiz": "node scripts/validate-quiz.mjs",
     "test:quiz": "node --test tests/quiz*.test.mjs",
     "test:language": "node --test tests/language.test.mjs",
+    "test:progress": "node --test tests/progress.test.mjs",
     "test:tasks": "node --test tests/tasks-model.test.mjs tests/snapshot-writer.test.mjs",
     "test:alarm-navigation": "node --test tests/alarm-navigation.test.mjs tests/alarm-presentation.test.mjs",
     "test:content": "node --test tests/content-contract.test.mjs tests/content-cache.test.mjs",

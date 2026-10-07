@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
-import { Users, User, Sparkles } from 'lucide-react-native';
+import { Users, User, Flower2 } from 'lucide-react-native';
 
 import { StartButton } from '@/features/quiz/start-button';
 import { Button, Copy, Panel, QuizScreen, styles, useCopy } from '@/features/quiz/ui';
@@ -107,7 +107,7 @@ export default function Family() {
           </View>
 
           <View style={s.balanceInfoPill}>
-            <Sparkles size={14} color={C.goldDark} />
+            <Flower2 size={14} color={C.goldDark} />
             <Copy small style={{ color: C.inkSoft, flex: 1 }}>
               {t(
                 'Fair play: Each player receives balanced 3 easy and 2 medium questions.',

@@ -17,7 +17,6 @@ import {
   BookOpen,
   Bookmark,
   Check,
-  Flame,
   Flower2,
   Leaf,
   Moon,
@@ -43,6 +42,7 @@ import {
   type AlarmHomeSnapshot,
 } from '@/services/alarm';
 import { useGitaProgress } from '@/state/gita-store';
+import { DailyGoalCard } from '@/features/progress/daily-goal-card';
 import { useRitual } from '@/state/ritual-store';
 
 type AlarmHomeStatus =
@@ -139,7 +139,6 @@ export default function Home() {
     bookmarks,
     completedDates,
     breathingCompletedDates,
-    streak,
     toggleBookmark,
   } = useGitaProgress();
   const today = useLocalDateKey();
@@ -263,32 +262,44 @@ export default function Home() {
 
   return (
     <Screen>
-      <Header eyebrow={translate("Home")} showActions={false} />
+      <Header
+        eyebrow={translate("Home")}
+        showActions={false}
+        rightAction={
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={translate('App language')}
+            onPress={() => router.push('/language')}
+            style={({ pressed }) => [
+              s.headerLanguagePill,
+              pressed && { opacity: 0.8 },
+            ]}
+          >
+            <TextR style={s.headerLanguageText}>
+              🌐 {language === 'hi' ? 'हिंदी' : language === 'hinglish' ? 'Hinglish' : 'English'}
+            </TextR>
+          </Pressable>
+        }
+      />
 
-      <Pressable accessibilityRole="button" accessibilityLabel={translate('App language')} onPress={() => router.push('/language')} style={{ minHeight: 48, alignSelf: 'flex-end', justifyContent: 'center', paddingHorizontal: 14, marginBottom: 12 }}>
-        <TextR style={{ fontSize: 18 }}>{translate('Language')} · English / हिंदी / Hinglish</TextR>
-      </Pressable>
-
-      {/* Sacred Top Greeting & Muhurta Badge */}
-      <View style={s.topRow}>
-        <View style={s.muhurtaBadge}>
-          <View style={s.pulseDot} />
-          <TextR style={s.muhurtaText}>{translate("Today's ritual")}</TextR>
-        </View>
-        <View style={s.streakBadge}>
-          <Flame size={15} color={C.saffron} fill={C.saffron} />
-          <TextR style={s.streakText}>
-            {streak > 0 ? translate('streakDays', { count: streak }) : translate("Begin your streak")}
-          </TextR>
-        </View>
-      </View>
-
+      {/* Devotional Greeting & Muhurta Badge Row */}
       <View style={s.greetingContainer}>
-        <TextR serif style={[s.greetingTitle, isSmall && { fontSize: 26, lineHeight: 32 }]}>
-           {translate("Shubh Prabhat")} </TextR>
+        <View style={s.greetingHeaderRow}>
+          <TextR serif style={[s.greetingTitle, isSmall && { fontSize: 24, lineHeight: 30 }]}>
+            {translate("Shubh Prabhat")}
+          </TextR>
+          <View style={s.muhurtaMiniBadge}>
+            <View style={s.pulseDot} />
+            <TextR style={s.muhurtaMiniText}>{translate("Today's ritual")}</TextR>
+          </View>
+        </View>
         <TextR style={s.greetingSub}>
-           {translate("Rise with calm intention & pure presence.")} </TextR>
+          {translate("Rise with calm intention & pure presence.")}
+        </TextR>
       </View>
+
+      {/* 🪷 Enhanced Daily Goal & Streak Stepper Card */}
+      <DailyGoalCard link={true} />
 
       {/* Devotional Hero Alarm Card */}
       <Pressable
@@ -531,82 +542,74 @@ export default function Home() {
 }
 
 const s = StyleSheet.create({
-  topRow: {
+  headerLanguagePill: {
+    minHeight: 34,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: '#FFF2E4',
+    borderWidth: 1,
+    borderColor: 'rgba(229, 107, 39, 0.3)',
+    borderTopColor: '#FFFFFF',
+    borderBottomColor: 'rgba(140, 64, 16, 0.15)',
+    borderBottomWidth: 2,
+    shadowColor: '#8C4010',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerLanguageText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#7A3E12',
+  },
+  greetingContainer: {
+    marginTop: 0,
+    marginBottom: 14,
+  },
+  greetingHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
-  },
-  muhurtaBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(254, 194, 74, 0.25)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    gap: 7,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopColor: '#FFFFFF',
-    shadowColor: C.gold,
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-    flexShrink: 1,
-  },
-  pulseDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: C.primary,
-  },
-  muhurtaText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: C.primary,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  streakBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 248, 242, 0.9)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    gap: 6,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    shadowColor: C.saffron,
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-    flexShrink: 1,
-  },
-  streakText: {
-    fontSize: 12.5,
-    fontWeight: '800',
-    color: C.ink,
-  },
-  greetingContainer: {
-    marginTop: 2,
-    marginBottom: 18,
   },
   greetingTitle: {
-    fontSize: 30,
-    lineHeight: 38,
-    color: C.ink,
-    fontWeight: '600',
+    fontSize: 27,
+    lineHeight: 33,
+    color: '#2A1808',
+    fontWeight: '700',
     letterSpacing: -0.3,
   },
+  muhurtaMiniBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(254, 194, 74, 0.22)',
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    borderRadius: 999,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(244, 185, 66, 0.6)',
+  },
+  pulseDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: C.primary,
+  },
+  muhurtaMiniText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: C.primary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
   greetingSub: {
-    fontSize: 14.5,
-    lineHeight: 21,
-    color: C.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#7A583E',
     marginTop: 3,
     fontWeight: '500',
   },

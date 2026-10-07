@@ -5,7 +5,6 @@ import {
   BookOpen,
   CheckCircle2,
   Compass,
-  Sparkles,
   Star,
 } from 'lucide-react-native';
 
@@ -130,7 +129,7 @@ export default function Journey() {
                     </Copy>
                     {isNext && (
                       <View style={s.nextTag}>
-                        <Sparkles size={10} color={C.primary} />
+                        <Star size={10} color={C.primary} fill={C.primary} />
                         <Copy small style={s.nextTagText}>
                           {t('CURRENT', 'अगला')}
                         </Copy>

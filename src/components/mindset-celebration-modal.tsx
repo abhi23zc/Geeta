@@ -11,7 +11,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { Sparkles, CheckCircle2, X } from 'lucide-react-native';
+import { Flower2, CheckCircle2, X } from 'lucide-react-native';
 import { TextR } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
 
@@ -141,7 +141,7 @@ export function MindsetCelebrationModal({
              {translate("Your thought is saved. Carry today’s Gita teaching gently into your day.")} </TextR>
 
           <View style={styles.clarityBadge}>
-            <Sparkles size={18} color={C.goldDark} />
+            <Flower2 size={18} color={C.goldDark} />
             <TextR style={styles.clarityText}>{translate("Today’s practice is complete")}</TextR>
           </View>
 

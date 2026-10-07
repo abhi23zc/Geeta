@@ -1,5 +1,6 @@
 import { emptyProgress } from './engine.ts';
 import type { QuizProgress } from './types.ts';
+import { validReceipt } from '../progress/model.ts';
 
 export const QUIZ_STORAGE_KEY = 'geeta:quiz-progress-v1';
 function object(v: unknown): v is Record<string, unknown> { return !!v && typeof v === 'object' && !Array.isArray(v); }
@@ -13,6 +14,7 @@ export function parseProgress(raw: string | null): QuizProgress {
   const p = JSON.parse(raw);
   if (!object(p) || p.version !== 1 || !object(p.settings) || !['hi', 'en', 'hinglish'].includes(String(p.settings.language)) || !['standard', 'large', 'extra'].includes(String(p.settings.textSize)) || typeof p.settings.haptics !== 'boolean' || !object(p.questions) || !object(p.lessons) || !strings(p.saved) || !strings(p.cards) || !Array.isArray(p.history) || p.history.length > 50 || !object(p.totals)) throw new Error('Saved quiz data could not be read.');
   const totals = p.totals;
+  if (p.pendingRewards !== undefined && (!Array.isArray(p.pendingRewards) || !p.pendingRewards.every(r => validReceipt(r) && r.kind === 'quiz'))) throw new Error('Invalid pending rewards.');
   // Early v1 snapshots had no best-score map; this additive migration preserves them.
   if (p.bests === undefined) p.bests = {};
   if (!object(p.bests) || !Object.values(p.bests).every(v => natural(v) && (v as number) <= 10)) throw new Error('Invalid personal bests.');

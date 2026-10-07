@@ -9,7 +9,7 @@ import {
   Moon,
   Music,
   PenLine,
-  Sparkles,
+  Star,
   SunMedium,
   Timer,
 } from "lucide-react-native";
@@ -177,7 +177,7 @@ export default function Night() {
               style={s.journalInput}
             />
             <View style={s.savedRow}>
-              <Sparkles size={13} color="#F4B942" />
+              <Star size={13} color="#F4B942" fill="#F4B942" />
               <TextR style={s.savedText}>{translate("Saved locally")}</TextR>
             </View>
           </View>
@@ -258,7 +258,7 @@ export default function Night() {
           </View>
 
           <View style={s.intentionBox}>
-            <Sparkles size={16} color="#FF9E44" />
+            <Star size={15} color="#FF9E44" fill="#FF9E44" />
             <TextR style={s.intentionText}>
                {translate("Intention: Wake early for 20-min mindful breathwork and Surya namaskar.")} </TextR>
           </View>

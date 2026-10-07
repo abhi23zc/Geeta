@@ -103,6 +103,10 @@ declare class MorningAlarmNativeModule extends NativeModule<AlarmEvents> {
   scheduleTest(): Promise<number>;
   getConfig(): Promise<NativeAlarmConfig | null>;
   getPlaybackState(): Promise<AlarmPlaybackState>;
+  getRewardOccurrence?(): { id: string | null; test: boolean; startedAt: string | null; breathingAt: string | null };
+  completeRewardStage?(id: string, stage: 'breathe' | 'gita'): Promise<boolean>;
+  getPendingRewardReceipts?(): Promise<string>;
+  acknowledgeRewardReceipts?(ids: string[]): Promise<void>;
   getCapabilityStatus(): Promise<AlarmCapabilityStatus>;
   getLaunchDiagnostics(): Promise<AlarmLaunchDiagnostics>;
   openExactAlarmSettings(): Promise<SettingsDestination>;
@@ -120,6 +124,11 @@ const NativeAlarm = Platform.OS === "android"
   : null;
 
 export const isNativeAlarmAvailable = NativeAlarm != null;
+export const isRewardAlarmAvailable = !!NativeAlarm?.completeRewardStage;
+export function getRewardOccurrence() { return NativeAlarm?.getRewardOccurrence?.() ?? null; }
+export async function completeRewardStage(id: string, stage: 'breathe' | 'gita') { return await NativeAlarm?.completeRewardStage?.(id, stage) ?? false; }
+export async function getPendingRewardReceipts() { return await NativeAlarm?.getPendingRewardReceipts?.() ?? '[]'; }
+export async function acknowledgeRewardReceipts(ids: string[]) { await NativeAlarm?.acknowledgeRewardReceipts?.(ids); }
 
 export async function setNativeAppLanguage(language: 'en' | 'hi' | 'hinglish') {
   await NativeAlarm?.setAppLanguage?.(language);

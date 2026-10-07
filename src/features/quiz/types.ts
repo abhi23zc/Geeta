@@ -21,6 +21,7 @@ export type QuizSession = {
 };
 export type RoundSummary = { id: string; mode: Mode; topic: string; difficulty: Difficulty | 'any'; score: number; total: number; date: string; playerScores: number[]; players: string[]; unlockedCards: string[] };
 export type QuizProgress = {
+  pendingRewards?: { id: string; kind: 'quiz'; completedAt: string }[];
   version: 1; settings: { language: Language; textSize: 'standard' | 'large' | 'extra'; haptics: boolean };
   questions: Record<string, QuestionProgress>; saved: string[];
   lessons: Record<string, { complete: boolean; best: number }>;

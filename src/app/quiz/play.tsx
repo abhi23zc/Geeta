@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { DailyGoalCard } from '@/features/progress/daily-goal-card';
 import {
   AccessibilityInfo,
   Pressable,
@@ -22,7 +23,6 @@ import {
   FileText,
   Flower2,
   HelpCircle,
-  Sparkles,
   Trophy,
   Users,
   Zap,
@@ -227,6 +227,7 @@ export default function Play() {
         )}
 
         {/* Personal Best Alert */}
+        <DailyGoalCard link={true} />
         {session.mode === 'quick' && (
           <Panel style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Zap size={22} color={C.saffron} />
@@ -247,7 +248,7 @@ export default function Play() {
                 <Flower2 size={24} color={C.goldDark} />
                 <View style={{ flex: 1 }}>
                   <View style={s.unlockedPill}>
-                    <Sparkles size={11} color={C.goldDark} />
+                    <Flower2 size={11} color={C.goldDark} />
                     <Copy small style={s.unlockedPillText}>
                       {t('NEW KNOWLEDGE CARD UNLOCKED', 'नया ज्ञान कार्ड मिला')}
                     </Copy>
@@ -295,7 +296,7 @@ export default function Play() {
           {missed.length === 0 ? (
             <Panel emerald>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Sparkles size={16} color={C.greenDark} />
+                <CheckCircle2 size={16} color={C.greenDark} />
                 <Copy style={{ color: C.greenDark, fontWeight: '700' }}>
                   {t('Outstanding! You answered every question correctly.', 'अद्भुत! आपने हर प्रश्न का सही उत्तर दिया।')}
                 </Copy>

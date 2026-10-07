@@ -15,6 +15,7 @@ import { ContentProvider } from '@/state/content-store';
 import { AlarmNavigationGuard } from '@/navigation/alarm-navigation-guard';
 import { useAlarmPresentation } from '@/navigation/alarm-presentation';
 import { LanguageProvider } from '@/i18n/provider';
+import { ProgressProvider } from '@/features/progress/provider';
 
 const alarmScreenLayout: NonNullable<React.ComponentProps<typeof Stack>['screenLayout']> =
   ({ children }) => <AlarmNavigationGuard>{children}</AlarmNavigationGuard>;
@@ -46,6 +47,7 @@ function AppChrome() {
         <Stack.Screen name="night" />
         <Stack.Screen name="quiz" />
         <Stack.Screen name="language" />
+        <Stack.Screen name="progress" />
         <Stack.Screen name="alarm/setup" options={{ presentation: 'card' }} />
         <Stack.Screen name="alarm/wake" options={{ presentation: 'fullScreenModal' }} />
       </Stack>
@@ -58,17 +60,19 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <LanguageProvider>
-        <DockLayoutProvider>
-          <RitualProvider>
-            <TasksProvider>
-              <GitaProvider>
-                <ContentProvider>
-                  <AppChrome />
-                </ContentProvider>
-              </GitaProvider>
-            </TasksProvider>
-          </RitualProvider>
-        </DockLayoutProvider>
+        <ProgressProvider>
+          <DockLayoutProvider>
+            <RitualProvider>
+              <TasksProvider>
+                <GitaProvider>
+                  <ContentProvider>
+                    <AppChrome />
+                  </ContentProvider>
+                </GitaProvider>
+              </TasksProvider>
+            </RitualProvider>
+          </DockLayoutProvider>
+        </ProgressProvider>
       </LanguageProvider>
     </GestureHandlerRootView>
   );

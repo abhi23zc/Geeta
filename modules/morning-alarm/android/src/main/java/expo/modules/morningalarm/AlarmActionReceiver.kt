@@ -4,6 +4,8 @@ import android.content.Context
 
 object AlarmController {
   fun dismiss(context: Context, finishActivity: Boolean = true): Long? {
+    if (!finishActivity) runCatching { RitualRewards.awaken(context) }
+      .onFailure { AlarmLog.event("reward_wake_failed", it.javaClass.simpleName) }
     val config = if (AlarmStore.isTest(context)) null else AlarmStore.get(context)?.takeIf { it.enabled && AlarmCapabilities.ready(context) }
     val next = config?.let { runCatching { AlarmScheduler.scheduleNext(context, it) }.getOrNull() }
     // Update shared state before resolving the JS call so the global route guard
