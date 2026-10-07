@@ -13,8 +13,8 @@ interface MilestoneRoadmapProps {
 
 export function MilestoneRoadmap({ progress }: MilestoneRoadmapProps) {
   const { t, formatNumber } = useLanguage();
-  const currentStreak = progress.current;
-  const milestones = progress.milestones ?? [];
+  const currentStreak = progress.tree.level;
+  const milestones = progress.tree.bonuses ?? [];
 
   const m7Unlocked = milestones.includes(7) || currentStreak >= 7;
   const m30Unlocked = milestones.includes(30) || currentStreak >= 30;
@@ -63,11 +63,11 @@ export function MilestoneRoadmap({ progress }: MilestoneRoadmapProps) {
             </View>
           </View>
 
-          <TextR style={s.milestoneName}>{t('daysCount', { count: 7 })}</TextR>
+          <TextR style={s.milestoneName}>{t('Level {count} of 30', { count: 7 })}</TextR>
           <TextR style={s.milestoneStatus}>
             {m7Unlocked
               ? t('Complete')
-              : `${formatNumber(Math.min(currentStreak, 7))} / ${t('daysCount', { count: 7 })}`}
+              : `${formatNumber(Math.min(currentStreak, 7))} / ${t('Level {count} of 30', { count: 7 })}`}
           </TextR>
 
           <View style={s.progressBarTrack3D}>
@@ -110,11 +110,11 @@ export function MilestoneRoadmap({ progress }: MilestoneRoadmapProps) {
             </View>
           </View>
 
-          <TextR style={s.milestoneName}>{t('daysCount', { count: 30 })}</TextR>
+          <TextR style={s.milestoneName}>{t('Level {count} of 30', { count: 30 })}</TextR>
           <TextR style={s.milestoneStatus}>
             {m30Unlocked
               ? t('Complete')
-              : `${formatNumber(Math.min(currentStreak, 30))} / ${t('daysCount', { count: 30 })}`}
+              : `${formatNumber(Math.min(currentStreak, 30))} / ${t('Level {count} of 30', { count: 30 })}`}
           </TextR>
 
           <View style={s.progressBarTrack3D}>

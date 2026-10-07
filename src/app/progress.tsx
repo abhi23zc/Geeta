@@ -1,6 +1,8 @@
 import { Screen, TextR, useDockHeight } from "@/components/ritual-ui";
 import { SacredLotusCoin } from "@/components/sacred-lotus-coin";
 import { C } from "@/constants/ritual-theme";
+import { useGrowthFocusTarget } from "@/features/progress/tree/focus-target";
+import { GrowthCard } from "@/features/progress/tree/growth-card";
 import { DailyGoalCard } from "@/features/progress/daily-goal-card";
 import { LedgerList } from "@/features/progress/ledger-list";
 import { MilestoneRoadmap } from "@/features/progress/milestone-roadmap";
@@ -17,7 +19,7 @@ import {
   HelpCircle,
   Trophy,
 } from "lucide-react-native";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Svg, {
   Defs,
@@ -28,6 +30,8 @@ import Svg, {
 } from "react-native-svg";
 
 export default function ProgressScreen() {
+  const growthFocus = useRef<View>(null);
+  useGrowthFocusTarget(growthFocus);
   const router = useRouter();
   const { t, formatNumber } = useLanguage();
   const dockHeight = useDockHeight();
@@ -75,12 +79,14 @@ export default function ProgressScreen() {
             <TextR style={s.backButtonText}>{t("Home")}</TextR>
           </Pressable>
 
-          <TextR accessibilityRole="header" style={s.screenTitle}>
+          <View ref={growthFocus} accessible accessibilityRole="header"><TextR style={s.screenTitle}>
             {t("Progress")} · {t("Daily goal")}
-          </TextR>
+          </TextR></View>
 
           <View style={{ width: 44 }} />
         </View>
+
+        <GrowthCard screen="progress" cycle={p.tree.cycle} streak={p.tree.level} completed={Boolean(p.days[today]?.rewarded)} count={(p.days[today]?.ritual ? 1 : 0) + (p.days[today]?.quiz ? 1 : 0)} />
 
         {/* ── 2. Hero Sacred Lotus Points & 3D Stats Card ───────────────────── */}
         <View style={s.heroCard3D}>
@@ -113,16 +119,16 @@ export default function ProgressScreen() {
             </Svg>
           </View>
 
-          <View style={s.heroCoinStage}>
-            <SacredLotusCoin size={76} />
-          </View>
-
-          <View style={s.heroContent}>
+          <View style={s.balanceRow}>
+            <SacredLotusCoin size={48} />
+            <View style={s.balanceText}>
             <TextR style={s.heroSubtitle}>{t("Points")}</TextR>
             <TextR serif style={s.heroBalance}>
               {formatNumber(p.balance)}
             </TextR>
-
+            </View>
+          </View>
+          <View style={s.heroContent}>
             {/* 3 Metrics 3D Relief Container */}
             <View style={s.metricsRow3D}>
               <View style={s.metricItem3D}>
@@ -166,6 +172,7 @@ export default function ProgressScreen() {
           </View>
         </View>
 
+
         {/* ── 3. Today's Goal Action Card ───────────────────────────────────── */}
         <DailyGoalCard link={false} />
 
@@ -177,6 +184,8 @@ export default function ProgressScreen() {
 
         {/* ── 6. Points Ledger Timeline ─────────────────────────────────────── */}
         <LedgerList entries={p.ledger ?? []} />
+
+        {__DEV__ && <Pressable accessibilityRole="button" style={{ minHeight: 48, justifyContent: 'center' }} onPress={() => router.push('./dev/tree-preview')}><TextR style={{ color: C.saffron }}>Preview tree growth · Development</TextR></Pressable>}
 
         {/* ── 7. Sadhana Rules & Wisdom Accordion ───────────────────────────── */}
         <View style={s.rulesCard3D}>
@@ -216,13 +225,13 @@ export default function ProgressScreen() {
               <TextR style={s.ruleBullet}>
                 •{" "}
                 {t(
-                  "Every calendar day counts, even unscheduled alarm days. Set a daily alarm to maintain your streak.",
+                  "Each incomplete day lowers your tree by one level and resets the streak. Complete both practices to grow again. Partial days keep earned points.",
                 )}
               </TextR>
               <TextR style={s.ruleBullet}>
                 •{" "}
                 {t(
-                  "First 7-day streak: +40. First 30-day streak: +100. Each bonus is earned once.",
+                  "Reach level 7 for +40 and level 30 for +100, once per tree. A completed tree starts a new seed the next day.",
                 )}
               </TextR>
               <TextR style={s.ruleBullet}>
@@ -283,7 +292,7 @@ const s = StyleSheet.create({
   heroCard3D: {
     backgroundColor: "#FFFDF9",
     borderRadius: 26,
-    padding: 20,
+    padding: 16,
     alignItems: "center",
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.95)",
@@ -299,10 +308,13 @@ const s = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
   },
-  heroCoinStage: {
-    marginTop: 4,
-    marginBottom: 2,
+  balanceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    gap: 12,
   },
+  balanceText: { flex: 1 },
   heroContent: {
     alignItems: "center",
     width: "100%",
@@ -315,11 +327,10 @@ const s = StyleSheet.create({
     color: "#8C5E0D",
   },
   heroBalance: {
-    fontSize: 40,
+    fontSize: 32,
     fontWeight: "800",
     color: "#3E2000",
     marginTop: 1,
-    marginBottom: 14,
   },
   metricsRow3D: {
     flexDirection: "row",

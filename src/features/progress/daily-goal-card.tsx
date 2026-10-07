@@ -25,8 +25,10 @@ import Svg, {
 } from "react-native-svg";
 import { activityPoints, pointsEntryLabel } from "./model";
 import { useProgress } from "./provider";
+import { GrowthCard } from "./tree/growth-card";
 
 interface DailyGoalCardProps {
+  showTree?: boolean;
   link?: boolean;
   onStartRitual?: () => void;
   onStartQuiz?: () => void;
@@ -34,6 +36,7 @@ interface DailyGoalCardProps {
 
 export function DailyGoalCard({
   link = true,
+  showTree = false,
   onStartRitual,
   onStartQuiz,
 }: DailyGoalCardProps) {
@@ -219,6 +222,8 @@ export function DailyGoalCard({
           </View>
         )}
       </View>
+
+      {showTree && <GrowthCard compact screen="home" cycle={p.tree.cycle} streak={p.tree.level} completed={isCompletedToday} count={completedCount} />}
 
       {/* ── 2. Stepped Progress Meter ──────────────────────────────────────── */}
       <View style={s.stepperSection}>
@@ -675,6 +680,7 @@ const s = StyleSheet.create({
   },
   taskTile3D: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "space-between",
     padding: 12,
@@ -704,6 +710,7 @@ const s = StyleSheet.create({
     opacity: 0.92,
   },
   taskLeft: {
+    flexBasis: 150,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
@@ -752,6 +759,8 @@ const s = StyleSheet.create({
     fontWeight: "500",
   },
   taskRight: {
+    minHeight: 48,
+    justifyContent: "center",
     marginLeft: 8,
     flexShrink: 0,
   },
@@ -875,6 +884,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(229, 107, 39, 0.2)",
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
@@ -901,6 +911,7 @@ const s = StyleSheet.create({
   },
   linkButton3D: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "space-between",
     paddingTop: 10,

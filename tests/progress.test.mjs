@@ -42,14 +42,14 @@ test('deductions stop at zero and do not turn into a debt', () => {
   const next = settle(missed, '2026-02-02'); assert.equal(next.balance, 0); assert.equal(next.ledger.at(-1).amount, -20); assert.equal(next.ledger.length, 3); assert.equal(next.ledger.at(-1).days, 31);
   assert.equal(earn(next, '2026-02-02').balance, 20); roundtrip(next);
 });
-test('milestone bonuses are one-time lifetime awards across new streaks', () => {
+test('milestone bonuses are earned once per tree across cycles', () => {
   let p = initial();
   for (let i = 0; i < 30; i++) p = earn(p, shiftDay('2026-01-01', i));
   assert.equal(p.balance, 740); assert.equal(p.current, 30); assert.equal(p.best, 30);
   assert.deepEqual(p.milestones, [7, 30]); roundtrip(p);
   p = settle(p, '2026-02-02');
   for (let i = 0; i < 30; i++) p = earn(p, shiftDay('2026-02-02', i));
-  assert.equal(p.ledger.filter(e => e.kind === 'milestone').length, 2);
+  assert.equal(p.ledger.filter(e => e.kind === 'milestone').length, 4);
   assert.equal(p.total, 60); roundtrip(p);
 });
 test('partial days keep their points without deductions but different-day halves cannot combine', () => {
@@ -122,7 +122,7 @@ test('large absence is represented as a range rather than one record per day', (
 });
 test('corrupt and incompatible snapshots fail without a reset', () => {
   const p = earn(initial(), '2026-01-01');
-  for (const changed of [{ ...p, version: 3 }, { ...p, balance: 500 }, { ...p, timezone: 'bad/zone' }, { ...p, days: { '2026-02-30': { quiz: true, ritual: true, rewarded: true } } }, { ...p, ledger: [...p.ledger, p.ledger[0]] }]) assert.throws(() => parseDailyProgress(JSON.stringify(changed), now('2026-01-01'), 'UTC'));
+  for (const changed of [{ ...p, version: 4 }, { ...p, balance: 500 }, { ...p, timezone: 'bad/zone' }, { ...p, days: { '2026-02-30': { quiz: true, ritual: true, rewarded: true } } }, { ...p, ledger: [...p.ledger, p.ledger[0]] }]) assert.throws(() => parseDailyProgress(JSON.stringify(changed), now('2026-01-01'), 'UTC'));
   assert.throws(() => parseDailyProgress('{bad', now('2026-01-01'), 'UTC'));
 });
 test('serialized persistence publishes only after success and recovers after failure', async () => {
@@ -177,7 +177,7 @@ test('migration validates old records, retains balances and legacy awards, and n
   const raw = JSON.stringify(old);
   assert.deepEqual(parseDailyProgress(raw, now('2026-01-02'), 'UTC'), old);
   let p = migrateDailyProgress(old, [], now('2026-01-02'), 'UTC');
-  assert.equal(p.version, 2); assert.equal(p.balance, 20); assert.equal(p.policyChangedAt, now('2026-01-02').toISOString());
+  assert.equal(p.version, 3); assert.equal(p.balance, 20); assert.equal(p.policyChangedAt, now('2026-01-02').toISOString());
   assert.equal(activityPoints(p, '2026-01-01', 'quiz'), 10); assert.equal(activityPoints(p, '2026-01-02', 'quiz'), 0);
   assert.equal(JSON.stringify(old), raw); roundtrip(p);
   p = applyReceipts(p, [quiz('2026-01-02', 'new')], new Date('2026-01-02T20:00:00Z'));

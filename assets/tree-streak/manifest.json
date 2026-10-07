@@ -1,0 +1,312 @@
+[
+  {
+    "file": "day-01.mp4",
+    "bytes": 802551,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-02.mp4",
+    "bytes": 803288,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-03.mp4",
+    "bytes": 806299,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-04.mp4",
+    "bytes": 799234,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-05.mp4",
+    "bytes": 795315,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-06.mp4",
+    "bytes": 789058,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-07.mp4",
+    "bytes": 764808,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-08.mp4",
+    "bytes": 767571,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-09.mp4",
+    "bytes": 763980,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-10.mp4",
+    "bytes": 752401,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-11.mp4",
+    "bytes": 733854,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-12.mp4",
+    "bytes": 752477,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-13.mp4",
+    "bytes": 730836,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-14.mp4",
+    "bytes": 760882,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-15.mp4",
+    "bytes": 738351,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-16.mp4",
+    "bytes": 769003,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-17.mp4",
+    "bytes": 777246,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-18.mp4",
+    "bytes": 773270,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-19.mp4",
+    "bytes": 769746,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-20.mp4",
+    "bytes": 788366,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-21.mp4",
+    "bytes": 785531,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-22.mp4",
+    "bytes": 785667,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-23.mp4",
+    "bytes": 774085,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-24.mp4",
+    "bytes": 781256,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-25.mp4",
+    "bytes": 777738,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-26.mp4",
+    "bytes": 765831,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-27.mp4",
+    "bytes": 763773,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-28.mp4",
+    "bytes": 755944,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-29.mp4",
+    "bytes": 759217,
+    "duration": 4.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "day-30.mp4",
+    "bytes": 1946923,
+    "duration": 10.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  },
+  {
+    "file": "mature.mp4",
+    "bytes": 374760,
+    "duration": 2.0,
+    "width": 960,
+    "height": 540,
+    "codec": "h264",
+    "fps": 30,
+    "audio": false
+  }
+]

@@ -5,13 +5,16 @@ import { acknowledgeRewardReceipts, getPendingRewardReceipts, isRewardAlarmAvail
 import { applyReceipts, createProgressWriter, dayKey, emptyDailyProgress, migrateDailyProgress, parseDailyProgress, prepareTimezone, PROGRESS_KEY, shiftDay, validReceipt } from './model';
 import type { CompletionReceipt, DailyProgress, PointsEntry } from './model';
 import { progressTransaction } from './transactions';
+import { createGrowthPresentation, type GrowthEvent } from './tree/model';
 import { parseProgress as parseQuizProgress, QUIZ_STORAGE_KEY } from '../quiz/storage';
 
-type ProgressContext = { progress: DailyProgress | null; ready: boolean; error: string | null; today: string; clockWarning: boolean; alarmAvailable: boolean; notice: PointsEntry[]; dismissNotice: () => void; refresh: () => Promise<boolean> };
+type ProgressContext = { pendingGrowth: GrowthEvent | null; claimGrowth: (id: string) => Promise<GrowthEvent | null>; progress: DailyProgress | null; ready: boolean; error: string | null; today: string; clockWarning: boolean; alarmAvailable: boolean; notice: PointsEntry[]; dismissNotice: () => void; refresh: () => Promise<boolean> };
 const Context = createContext<ProgressContext | null>(null);
 export function ProgressProvider({ children }: React.PropsWithChildren) {
   const [progress, setProgress] = useState<DailyProgress | null>(null), [error, setError] = useState<string | null>(null);
   const [today, setToday] = useState(''), [clockWarning, setClockWarning] = useState(false), [notice, setNotice] = useState<PointsEntry[]>([]);
+  const [pendingGrowth, setPendingGrowth] = useState<GrowthEvent | null>(null);
+  const growth = useRef(createGrowthPresentation(AsyncStorage));
   const current = useRef<DailyProgress | null>(null), mounted = useRef(true);
   const writer = useRef(createProgressWriter(raw => AsyncStorage.setItem(PROGRESS_KEY, raw)));
   const refresh = useCallback(() => progressTransaction(async () => {
@@ -33,14 +36,16 @@ export function ProgressProvider({ children }: React.PropsWithChildren) {
         const earliest = receipts.reduce((time, r) => Math.min(time, Date.parse(r.completedAt)), now.getTime());
         p = emptyDailyProgress(new Date(earliest), p.timezone);
       }
-      const migrating = p.version === 1;
-      const prepared = p.version === 1 ? migrateDailyProgress(p, receipts, now, zone) : prepareTimezone(p, zone, now);
+      const migrating = p.version !== 3;
+      const prepared = p.version !== 3 ? migrateDailyProgress(p, receipts, now, zone) : prepareTimezone(p, zone, now);
       const date = dayKey(now, prepared.timezone);
       const next = migrating ? prepared : applyReceipts(prepared, receipts, now);
       if (!current.current || JSON.stringify(next) !== JSON.stringify(original)) await writer.current.save(next);
       current.current = next;
+      const pending = await growth.current.observe(original, next, date, migrating);
+      if (mounted.current) setPendingGrowth(pending);
       if (mounted.current) {
-        setProgress(next); setToday(date); setClockWarning(date < prepared.lastObserved || receipts.some(r => Date.parse(r.completedAt) > now.getTime())); setError(null);
+        setProgress(previous => previous && JSON.stringify(previous) === JSON.stringify(next) ? previous : next); setToday(date); setClockWarning(date < prepared.lastObserved || receipts.some(r => Date.parse(r.completedAt) > now.getTime())); setError(null);
         const oldIds = new Set(original.ledger.map(e => e.id));
         const added = next.ledger.filter(e => !oldIds.has(e.id)).map(e => {
           const previous = p.ledger.at(-1);
@@ -66,6 +71,13 @@ export function ProgressProvider({ children }: React.PropsWithChildren) {
     }, 30000);
     return () => { mounted.current = false; subscription.remove(); clearInterval(timer); };
   }, [refresh]);
-  return <Context.Provider value={{ progress, ready: !!progress, error, today, clockWarning, alarmAvailable: isRewardAlarmAvailable, notice, dismissNotice: () => setNotice([]), refresh }}>{children}</Context.Provider>;
+  const claimGrowth = useCallback(async (id: string) => {
+    const p = current.current;
+    if (!p) return null;
+    const event = await growth.current.claim(id, dayKey(new Date(), p.timezone));
+    if (mounted.current) setPendingGrowth(value => value?.id === id ? null : value);
+    return event;
+  }, []);
+  return <Context.Provider value={{ pendingGrowth, claimGrowth, progress, ready: !!progress, error, today, clockWarning, alarmAvailable: isRewardAlarmAvailable, notice, dismissNotice: () => setNotice([]), refresh }}>{children}</Context.Provider>;
 }
 export function useProgress() { const value = useContext(Context); if (!value) throw new Error('ProgressProvider missing'); return value; }

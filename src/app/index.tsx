@@ -1,7 +1,8 @@
+import { useGrowthFocusTarget } from '@/features/progress/tree/focus-target';
 import { useLanguage } from '@/i18n/provider';
 import { translate } from '@/i18n/translations';
 import type { AppLanguage } from '@/i18n/model';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   AppState,
@@ -121,6 +122,8 @@ function formatDays(days: readonly string[], language: AppLanguage) {
 }
 
 export default function Home() {
+  const growthFocus = useRef<View>(null);
+  useGrowthFocusTarget(growthFocus);
   const { t: translate, text: translateText, language } = useLanguage();
   const router = useRouter();
   const { width } = useWindowDimensions();
@@ -283,7 +286,7 @@ export default function Home() {
       />
 
       {/* Devotional Greeting & Muhurta Badge Row */}
-      <View style={s.greetingContainer}>
+      <View ref={growthFocus} accessible accessibilityRole="header" style={s.greetingContainer}>
         <View style={s.greetingHeaderRow}>
           <TextR serif style={[s.greetingTitle, isSmall && { fontSize: 24, lineHeight: 30 }]}>
             {translate("Shubh Prabhat")}
@@ -299,7 +302,7 @@ export default function Home() {
       </View>
 
       {/* 🪷 Enhanced Daily Goal & Streak Stepper Card */}
-      <DailyGoalCard link={true} />
+      <DailyGoalCard link={true} showTree />
 
       {/* Devotional Hero Alarm Card */}
       <Pressable

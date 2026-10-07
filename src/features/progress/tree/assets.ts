@@ -1,0 +1,37 @@
+import { growthStage } from './model';
+
+export type TreeAsset = { stage: number; poster: number; video?: number; duration: number };
+const stages: TreeAsset[] = [
+  { stage: 0, poster: require('@/assets/tree-streak/seed.jpg'), duration: 0 },
+  { stage: 1, poster: require('@/assets/tree-streak/day-01.jpg'), video: require('@/assets/tree-streak/day-01.mp4'), duration: 4 },
+  { stage: 2, poster: require('@/assets/tree-streak/day-02.jpg'), video: require('@/assets/tree-streak/day-02.mp4'), duration: 4 },
+  { stage: 3, poster: require('@/assets/tree-streak/day-03.jpg'), video: require('@/assets/tree-streak/day-03.mp4'), duration: 4 },
+  { stage: 4, poster: require('@/assets/tree-streak/day-04.jpg'), video: require('@/assets/tree-streak/day-04.mp4'), duration: 4 },
+  { stage: 5, poster: require('@/assets/tree-streak/day-05.jpg'), video: require('@/assets/tree-streak/day-05.mp4'), duration: 4 },
+  { stage: 6, poster: require('@/assets/tree-streak/day-06.jpg'), video: require('@/assets/tree-streak/day-06.mp4'), duration: 4 },
+  { stage: 7, poster: require('@/assets/tree-streak/day-07.jpg'), video: require('@/assets/tree-streak/day-07.mp4'), duration: 4 },
+  { stage: 8, poster: require('@/assets/tree-streak/day-08.jpg'), video: require('@/assets/tree-streak/day-08.mp4'), duration: 4 },
+  { stage: 9, poster: require('@/assets/tree-streak/day-09.jpg'), video: require('@/assets/tree-streak/day-09.mp4'), duration: 4 },
+  { stage: 10, poster: require('@/assets/tree-streak/day-10.jpg'), video: require('@/assets/tree-streak/day-10.mp4'), duration: 4 },
+  { stage: 11, poster: require('@/assets/tree-streak/day-11.jpg'), video: require('@/assets/tree-streak/day-11.mp4'), duration: 4 },
+  { stage: 12, poster: require('@/assets/tree-streak/day-12.jpg'), video: require('@/assets/tree-streak/day-12.mp4'), duration: 4 },
+  { stage: 13, poster: require('@/assets/tree-streak/day-13.jpg'), video: require('@/assets/tree-streak/day-13.mp4'), duration: 4 },
+  { stage: 14, poster: require('@/assets/tree-streak/day-14.jpg'), video: require('@/assets/tree-streak/day-14.mp4'), duration: 4 },
+  { stage: 15, poster: require('@/assets/tree-streak/day-15.jpg'), video: require('@/assets/tree-streak/day-15.mp4'), duration: 4 },
+  { stage: 16, poster: require('@/assets/tree-streak/day-16.jpg'), video: require('@/assets/tree-streak/day-16.mp4'), duration: 4 },
+  { stage: 17, poster: require('@/assets/tree-streak/day-17.jpg'), video: require('@/assets/tree-streak/day-17.mp4'), duration: 4 },
+  { stage: 18, poster: require('@/assets/tree-streak/day-18.jpg'), video: require('@/assets/tree-streak/day-18.mp4'), duration: 4 },
+  { stage: 19, poster: require('@/assets/tree-streak/day-19.jpg'), video: require('@/assets/tree-streak/day-19.mp4'), duration: 4 },
+  { stage: 20, poster: require('@/assets/tree-streak/day-20.jpg'), video: require('@/assets/tree-streak/day-20.mp4'), duration: 4 },
+  { stage: 21, poster: require('@/assets/tree-streak/day-21.jpg'), video: require('@/assets/tree-streak/day-21.mp4'), duration: 4 },
+  { stage: 22, poster: require('@/assets/tree-streak/day-22.jpg'), video: require('@/assets/tree-streak/day-22.mp4'), duration: 4 },
+  { stage: 23, poster: require('@/assets/tree-streak/day-23.jpg'), video: require('@/assets/tree-streak/day-23.mp4'), duration: 4 },
+  { stage: 24, poster: require('@/assets/tree-streak/day-24.jpg'), video: require('@/assets/tree-streak/day-24.mp4'), duration: 4 },
+  { stage: 25, poster: require('@/assets/tree-streak/day-25.jpg'), video: require('@/assets/tree-streak/day-25.mp4'), duration: 4 },
+  { stage: 26, poster: require('@/assets/tree-streak/day-26.jpg'), video: require('@/assets/tree-streak/day-26.mp4'), duration: 4 },
+  { stage: 27, poster: require('@/assets/tree-streak/day-27.jpg'), video: require('@/assets/tree-streak/day-27.mp4'), duration: 4 },
+  { stage: 28, poster: require('@/assets/tree-streak/day-28.jpg'), video: require('@/assets/tree-streak/day-28.mp4'), duration: 4 },
+  { stage: 29, poster: require('@/assets/tree-streak/day-29.jpg'), video: require('@/assets/tree-streak/day-29.mp4'), duration: 4 },
+  { stage: 30, poster: require('@/assets/tree-streak/day-30.jpg'), video: require('@/assets/tree-streak/day-30.mp4'), duration: 10 },
+];
+export const treeAsset = (streak: number, recap = true): TreeAsset => growthStage(streak) === 30 && !recap ? { ...stages[30], video: require('@/assets/tree-streak/mature.mp4'), duration: 2 } : stages[growthStage(streak)];

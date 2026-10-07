@@ -16,6 +16,8 @@ import { AlarmNavigationGuard } from '@/navigation/alarm-navigation-guard';
 import { useAlarmPresentation } from '@/navigation/alarm-presentation';
 import { LanguageProvider } from '@/i18n/provider';
 import { ProgressProvider } from '@/features/progress/provider';
+import { TreeSessionProvider } from '@/features/progress/tree/session';
+import { GrowthCelebrationHost } from '@/features/progress/tree/celebration';
 
 const alarmScreenLayout: NonNullable<React.ComponentProps<typeof Stack>['screenLayout']> =
   ({ children }) => <AlarmNavigationGuard>{children}</AlarmNavigationGuard>;
@@ -52,6 +54,7 @@ function AppChrome() {
         <Stack.Screen name="alarm/wake" options={{ presentation: 'fullScreenModal' }} />
       </Stack>
       {showTabs && <TabBar />}
+      <GrowthCelebrationHost />
     </View>
   );
 }
@@ -60,7 +63,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <LanguageProvider>
-        <ProgressProvider>
+        <ProgressProvider><TreeSessionProvider>
           <DockLayoutProvider>
             <RitualProvider>
               <TasksProvider>
@@ -72,7 +75,7 @@ export default function RootLayout() {
               </TasksProvider>
             </RitualProvider>
           </DockLayoutProvider>
-        </ProgressProvider>
+        </TreeSessionProvider></ProgressProvider>
       </LanguageProvider>
     </GestureHandlerRootView>
   );
