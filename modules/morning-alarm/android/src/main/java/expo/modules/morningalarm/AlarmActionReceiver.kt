@@ -1,8 +1,30 @@
 package expo.modules.morningalarm
 
+import android.app.Activity
 import android.content.Context
 
 object AlarmController {
+  /** Same occurrence retries repair a committed dismissal without creating new evidence. */
+  fun startMyDay(activity: Activity, id: String): Map<String, Any?> = synchronized(AlarmScheduler) {
+    val state = AlarmPresentation.state(activity)
+    require(StartMyDayTransition.acceptsSession(state["active"] == true, id, state["sessionId"] as? String)) { "Alarm session changed" }
+    val stage = state["stage"] as? String
+    val next = StartMyDayTransition.run(
+      stage = stage,
+      saveIntent = { AlarmPresentation.saveWakeTransition(activity, id) },
+      dismiss = {
+        if (AlarmStore.isRinging(activity)) {
+          // Persist reward proof before irreversible playback dismissal; tests create none.
+          RitualRewards.awaken(activity)
+          dismiss(activity, finishActivity = false)
+        } else null
+      },
+      advance = { AlarmPresentation.setStage(activity, "breathe", id) },
+      clearIntent = { AlarmPresentation.clearWakeTransition(activity, id) },
+    )
+    mapOf("stage" to AlarmPresentation.state(activity)["stage"], "scheduledAt" to next?.toDouble())
+  }
+
   fun dismiss(context: Context, finishActivity: Boolean = true, expectedAt: Long? = null): Long? = synchronized(AlarmScheduler) {
     val occurrence = AlarmStore.scheduledAt(context)
     if (!AlarmStore.isRinging(context) || (expectedAt != null && expectedAt != occurrence)) return null

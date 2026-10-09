@@ -1,4 +1,6 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRecoverableStore } from "./use-recoverable-store";
+import { EMPTY_GITA, parseGitaProgress, salvageGitaProgress, type DailyReflection } from "./persisted-models";
+import { getRitualCheckpoint } from "@/services/alarm";
 import {
   createContext,
   PropsWithChildren,
@@ -6,26 +8,21 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
+  useRef,
 } from "react";
 
 import { localDateKey } from "@/data/gita-verses";
 import { useLocalDateKey } from "@/hooks/use-local-date-key";
 
-type DailyReflection = {
-  verseId: string;
-  text: string;
-  completedAt?: string;
-};
-
-type GitaProgress = {
-  bookmarks: string[];
-  reflections: Record<string, DailyReflection>;
-  breathingCompletedDates: string[];
-};
-
 type GitaContextValue = {
   ready: boolean;
+  loading: boolean;
+  loadError: string | null;
+  saveError: boolean;
+  corrupt: boolean;
+  retryLoad: () => Promise<void>;
+  retrySave: () => Promise<void>;
+  recover: () => Promise<void>;
   bookmarks: ReadonlySet<string>;
   completedDates: ReadonlySet<string>;
   breathingCompletedDates: ReadonlySet<string>;
@@ -39,11 +36,6 @@ type GitaContextValue = {
 };
 
 const STORAGE_KEY = "morning-ritual:gita-progress-v1";
-const EMPTY_PROGRESS: GitaProgress = {
-  bookmarks: [],
-  reflections: {},
-  breathingCompletedDates: [],
-};
 const Context = createContext<GitaContextValue | null>(null);
 
 function dayBefore(dateKey: string) {
@@ -64,43 +56,21 @@ function calculateStreak(completed: ReadonlySet<string>, today: string) {
   return count;
 }
 
-function sanitizeProgress(value: unknown): GitaProgress {
-  if (!value || typeof value !== "object") return EMPTY_PROGRESS;
-  const candidate = value as Partial<GitaProgress>;
-  return {
-    bookmarks: Array.isArray(candidate.bookmarks)
-      ? candidate.bookmarks.filter((item): item is string => typeof item === "string")
-      : [],
-    reflections:
-      candidate.reflections && typeof candidate.reflections === "object"
-        ? candidate.reflections
-        : {},
-    breathingCompletedDates: Array.isArray(candidate.breathingCompletedDates)
-      ? candidate.breathingCompletedDates.filter(
-          (item): item is string => typeof item === "string",
-        )
-      : [],
-  };
-}
-
 export function GitaProvider({ children }: PropsWithChildren) {
   const today = useLocalDateKey();
-  const [progress, setProgress] = useState<GitaProgress>(EMPTY_PROGRESS);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY)
-      .then((value) => {
-        if (value) setProgress(sanitizeProgress(JSON.parse(value)));
-      })
-      .catch(() => undefined)
-      .finally(() => setReady(true));
-  }, []);
-
+  const store = useRecoverableStore(STORAGE_KEY, EMPTY_GITA, parseGitaProgress, salvageGitaProgress);
+  const { data: progress, ready, update: setProgress } = store;
+  const pendingBreathing = useRef(new Set<string>());
   useEffect(() => {
     if (!ready) return;
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(progress)).catch(() => undefined);
-  }, [progress, ready]);
+    const checkpoint = getRitualCheckpoint('breathe');
+    if (checkpoint?.stage === 'breathe' && checkpoint.elapsed === 70) pendingBreathing.current.add(localDateKey());
+    const dates = [...pendingBreathing.current];
+    if (dates.length) {
+      setProgress(current => ({ ...current, breathingCompletedDates: [...new Set([...current.breathingCompletedDates, ...dates])] }));
+      pendingBreathing.current.clear();
+    }
+  }, [ready, setProgress]);
 
   const toggleBookmark = useCallback((verseId: string) => {
     setProgress((current) => ({
@@ -109,7 +79,7 @@ export function GitaProvider({ children }: PropsWithChildren) {
         ? current.bookmarks.filter((id) => id !== verseId)
         : [...current.bookmarks, verseId],
     }));
-  }, []);
+  }, [setProgress]);
 
   const saveReflection = useCallback(
     (dateKey: string, verseId: string, text: string) => {
@@ -125,13 +95,13 @@ export function GitaProvider({ children }: PropsWithChildren) {
         },
       }));
     },
-    [],
+    [setProgress],
   );
 
   const completeReflection = useCallback(
     (dateKey: string, verseId: string, text: string) => {
       const cleanText = text.trim();
-      if (!cleanText) return false;
+      if (!cleanText || !ready) return false;
       setProgress((current) => ({
         ...current,
         reflections: {
@@ -145,7 +115,7 @@ export function GitaProvider({ children }: PropsWithChildren) {
       }));
       return true;
     },
-    [],
+    [ready, setProgress],
   );
 
   const completeDailyPractice = useCallback((dateKey: string, verseId: string) => {
@@ -163,9 +133,10 @@ export function GitaProvider({ children }: PropsWithChildren) {
         },
       };
     });
-  }, []);
+  }, [setProgress]);
 
   const completeBreathing = useCallback((dateKey = localDateKey()) => {
+    if (!ready) { pendingBreathing.current.add(dateKey); return; }
     setProgress((current) =>
       current.breathingCompletedDates.includes(dateKey)
         ? current
@@ -174,7 +145,7 @@ export function GitaProvider({ children }: PropsWithChildren) {
             breathingCompletedDates: [...current.breathingCompletedDates, dateKey],
           },
     );
-  }, []);
+  }, [ready, setProgress]);
 
   const value = useMemo<GitaContextValue>(() => {
     const bookmarks = new Set(progress.bookmarks);
@@ -186,6 +157,8 @@ export function GitaProvider({ children }: PropsWithChildren) {
     const breathingCompletedDates = new Set(progress.breathingCompletedDates);
     return {
       ready,
+      loading: store.loading, loadError: store.loadError, saveError: store.saveError, corrupt: store.corrupt,
+      retryLoad: store.retryLoad, retrySave: store.retrySave, recover: store.recover,
       bookmarks,
       completedDates,
       breathingCompletedDates,
@@ -197,7 +170,7 @@ export function GitaProvider({ children }: PropsWithChildren) {
       completeReflection,
       completeBreathing,
     };
-  }, [completeBreathing, completeDailyPractice, completeReflection, progress, ready, saveReflection, today, toggleBookmark]);
+  }, [completeBreathing, completeDailyPractice, completeReflection, progress, ready, saveReflection, today, toggleBookmark, store.loading, store.loadError, store.saveError, store.corrupt, store.retryLoad, store.retrySave, store.recover]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }

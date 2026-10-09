@@ -15,7 +15,7 @@ import {
   Sun,
   X,
 } from "lucide-react-native";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
 import Svg, {
   Defs,
   LinearGradient,
@@ -42,6 +42,8 @@ export function DailyGoalCard({
 }: DailyGoalCardProps) {
   const { t, formatNumber } = useLanguage();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isSmall = width < 375;
 
   const {
     progress: p,
@@ -103,6 +105,24 @@ export function DailyGoalCard({
     );
   }
 
+  if (!link && isCompletedToday) {
+    return (
+      <View style={s.todayCompleteBanner}>
+        <View style={s.todayCompleteIconWrap}>
+          <Check size={18} color={C.greenDark} strokeWidth={2.8} />
+        </View>
+        <View style={s.todayCompleteTextWrap}>
+          <TextR style={s.todayCompleteTitle}>
+            {t("Today’s goal complete")} · 2 / 2
+          </TextR>
+          <TextR style={s.todayCompleteSub}>
+            {t("{count} points earned today", { count: formatNumber(earnedToday) })} · {t("Both practices complete. Your tree has grown.")}
+          </TextR>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={s.cardContainer}>
       {/* ── Soft Sunlit Ambience (Seamless zero-bleed at bottom) ───────────── */}
@@ -136,9 +156,11 @@ export function DailyGoalCard({
               </TextR>
             </View>
             <TextR style={s.streakSubtitle}>
-              {p.current > 0
-                ? t("streakDays", { count: p.current })
-                : t("Begin your streak")}
+              {link
+                ? (p.current > 0
+                    ? t("streakDays", { count: p.current })
+                    : t("Begin your streak"))
+                : `${completedCount} / 2 ${t("Complete")}`}
             </TextR>
           </View>
         </View>
@@ -282,8 +304,8 @@ export function DailyGoalCard({
             <Sun size={18} color={C.saffron} />
           </View>
           <View style={s.taskTextGroup}>
-            <TextR style={s.taskTitle}>{t("Alarm-led ritual")}</TextR>
-            <TextR style={s.taskSub}>
+            <TextR style={[s.taskTitle, isSmall && { fontSize: 14.5 }]}>{t("Alarm-led ritual")}</TextR>
+            <TextR style={[s.taskSub, ritualDone && s.taskSubComplete]}>
               {ritualDone
                 ? t("10 points earned today")
                 : t("Rise with morning chants")}
@@ -332,8 +354,8 @@ export function DailyGoalCard({
             <BookOpen size={18} color={C.saffron} />
           </View>
           <View style={s.taskTextGroup}>
-            <TextR style={s.taskTitle}>{t("Quiz round")}</TextR>
-            <TextR style={s.taskSub}>
+            <TextR style={[s.taskTitle, isSmall && { fontSize: 14.5 }]}>{t("Quiz round")}</TextR>
+            <TextR style={[s.taskSub, quizDone && s.taskSubComplete]}>
               {quizDone
                 ? t("10 points earned today")
                 : t("5 quick wisdom questions")}
@@ -356,16 +378,7 @@ export function DailyGoalCard({
         </View>
       </Pressable>
 
-      {/* ── 6. First-Time Enrolment Guidance ──────────────────────────────── */}
-      {!p.activated && !isCompletedToday && (
-        <View style={s.guidanceCard}>
-          <TextR style={s.guidanceText}>
-            {t(
-              "Each activity earns 10 points once daily. Complete both to start your streak. After that, only days with neither activity deduct up to 10 points. Partial days keep points but break the streak.",
-            )}
-          </TextR>
-        </View>
-      )}
+
 
       {/* ── 7. System Warnings & Notices ──────────────────────────────────── */}
       {!alarmAvailable && (
@@ -453,24 +466,72 @@ export function DailyGoalCard({
 }
 
 const s = StyleSheet.create({
+  todayCompleteBanner: {
+    backgroundColor: "rgba(255, 250, 244, 0.96)",
+    borderRadius: 20,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderWidth: 1.2,
+    borderColor: "rgba(244, 185, 66, 0.35)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(42, 92, 51, 0.2)",
+    borderBottomWidth: 2,
+    shadowColor: C.green,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
+    marginBottom: 4,
+  },
+  todayCompleteIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#E9EFD9",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(42, 92, 51, 0.25)",
+    flexShrink: 0,
+  },
+  todayCompleteTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  todayCompleteTitle: {
+    fontSize: 14.5,
+    fontWeight: "800",
+    color: C.ink,
+    letterSpacing: -0.1,
+  },
+  todayCompleteSub: {
+    fontSize: 12.5,
+    color: C.muted,
+    marginTop: 2,
+    fontWeight: "500",
+    lineHeight: 18,
+  },
+
   cardContainer: {
-    backgroundColor: "rgba(255, 248, 242, 0.94)",
+    backgroundColor: "rgba(255, 248, 242, 0.96)",
     borderRadius: 24,
     paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 12,
-    borderWidth: 1.5,
+    paddingBottom: 14,
+    borderWidth: 1.2,
     borderColor: "rgba(255, 255, 255, 0.95)",
     borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(140, 64, 16, 0.18)",
-    borderBottomWidth: 3.5,
-    marginBottom: 14,
+    borderBottomColor: "rgba(229, 107, 39, 0.22)",
+    borderBottomWidth: 2,
+    marginBottom: 16,
     shadowColor: C.saffron,
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-    gap: 10,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+    gap: 12,
     position: "relative",
     overflow: "hidden",
   },
@@ -685,25 +746,25 @@ const s = StyleSheet.create({
     justifyContent: "space-between",
     padding: 12,
     borderRadius: 18,
-    borderWidth: 1.5,
+    borderWidth: 1.2,
     borderColor: "rgba(255, 255, 255, 0.95)",
     borderTopColor: "#FFFFFF",
     shadowColor: "#8C4010",
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
   taskTileCompleted: {
     backgroundColor: "rgba(255, 250, 244, 0.96)",
-    borderColor: "rgba(244, 185, 66, 0.32)",
-    borderBottomColor: "rgba(229, 107, 39, 0.22)",
-    borderBottomWidth: 2.5,
+    borderColor: "rgba(244, 185, 66, 0.35)",
+    borderBottomColor: "rgba(229, 107, 39, 0.2)",
+    borderBottomWidth: 2,
   },
   taskTilePending: {
-    backgroundColor: "rgba(255, 245, 235, 0.75)",
-    borderBottomColor: "rgba(140, 64, 16, 0.16)",
-    borderBottomWidth: 2.5,
+    backgroundColor: "rgba(255, 246, 237, 0.8)",
+    borderBottomColor: "rgba(140, 64, 16, 0.12)",
+    borderBottomWidth: 2,
   },
   taskTilePressed: {
     transform: [{ scale: 0.985 }],
@@ -734,14 +795,14 @@ const s = StyleSheet.create({
   taskIconCircleComplete: {
     backgroundColor: "#FFF2DC",
     borderColor: "rgba(244, 185, 66, 0.55)",
-    borderBottomColor: "rgba(180, 115, 20, 0.3)",
-    borderBottomWidth: 2,
+    borderBottomColor: "rgba(180, 115, 20, 0.25)",
+    borderBottomWidth: 1.5,
   },
   taskIconCirclePending: {
     backgroundColor: "#FFF0DE",
     borderColor: "rgba(229, 107, 39, 0.3)",
-    borderBottomColor: "rgba(140, 64, 16, 0.2)",
-    borderBottomWidth: 2,
+    borderBottomColor: "rgba(140, 64, 16, 0.18)",
+    borderBottomWidth: 1.5,
   },
   taskTextGroup: {
     flex: 1,
@@ -753,10 +814,14 @@ const s = StyleSheet.create({
     color: "#241407",
   },
   taskSub: {
-    fontSize: 13,
+    fontSize: 12.5,
     color: "#7A583E",
     marginTop: 2,
     fontWeight: "500",
+  },
+  taskSubComplete: {
+    color: C.greenDark,
+    fontWeight: "700",
   },
   taskRight: {
     minHeight: 48,
@@ -823,19 +888,7 @@ const s = StyleSheet.create({
     fontWeight: "800",
     color: C.white,
   },
-  guidanceCard: {
-    backgroundColor: "rgba(254, 236, 220, 0.45)",
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "rgba(222, 192, 180, 0.3)",
-  },
-  guidanceText: {
-    fontSize: 12,
-    lineHeight: 18,
-    color: C.muted,
-    fontStyle: "italic",
-  },
+
   systemNoticePill: {
     padding: 8,
     borderRadius: 10,

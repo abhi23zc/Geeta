@@ -1,3 +1,6 @@
+import { AlarmTimeWheel } from '@/components/alarm-time-wheel';
+import { shiftAlarmTime } from '@/services/alarm-time-picker';
+import { StorageRecoveryNotice } from '@/components/storage-recovery-notice';
 import { useLanguage } from '@/i18n/provider';
 import { translate } from '@/i18n/translations';
 import type { AppLanguage } from '@/i18n/model';
@@ -16,15 +19,12 @@ import {
   Sun,
   Wind,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   AppState,
   Image,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Pressable,
-  ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
@@ -94,7 +94,7 @@ const modes: {
 
 const OEM_CONFIRMED_KEY = "morning-ritual:phone-confirmations-v2";
 
-const HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const HOURS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
 
 function parseAlarm(value: string) {
@@ -243,17 +243,19 @@ function ReadinessRow({
 
 export default function Setup() {
   const { t: translate } = useLanguage();
-  const { alarmReady } = useRitual();
+  const ritualStore = useRitual();
+  const { alarmReady } = ritualStore;
   if (!alarmReady) {
     return (
       <Screen>
         <View style={s.loadingState}>
           <TextR style={s.caption}>{translate("Loading your alarm…")}</TextR>
+          <StorageRecoveryNotice store={ritualStore} />
         </View>
       </Screen>
     );
   }
-  return <SetupContent />;
+  return <><StorageRecoveryNotice store={ritualStore} /><SetupContent /></>;
 }
 
 function SetupContent() {
@@ -272,11 +274,17 @@ function SetupContent() {
     setAlarmEnabled,
   } = useRitual();
   const parsed = useMemo(() => parseAlarm(alarmTime), [alarmTime]);
-  const [hour, setHour] = useState(parsed.hour);
-  const [minute, setMinute] = useState(parsed.minute);
-  const [meridiem, setMeridiem] = useState<"AM" | "PM">(
-    parsed.meridiem as "AM" | "PM",
-  );
+  const [pickedTime, setPickedTime] = useState(() =>
+    (parsed.hour % 12 + (parsed.meridiem === 'PM' ? 12 : 0)) * 60 + parsed.minute);
+  const hour24 = Math.floor(pickedTime / 60);
+  const hour = hour24 % 12 || 12;
+  const minute = pickedTime % 60;
+  const meridiem = hour24 >= 12 ? 'PM' : 'AM';
+  const [hourMoving, setHourMoving] = useState(false);
+  const [minuteMoving, setMinuteMoving] = useState(false);
+  const pickingTime = hourMoving || minuteMoving;
+  const moveHour = useCallback((delta: number) => setPickedTime(time => shiftAlarmTime(time, delta * 60)), []);
+  const moveMinute = useCallback((delta: number) => setPickedTime(time => shiftAlarmTime(time, delta)), []);
   const [days, setDays] = useState(
     ALARM_DAYS.map((day) => ({
       ...day,
@@ -359,11 +367,11 @@ function SetupContent() {
   const coreReady = coreReadiness.length === 3 && coreReadyCount === 3;
 
   const updateMeridiem = (next: "AM" | "PM") => {
-    setMeridiem(next);
+    setPickedTime(time => time % 720 + (next === 'PM' ? 720 : 0));
   };
 
   const save = async () => {
-    if (saving || initializing) return;
+    if (saving || initializing || pickingTime) return;
     const selectedDayIds = days
       .filter((day) => day.selected)
       .map((day) => day.id as AlarmDayId);
@@ -464,12 +472,12 @@ function SetupContent() {
         <Pressable
           accessibilityLabel={translate("Save alarm")}
           accessibilityRole="button"
-          accessibilityState={{ disabled: saving || initializing, busy: saving }}
-          disabled={saving || initializing}
+          accessibilityState={{ disabled: saving || initializing || pickingTime, busy: saving }}
+          disabled={saving || initializing || pickingTime}
           onPress={save}
           style={({ pressed }) => [
             s.saveChip,
-            (saving || initializing) && s.buttonDisabled,
+            (saving || initializing || pickingTime) && s.buttonDisabled,
             pressed && s.pressed,
           ]}
         >
@@ -487,23 +495,13 @@ function SetupContent() {
 
         {/* Smooth Scrollable Wheel Picker */}
         <View style={s.timePicker}>
-          <SmoothWheelColumn
-            data={HOURS}
-            value={hour}
-            onChange={setHour}
-            padZero
-            isSmall={isSmall}
-          />
+          <AlarmTimeWheel data={HOURS} value={hour} label={translate('Hour')}
+            onDelta={moveHour} onMoving={setHourMoving} small={isSmall} />
           <TextR serif style={[s.colon, isSmall && s.colonSmall]}>
             :
           </TextR>
-          <SmoothWheelColumn
-            data={MINUTES}
-            value={minute}
-            onChange={setMinute}
-            padZero
-            isSmall={isSmall}
-          />
+          <AlarmTimeWheel data={MINUTES} value={minute} label={translate('Minute')}
+            onDelta={moveMinute} onMoving={setMinuteMoving} small={isSmall} />
           <View style={[s.meridiemTrack, isSmall && s.meridiemTrackSmall]}>
             {(["AM", "PM"] as const).map((value) => {
               const active = meridiem === value;
@@ -685,13 +683,13 @@ function SetupContent() {
       <Pressable
         accessibilityLabel={translate("Save alarm and morning ritual")}
         accessibilityRole="button"
-        accessibilityState={{ disabled: saving || initializing, busy: saving }}
-        disabled={saving || initializing}
+        accessibilityState={{ disabled: saving || initializing || pickingTime, busy: saving }}
+        disabled={saving || initializing || pickingTime}
         onPress={save}
         style={({ pressed }) => [
           s.primaryButton,
           isSmall && s.primaryButtonSmall,
-          (saving || initializing) && s.buttonDisabled,
+          (saving || initializing || pickingTime) && s.buttonDisabled,
           pressed && s.primaryPressed,
         ]}
       >
@@ -701,186 +699,6 @@ function SetupContent() {
         </TextR>
       </Pressable>
     </Screen>
-  );
-}
-
-function SmoothWheelColumn({
-  data,
-  value,
-  onChange,
-  padZero = true,
-  isSmall,
-}: {
-  data: number[];
-  value: number;
-  onChange: (val: number) => void;
-  padZero?: boolean;
-  isSmall?: boolean;
-}) {
-
-  const itemHeight = isSmall ? 48 : 54;
-  const scrollViewRef = useRef<ScrollView>(null);
-  const isUserInteractingRef = useRef(false);
-  const lastReportedValueRef = useRef(value);
-  const hasMountedRef = useRef(false);
-  const settleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Sync external changes ONLY (e.g., initial load or external preset reset)
-  useEffect(() => {
-    if (value !== lastReportedValueRef.current) {
-      lastReportedValueRef.current = value;
-      if (!isUserInteractingRef.current) {
-        const idx = data.indexOf(value);
-        if (idx >= 0) {
-          scrollViewRef.current?.scrollTo({
-            y: idx * itemHeight,
-            animated: true,
-          });
-        }
-      }
-    }
-  }, [value, data, itemHeight]);
-
-  const settleToIndex = useCallback(
-    (offsetY: number, animateSnap = true) => {
-      const idx = Math.round(offsetY / itemHeight);
-      const clamped = Math.max(0, Math.min(data.length - 1, idx));
-      const targetY = clamped * itemHeight;
-
-      if (animateSnap && Math.abs(offsetY - targetY) > 0.5) {
-        scrollViewRef.current?.scrollTo({
-          y: targetY,
-          animated: true,
-        });
-      }
-
-      const selectedItem = data[clamped];
-      if (selectedItem !== lastReportedValueRef.current) {
-        lastReportedValueRef.current = selectedItem;
-        onChange(selectedItem);
-      }
-
-      if (settleTimeoutRef.current) clearTimeout(settleTimeoutRef.current);
-      settleTimeoutRef.current = setTimeout(() => {
-        isUserInteractingRef.current = false;
-      }, 120);
-    },
-    [data, itemHeight, onChange]
-  );
-
-  const handleScrollBeginDrag = useCallback(() => {
-    isUserInteractingRef.current = true;
-    if (settleTimeoutRef.current) {
-      clearTimeout(settleTimeoutRef.current);
-      settleTimeoutRef.current = null;
-    }
-  }, []);
-
-  const handleScrollEndDrag = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const velocityY = Math.abs(e.nativeEvent.velocity?.y ?? 0);
-      // Settle immediately only if drag ended with practically zero momentum velocity
-      if (velocityY < 0.1) {
-        settleToIndex(e.nativeEvent.contentOffset.y, true);
-      }
-    },
-    [settleToIndex]
-  );
-
-  const handleMomentumScrollEnd = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      settleToIndex(e.nativeEvent.contentOffset.y, false);
-    },
-    [settleToIndex]
-  );
-
-  const handleLayout = useCallback(() => {
-    if (!hasMountedRef.current) {
-      hasMountedRef.current = true;
-      const idx = data.indexOf(value);
-      if (idx >= 0) {
-        scrollViewRef.current?.scrollTo({
-          y: idx * itemHeight,
-          animated: false,
-        });
-      }
-    }
-  }, [data, itemHeight, value]);
-
-  const handleItemPress = useCallback(
-    (idx: number, item: number) => {
-      isUserInteractingRef.current = true;
-      scrollViewRef.current?.scrollTo({
-        y: idx * itemHeight,
-        animated: true,
-      });
-      if (item !== lastReportedValueRef.current) {
-        lastReportedValueRef.current = item;
-        onChange(item);
-      }
-      if (settleTimeoutRef.current) clearTimeout(settleTimeoutRef.current);
-      settleTimeoutRef.current = setTimeout(() => {
-        isUserInteractingRef.current = false;
-      }, 150);
-    },
-    [itemHeight, onChange]
-  );
-
-  return (
-    <View
-      style={[
-        s.wheelColumnWrapper,
-        { height: itemHeight * 3 },
-        isSmall && s.wheelColumnWrapperSmall,
-      ]}
-    >
-      {/* Center Selection Lens Bracket */}
-      <View
-        style={[s.wheelLens, { top: itemHeight, height: itemHeight }]}
-        pointerEvents="none"
-      />
-
-      <ScrollView
-        ref={scrollViewRef}
-        showsVerticalScrollIndicator={false}
-        snapToInterval={itemHeight}
-        snapToAlignment="center"
-        decelerationRate="fast"
-        nestedScrollEnabled={true}
-        scrollEventThrottle={16}
-        bounces={false}
-        overScrollMode="never"
-        onLayout={handleLayout}
-        onScrollBeginDrag={handleScrollBeginDrag}
-        onScrollEndDrag={handleScrollEndDrag}
-        onMomentumScrollEnd={handleMomentumScrollEnd}
-        contentOffset={{ x: 0, y: Math.max(0, data.indexOf(value)) * itemHeight }}
-      >
-        <View style={{ height: itemHeight }} />
-        {data.map((item, idx) => {
-          const isSelected = item === value;
-          return (
-            <Pressable
-              key={item}
-              onPress={() => handleItemPress(idx, item)}
-              style={[s.wheelItem, { height: itemHeight }]}
-            >
-              <TextR
-                serif
-                style={[
-                  s.wheelItemText,
-                  isSmall && s.wheelItemTextSmall,
-                  isSelected && s.wheelItemTextSelected,
-                ]}
-              >
-                {padZero ? String(item).padStart(2, "0") : String(item)}
-              </TextR>
-            </Pressable>
-          );
-        })}
-        <View style={{ height: itemHeight }} />
-      </ScrollView>
-    </View>
   );
 }
 
@@ -1241,49 +1059,6 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  wheelColumnWrapper: {
-    width: 82,
-    position: "relative",
-    overflow: "hidden",
-    justifyContent: "center",
-  },
-  wheelColumnWrapperSmall: {
-    width: 66,
-  },
-  wheelLens: {
-    position: "absolute",
-    left: 2,
-    right: 2,
-    borderRadius: 14,
-    backgroundColor: "rgba(235, 120, 60, 0.08)",
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: "rgba(216, 144, 64, 0.25)",
-  },
-  wheelItem: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  wheelItemText: {
-    fontSize: 26,
-    lineHeight: 32,
-    fontWeight: "300",
-    color: C.mutedSoft,
-    opacity: 0.4,
-    letterSpacing: -0.5,
-  },
-  wheelItemTextSmall: {
-    fontSize: 22,
-    lineHeight: 28,
-  },
-  wheelItemTextSelected: {
-    fontSize: 48,
-    lineHeight: 54,
-    fontWeight: "300",
-    color: C.ink,
-    opacity: 1,
-    letterSpacing: -1.8,
-  },
   colon: {
     marginHorizontal: 4,
     fontSize: 44,
@@ -1310,16 +1085,18 @@ const s = StyleSheet.create({
     padding: 3,
   },
   meridiemButton: {
-    minWidth: 44,
-    height: 34,
-    borderRadius: 17,
+    minWidth: 48,
+    minHeight: 48,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
   },
   meridiemButtonSmall: {
-    minWidth: 36,
-    height: 30,
-    borderRadius: 15,
+    minWidth: 48,
+    minHeight: 48,
+    borderRadius: 20,
   },
   meridiemActive: {
     backgroundColor: C.primary,

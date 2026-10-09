@@ -14,7 +14,7 @@ const require = createRequire(import.meta.url), ts = require('typescript');
 const source = ts.transpileModule(readFileSync(new URL('../src/services/content-cache.ts',import.meta.url),'utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 function harness() {
   const root=mkdtempSync(join(tmpdir(),'geeta-cache-test-')), sqlite=new DatabaseSync(':memory:');
-  let today='2026-10-03', manifest, network=true, free=1024*1024*1024, ritualCheckpoint=null;
+  let today='2026-10-03', manifest, network=true, networkType='wifi', free=1024*1024*1024, ritualCheckpoint=null;
   const payloads=new Map(), downloads=[], installs=[];
   class File {
     constructor(...parts) { this.path=join(...parts.map(p => typeof p==='string' ? p.startsWith('file:') ? fileURLToPath(p) : p : p.path)); }
@@ -27,7 +27,7 @@ function harness() {
     'expo-file-system':{File,Directory,Paths:{document:new Directory(root),get availableDiskSpace(){return free;}}},
     'expo-file-system/legacy':{createDownloadResumable:(url,uri,_options,progress)=>({cancelAsync:async()=>{},downloadAsync:async()=>{downloads.push(url);const bytes=payloads.get(url);if(!bytes) return {status:404};writeFileSync(fileURLToPath(uri),bytes);progress({totalBytesWritten:bytes.length});return {status:200};}})},
     'expo-sqlite':{openDatabaseAsync:async()=>d},
-    'expo-network':{NetworkStateType:{WIFI:'wifi'},getNetworkStateAsync:async()=>({isConnected:network,isInternetReachable:network,type:'wifi'})},
+    'expo-network':{NetworkStateType:{WIFI:'wifi'},getNetworkStateAsync:async()=>({isConnected:network,isInternetReachable:network,type:networkType})},
     'react-native':{Platform:{OS:'android'}},
     '../../shared/content':require('../shared/content.ts'),
     '@/data/gita-verses':{localDateKey:()=>today},
@@ -38,7 +38,7 @@ function harness() {
   function asset(id,body=id){const bytes=Buffer.from(body),url=`https://storage.googleapis.com/demo/${id}`;payloads.set(url,bytes);return{id,url,sha256:createHash('sha256').update(bytes).digest('hex'),bytes:bytes.length,durationMs:5000,mimeType:'audio/mpeg'};}
   function practice(id){return{id,revision:id,kind:'gita',chapter:10,verse:'20',theme:id,sanskrit:'श्लोक',transliteration:'Shloka',meaning:'Meaning',takeaway:'Takeaway',context:'Context',reflectionPrompt:'Prompt',words:[],narration:{asset:asset(id),completionMs:5000,segments:[{kind:'sanskrit',text:'श्लोक',startMs:0,endMs:2000},{kind:'meaning',text:'Meaning',startMs:2500,endMs:5000}]}};}
   function release(start=today){manifest={schemaVersion:1,releaseId:'release',publishedAt:'2026-10-03T00:00:00Z',enabled:true,locale:'hi-IN',days:dateWindow(start).map((date,i)=>({date,practice:practice(`p-${date}`)})),alarms:[{key:'gita',revision:'tone1',title:'Morning',description:'Music',asset:asset('alarm')}]};return manifest;}
-  return {cache:exports,downloads,installs,sqlite,release,practice,asset,setRitualCheckpoint:v=>{ritualCheckpoint=v;},setToday:v=>{today=v;},offline:()=>{network=false;},lowDisk:()=>{free=1;},payloads,dispose:()=>{sqlite.close();rmSync(root,{recursive:true,force:true});}};
+  return {root,cache:exports,downloads,installs,sqlite,release,practice,asset,setRitualCheckpoint:v=>{ritualCheckpoint=v;},setToday:v=>{today=v;},cellular:()=>{networkType='cellular';},offline:()=>{network=false;},lowDisk:()=>{free=1;},payloads,dispose:()=>{sqlite.close();rmSync(root,{recursive:true,force:true});}};
 }
 test('seven-day downloads deduplicate and remain readable without connectivity',async()=>{
   const h=harness();try{h.release();await h.cache.syncContent(true);assert.equal(h.downloads.length,8);assert.equal(Object.keys((await h.cache.readContent()).days).length,7);await h.cache.syncContent(true);assert.equal(h.downloads.length,8);h.offline();await h.cache.syncContent(true);assert.match((await h.cache.readContent()).error,/Offline/);assert.equal(Object.keys((await h.cache.readContent()).days).length,7);}finally{h.dispose();}
@@ -76,4 +76,80 @@ test('an interrupted ritual retains its frozen recording through refill and clea
     h.setRitualCheckpoint(null);await h.cache.clearContentDownloads();
     assert.equal(h.sqlite.prepare('SELECT * FROM assets WHERE id=?').get(practice.narration.assetId),undefined);
   }finally{h.dispose();}
+});
+async function disposeRecording(h, recording) { recording?.release(); await new Promise(resolve => setTimeout(resolve, 5)); h.dispose(); }
+function localFile(h, practice) { const row = h.sqlite.prepare('SELECT path FROM assets WHERE id=?').get(practice.narration.assetId); return join(h.root, 'geeta-content', row.path); }
+test('missing and same-size corrupt practice recordings repair only the frozen revision', async () => {
+  for (const corrupt of [false, true]) {
+    const h=harness(); let recording;
+    try {
+      h.release(); await h.cache.syncContent(true);
+      const practice=(await h.cache.readContent()).days['2026-10-03'];
+      const path=localFile(h,practice);
+      corrupt ? writeFileSync(path,Buffer.alloc(statSync(path).size,120)) : unlinkSync(path);
+      const newer=h.practice('newer');
+      h.sqlite.prepare('UPDATE days SET json=?,asset=? WHERE date=?').run(JSON.stringify(newer), newer.narration.asset.id, '2026-10-03');
+      recording=await h.cache.preparePracticeRecording(practice);
+      assert.equal(recording.narration.assetId,practice.narration.assetId);
+      assert.equal(h.downloads.length,9);
+      assert.equal(createHash('sha256').update(readFileSync(path)).digest('hex'),practice.narration.asset.sha256);
+      assert.equal((await h.cache.readContent()).days['2026-10-03'].id,'newer');
+    } finally { await disposeRecording(h,recording); }
+  }
+});
+test('healthy checksum-verified recordings are reused offline and pins release exactly once', async () => {
+  const h=harness(); let recording, other;
+  try {
+    h.release(); await h.cache.syncContent(true); const practice=(await h.cache.readContent()).days['2026-10-03'];
+    h.offline(); recording=await h.cache.preparePracticeRecording(practice); other=await h.cache.preparePracticeRecording(practice);
+    assert.equal(h.downloads.length,8);
+    recording.release(); recording.release(); await new Promise(resolve=>setTimeout(resolve,5));
+    await h.cache.clearContentDownloads(); assert.ok(existsSync(localFile(h,practice)));
+    other.release(); other.release(); await new Promise(resolve=>setTimeout(resolve,5));
+    await h.cache.clearContentDownloads(); assert.equal(h.sqlite.prepare('SELECT * FROM assets WHERE id=?').get(practice.narration.assetId),undefined);
+  } finally { other?.release(); await disposeRecording(h,recording); }
+});
+test('repair respects offline and Wi-Fi restrictions for corrupt files while preserving text and bookmarks', async () => {
+  for (const offline of [true,false]) {
+    const h=harness();
+    try {
+      h.release(); await h.cache.syncContent(true); const practice=(await h.cache.readContent()).days['2026-10-03'];
+      await h.cache.saveTeaching(practice);
+      writeFileSync(localFile(h,practice),Buffer.alloc(practice.narration.asset.bytes,120));
+      offline ? h.offline() : h.cellular(); await h.cache.setWifiOnly(true);
+      await assert.rejects(h.cache.preparePracticeRecording(practice),offline ? /Connect to repair/ : /Wi-Fi/);
+      assert.equal(h.downloads.length,8); assert.equal((await h.cache.readContent()).saved[0].sanskrit,practice.sanskrit);
+    } finally { h.dispose(); }
+  }
+});
+test('repair fails safely under lease contention, checksum failure and low disk', async () => {
+  for (const mode of ['lease','checksum','disk']) {
+    const h=harness();
+    try {
+      h.release(); await h.cache.syncContent(true); const practice=(await h.cache.readContent()).days['2026-10-03'];
+      unlinkSync(localFile(h,practice));
+      if(mode==='lease') h.sqlite.prepare('UPDATE lease SET owner=?,expires=?').run('other',Date.now()+60000);
+      if(mode==='checksum') h.payloads.set(practice.narration.asset.url,Buffer.alloc(practice.narration.asset.bytes,120));
+      if(mode==='disk') h.lowDisk();
+      await assert.rejects(h.cache.preparePracticeRecording(practice), mode==='lease' ? /refresh/ : mode==='checksum' ? /checksum/ : /storage/);
+      assert.equal((await h.cache.readContent()).days['2026-10-03'].sanskrit,practice.sanskrit);
+      assert.equal(h.sqlite.prepare('SELECT COUNT(*) n FROM playback_pins').get().n,0);
+    } finally { h.dispose(); }
+  }
+});
+test('matching cached metadata is used only for the same revision; newer recordings cannot replace it', async () => {
+  const h=harness(); let recording;
+  try {
+    h.release(); await h.cache.syncContent(true); const practice=(await h.cache.readContent()).days['2026-10-03'];
+    const withoutAsset={...practice,narration:{...practice.narration,asset:undefined}};
+    recording=await h.cache.preparePracticeRecording(withoutAsset); assert.equal(recording.narration.assetId,practice.narration.assetId);
+    await assert.rejects(h.cache.preparePracticeRecording({...withoutAsset,revision:'old-missing'}),/metadata/);
+  } finally { await disposeRecording(h,recording); }
+});
+test('bundled recording preparation never needs a download or database lease', async () => {
+  const h=harness();try {
+    const practice={...h.practice('bundled'),narration:{audioSource:42,completionMs:5000,segments:[]}};
+    h.offline(); const recording=await h.cache.preparePracticeRecording(practice);
+    assert.equal(recording.narration.audioSource,42); recording.release(); recording.release(); assert.equal(h.downloads.length,0);
+  } finally { h.dispose(); }
 });

@@ -535,7 +535,7 @@ export const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
     borderBottomColor: 'rgba(190, 140, 110, 0.35)',
-    borderBottomWidth: 3,
+    borderBottomWidth: 2.5,
     borderRadius: 22,
     padding: 16,
     gap: 10,

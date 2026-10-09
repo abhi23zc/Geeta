@@ -359,7 +359,7 @@ const s = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderBottomWidth: 3.5,
+    borderBottomWidth: 2.5,
     borderBottomColor: 'rgba(216, 144, 64, 0.35)',
     padding: 16,
     gap: 12,

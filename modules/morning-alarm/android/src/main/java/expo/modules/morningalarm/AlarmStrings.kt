@@ -24,6 +24,7 @@ object AlarmStrings {
     AlarmService.refreshLanguage()
   }
   private val strings = mapOf(
+    "Could not continue the ritual. Please retry." to Pair("साधना जारी नहीं हो सकी। फिर प्रयास करें।", "Sadhana jaari nahi ho saki. Phir try karein."),
     "The app screen could not finish loading. Try again." to Pair("ऐप की स्क्रीन लोड नहीं हो सकी। फिर प्रयास करें।", "App ki screen load nahi ho saki. Phir try karein."),
     "Try again" to Pair("फिर प्रयास करें", "Phir try karein"),
     "Continue after unlock" to Pair("अनलॉक के बाद जारी रखें", "Unlock ke baad jaari rakhein"),

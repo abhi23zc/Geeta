@@ -8,6 +8,7 @@ import {
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  AccessibilityInfo,
   Alert,
   AppState,
   BackHandler,
@@ -34,11 +35,10 @@ import { replaceAppRoute } from "@/navigation/route-actions";
 import {
   addAlarmStoppedListener,
   addAlarmTriggeredListener,
-  dismissAlarmAndScheduleNext,
+  startMyDay,
   getAlarmPlaybackState,
   getAlarmPresentationState,
   notifyWakeScreenReady,
-  setAlarmRitualStage,
   type AlarmPlaybackState,
 } from "@/services/alarm";
 import * as Haptics from "expo-haptics";
@@ -61,7 +61,7 @@ function formatAlarm(value: string) {
 export default function Wake() {
   const { t: translate } = useLanguage();
   const navigation = useNavigation("/");
-  const { width, height } = useWindowDimensions();
+  const { width, height, fontScale } = useWindowDimensions();
   const isSmall = width < 360;
   const isTablet = width >= 768;
   const isCompact = height < 750;
@@ -69,6 +69,13 @@ export default function Wake() {
   const { alarmTime, alarmTone } = useRitual();
   const { practice: currentVerse } = useContent();
 
+  const [screenReaderEnabled, setScreenReaderEnabled] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void AccessibilityInfo.isScreenReaderEnabled().then(enabled => { if (alive) setScreenReaderEnabled(enabled); }).catch(() => undefined);
+    const listener = AccessibilityInfo.addEventListener('screenReaderChanged', setScreenReaderEnabled);
+    return () => { alive = false; listener.remove(); };
+  }, []);
   const [started, setStarted] = useState(false);
   const [isHolding, setIsHolding] = useState(false);
   const reportedReady = useRef(false);
@@ -129,8 +136,9 @@ export default function Wake() {
 
   const handleStartDay = async () => {
     if (dismissing.current) return;
+    const expectedSession = session.current;
     const state = getAlarmPresentationState();
-    if (!mounted.current || !navigation.isFocused() || AppState.currentState !== 'active' || !state.active || state.stage !== 'wake' || state.sessionId !== session.current) return;
+    if (!expectedSession || !mounted.current || !navigation.isFocused() || AppState.currentState !== 'active' || !state.active || !['wake', 'breathe', 'gita'].includes(state.stage ?? '') || state.sessionId !== expectedSession) return;
 
     dismissing.current = true;
     setStarted(true);
@@ -140,19 +148,23 @@ export default function Wake() {
     } catch {}
 
     try {
-      await dismissAlarmAndScheduleNext(session.current ?? undefined);
-      await setAlarmRitualStage('breathe', session.current ?? undefined);
-      if (!mounted.current) return;
-      if (!replaceAppRoute(navigation, "/breathe", { entry: "alarm" })) {
+      const result = await startMyDay(expectedSession);
+      const latest = getAlarmPresentationState();
+      if (!mounted.current || !navigation.isFocused() || AppState.currentState !== 'active' || !latest.active || latest.sessionId !== expectedSession) return;
+      if (!replaceAppRoute(navigation, result.stage === 'gita' ? '/gita' : '/breathe', { entry: "alarm" })) {
         throw new Error(translate("The breathing screen is not ready. Please try again."));
       }
     } catch (error) {
       if (!mounted.current) return;
       dismissing.current = false;
       setStarted(false);
+      const latest = getAlarmPresentationState();
+      if (!navigation.isFocused() || AppState.currentState !== 'active' || !latest.active || latest.sessionId !== expectedSession) return;
       Alert.alert(
-        translate("Could not stop alarm"),
-        error instanceof Error ? error.message : translate("Please try again."),
+        translate("Could not continue the ritual. Please retry."),
+        error instanceof Error && error.message === 'Update the Android app to restore ritual progress.'
+          ? translate('Update the Android app to restore ritual progress.')
+          : translate('Your progress is preserved. Try again to continue.'),
       );
     }
   };
@@ -249,9 +261,9 @@ export default function Wake() {
   }));
 
   return (
-    <Screen scroll={false} night={false}>
+    <Screen scroll={fontScale > 1.15 || height < 680}>
       <View
-        style={s.singleViewportContainer}
+        style={[s.singleViewportContainer, (fontScale > 1.15 || height < 680) && { flex: undefined, gap: 20 }]}
         onLayout={() => {
           if (reportedReady.current) return;
           reportedReady.current = true;
@@ -338,8 +350,19 @@ export default function Wake() {
           <Animated.View style={animatedScaleStyle}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={translate("Hold for 1.5 seconds to start morning ritual")}
+              accessibilityLabel={translate(screenReaderEnabled ? "Start my day" : "Hold for 1.5 seconds to start morning ritual")}
               disabled={started}
+              accessibilityState={{ disabled: started, busy: started }}
+              onPress={() => { if (screenReaderEnabled) { cancelHold(); void handleStartDay(); } }}
+              accessibilityActions={[{ name: 'activate', label: translate('Start my day') }]}
+              onAccessibilityAction={event => { if (event.nativeEvent.actionName === 'activate') { cancelHold(); void handleStartDay(); } }}
+              {...{ onKeyDown: (event: { key?: string; repeat?: boolean; nativeEvent?: { key: string; repeat?: boolean }; preventDefault(): void }) => {
+                // SDK 57's RN keyboard events expose nativeEvent; web exposes key directly.
+                const key = event.nativeEvent?.key ?? event.key;
+                if ((key === 'Enter' || key === ' ') && !(event.nativeEvent?.repeat ?? event.repeat)) {
+                  event.preventDefault(); cancelHold(); void handleStartDay();
+                }
+              } }}
               onPressIn={onPressIn}
               onPressOut={onPressOut}
               style={[s.primaryButton, isSmall && { height: 48, borderRadius: 24 }]}

@@ -22,7 +22,7 @@ import { GrowthCelebrationHost } from '@/features/progress/tree/celebration';
 const alarmScreenLayout: NonNullable<React.ComponentProps<typeof Stack>['screenLayout']> =
   ({ children }) => <AlarmNavigationGuard>{children}</AlarmNavigationGuard>;
 
-const TAB_ROUTES = new Set(['/', '/index', '/today', '/quiz', '/quiz/index', '/night']);
+const TAB_ROUTES = new Set(['/', '/index', '/today', '/quiz', '/quiz/index', '/progress']);
 
 function AppChrome() {
   const presentation = useAlarmPresentation();
@@ -46,7 +46,6 @@ function AppChrome() {
         <Stack.Screen name="gita" />
         <Stack.Screen name="breathe" />
         <Stack.Screen name="today" />
-        <Stack.Screen name="night" />
         <Stack.Screen name="quiz" />
         <Stack.Screen name="language" />
         <Stack.Screen name="progress" />

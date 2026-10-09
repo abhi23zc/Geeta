@@ -268,9 +268,6 @@ export function SadhanaCalendar({ progress: p, today }: SadhanaCalendarProps) {
               <TextR style={s.activityLabel}>{t('Quiz round')} · +{formatNumber(activityPoints(p, inspectedDate, 'quiz'))} {t('Points')}</TextR>
             </View>
           </View>
-          {(inspectedDayData?.quiz || inspectedDayData?.ritual) && !inspectedDayData?.rewarded && <TextR style={s.activityLabel}>
-            {t('Partial days keep points but break the streak. Only inactive days deduct up to 10 points; points never fall below zero.')}
-          </TextR>}
         </View>
       )}
     </View>
@@ -282,14 +279,16 @@ const s = StyleSheet.create({
     backgroundColor: '#FFFDF9',
     borderRadius: 24,
     padding: 16,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderWidth: 1.2,
     borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(140, 64, 16, 0.18)',
-    borderBottomWidth: 3.5,
+    borderBottomColor: 'rgba(140, 64, 16, 0.16)',
+    borderLeftColor: 'rgba(255, 255, 255, 0.95)',
+    borderRightColor: 'rgba(217, 119, 6, 0.15)',
+    borderBottomWidth: 2,
     shadowColor: '#8C4010',
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 3,
     gap: 12,
     overflow: 'hidden',

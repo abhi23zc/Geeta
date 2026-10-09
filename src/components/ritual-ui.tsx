@@ -1,5 +1,16 @@
-import { useLanguage } from '@/i18n/provider';
-import React, { ReactNode } from 'react';
+import { C, R } from "@/constants/ritual-theme";
+import { useLanguage } from "@/i18n/provider";
+import { Link, usePathname, useRouter } from "expo-router";
+import {
+  Bell,
+  BookOpen,
+  ChevronLeft,
+  Flame,
+  Sun,
+  Target,
+  User
+} from "lucide-react-native";
+import React, { ReactNode } from "react";
 import {
   Image,
   Keyboard,
@@ -11,20 +22,19 @@ import {
   Text,
   View,
   ViewStyle,
-} from 'react-native';
-import { Link, usePathname, useRouter } from 'expo-router';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+} from "react-native";
 import {
-  Bell,
-  User,
-  Flame,
-  Sun,
-  Moon,
-  BookOpen,
-  ChevronLeft,
-} from 'lucide-react-native';
-import { C, R } from '@/constants/ritual-theme';
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import Svg, {
+  Defs,
+  LinearGradient,
+  Path,
+  RadialGradient,
+  Rect,
+  Stop,
+} from "react-native-svg";
 
 import Animated, {
   Easing,
@@ -34,23 +44,30 @@ import Animated, {
   withSequence,
   withSpring,
   withTiming,
-} from 'react-native-reanimated';
+} from "react-native-reanimated";
 
-export const MORNING_RITUAL_LOGO = require('@/assets/images/morning-ritual-logo.png');
-const DockContext = React.createContext({ height: 76, setHeight: (_height: number) => {} });
+export const MORNING_RITUAL_LOGO = require("@/assets/images/morning-ritual-logo.png");
+const DockContext = React.createContext({
+  height: 76,
+  setHeight: (_height: number) => {},
+});
 export function DockLayoutProvider({ children }: { children: ReactNode }) {
-
   const [height, setHeight] = React.useState(76);
   const value = React.useMemo(() => ({ height, setHeight }), [height]);
   return <DockContext.Provider value={value}>{children}</DockContext.Provider>;
 }
-export function useDockHeight() { return React.useContext(DockContext).height; }
+export function useDockHeight() {
+  return React.useContext(DockContext).height;
+}
 
 export function DawnMeshBackdrop({ night = false }: { night?: boolean }) {
-
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <Svg width="100%" height="650" style={{ position: 'absolute', top: 0, left: 0, right: 0 }}>
+      <Svg
+        width="100%"
+        height="650"
+        style={{ position: "absolute", top: 0, left: 0, right: 0 }}
+      >
         <Defs>
           <RadialGradient
             id="dawnSunburst"
@@ -60,17 +77,59 @@ export function DawnMeshBackdrop({ night = false }: { night?: boolean }) {
             fx="50%"
             fy="-10%"
           >
-            {night ? [
-              <Stop key="n1" offset="0%" stopColor="#252754" stopOpacity="0.75" />,
-              <Stop key="n2" offset="45%" stopColor="#1C1D3E" stopOpacity="0.4" />,
-              <Stop key="n3" offset="85%" stopColor="#171833" stopOpacity="0.1" />,
-              <Stop key="n4" offset="100%" stopColor={C.night} stopOpacity="0" />,
-            ] : [
-              <Stop key="d1" offset="0%" stopColor="#FDE3B8" stopOpacity="0.6" />,
-              <Stop key="d2" offset="30%" stopColor="#FDCBA5" stopOpacity="0.32" />,
-              <Stop key="d3" offset="65%" stopColor="#FEEADC" stopOpacity="0.12" />,
-              <Stop key="d4" offset="100%" stopColor={C.surface} stopOpacity="0" />,
-            ]}
+            {night
+              ? [
+                  <Stop
+                    key="n1"
+                    offset="0%"
+                    stopColor="#252754"
+                    stopOpacity="0.75"
+                  />,
+                  <Stop
+                    key="n2"
+                    offset="45%"
+                    stopColor="#1C1D3E"
+                    stopOpacity="0.4"
+                  />,
+                  <Stop
+                    key="n3"
+                    offset="85%"
+                    stopColor="#171833"
+                    stopOpacity="0.1"
+                  />,
+                  <Stop
+                    key="n4"
+                    offset="100%"
+                    stopColor={C.night}
+                    stopOpacity="0"
+                  />,
+                ]
+              : [
+                  <Stop
+                    key="d1"
+                    offset="0%"
+                    stopColor="#FDE3B8"
+                    stopOpacity="0.6"
+                  />,
+                  <Stop
+                    key="d2"
+                    offset="30%"
+                    stopColor="#FDCBA5"
+                    stopOpacity="0.32"
+                  />,
+                  <Stop
+                    key="d3"
+                    offset="65%"
+                    stopColor="#FEEADC"
+                    stopOpacity="0.12"
+                  />,
+                  <Stop
+                    key="d4"
+                    offset="100%"
+                    stopColor={C.surface}
+                    stopOpacity="0"
+                  />,
+                ]}
           </RadialGradient>
         </Defs>
         <Rect width="100%" height="650" fill="url(#dawnSunburst)" />
@@ -92,7 +151,6 @@ export function DiyaGraphic({
   animated?: boolean;
   showAura?: boolean;
 }) {
-
   const flameScaleY = useSharedValue(1);
   const flameTranslateY = useSharedValue(0);
   const flameRotate = useSharedValue(0);
@@ -107,63 +165,71 @@ export function DiyaGraphic({
       withSequence(
         withTiming(1.15, { duration: 700, easing: Easing.sin }),
         withTiming(0.94, { duration: 600, easing: Easing.sin }),
-        withTiming(1.08, { duration: 800, easing: Easing.sin })
+        withTiming(1.08, { duration: 800, easing: Easing.sin }),
       ),
       -1,
-      true
+      true,
     );
 
     flameTranslateY.value = withRepeat(
       withSequence(
         withTiming(-1.5, { duration: 650, easing: Easing.ease }),
-        withTiming(0.8, { duration: 750, easing: Easing.ease })
+        withTiming(0.8, { duration: 750, easing: Easing.ease }),
       ),
       -1,
-      true
+      true,
     );
 
     flameRotate.value = withRepeat(
       withSequence(
         withTiming(2.5, { duration: 800, easing: Easing.ease }),
-        withTiming(-2.5, { duration: 900, easing: Easing.ease })
+        withTiming(-2.5, { duration: 900, easing: Easing.ease }),
       ),
       -1,
-      true
+      true,
     );
 
     flameOpacity.value = withRepeat(
       withSequence(
         withTiming(1, { duration: 500 }),
-        withTiming(0.88, { duration: 650 })
+        withTiming(0.88, { duration: 650 }),
       ),
       -1,
-      true
+      true,
     );
 
     glowScale.value = withRepeat(
       withSequence(
         withTiming(1.25, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.95, { duration: 1800, easing: Easing.inOut(Easing.ease) })
+        withTiming(0.95, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
-      true
+      true,
     );
 
     glowOpacity.value = withRepeat(
       withSequence(
         withTiming(0.65, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.35, { duration: 1800, easing: Easing.inOut(Easing.ease) })
+        withTiming(0.35, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
       ),
       -1,
-      true
+      true,
     );
-  }, [animated, flameOpacity, flameRotate, flameScaleY, flameTranslateY, glowOpacity, glowScale]);
+  }, [
+    animated,
+    flameOpacity,
+    flameRotate,
+    flameScaleY,
+    flameTranslateY,
+    glowOpacity,
+    glowScale,
+  ]);
 
   const animatedFlameStyle = useAnimatedStyle(() => ({
     transform: [
       { translateY: animated ? flameTranslateY.value : 0 },
       { scaleY: animated ? flameScaleY.value : 1 },
-      { rotate: animated ? `${flameRotate.value}deg` : '0deg' },
+      { rotate: animated ? `${flameRotate.value}deg` : "0deg" },
     ],
     opacity: animated ? flameOpacity.value : 1,
   }));
@@ -174,18 +240,26 @@ export function DiyaGraphic({
   }));
 
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: "center",
+        justifyContent: "center",
+        position: "relative",
+      }}
+    >
       {/* Dynamic Flickering Radial Light Halo */}
       {showAura && (
         <Animated.View
           style={[
             {
-              position: 'absolute',
+              position: "absolute",
               width: size * 1.6,
               height: size * 1.6,
               borderRadius: (size * 1.6) / 2,
-              backgroundColor: 'rgba(255, 179, 0, 0.35)',
-              shadowColor: '#FF6D00',
+              backgroundColor: "rgba(255, 179, 0, 0.35)",
+              shadowColor: "#FF6D00",
               shadowRadius: size * 0.5,
               shadowOpacity: 0.9,
               elevation: 6,
@@ -195,9 +269,15 @@ export function DiyaGraphic({
         />
       )}
 
-      <View style={{ position: 'relative', width: size, height: size }}>
+      <View style={{ position: "relative", width: size, height: size }}>
         {/* Layer 1: Realistic Clay / Brass Oil Lamp Base */}
-        <Svg width={size} height={size} viewBox="0 0 48 48" fill="none" style={{ position: 'absolute', top: 0, left: 0 }}>
+        <Svg
+          width={size}
+          height={size}
+          viewBox="0 0 48 48"
+          fill="none"
+          style={{ position: "absolute", top: 0, left: 0 }}
+        >
           <Defs>
             {/* Clay Bowl Metallic Gradient */}
             <LinearGradient id="diyaBowlGrad" x1="0" y1="0" x2="0" y2="1">
@@ -248,18 +328,41 @@ export function DiyaGraphic({
         </Svg>
 
         {/* Layer 2: Reanimated Realistic Glowing Multi-Core Flame */}
-        <Animated.View style={[{ position: 'absolute', top: 0, left: 0, width: size, height: size }, animatedFlameStyle]}>
+        <Animated.View
+          style={[
+            {
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: size,
+              height: size,
+            },
+            animatedFlameStyle,
+          ]}
+        >
           <Svg width={size} height={size} viewBox="0 0 48 48" fill="none">
             <Defs>
               {/* Outer Amber Flame Gradient */}
-              <LinearGradient id="flameOuterGrad" x1="0.5" y1="0" x2="0.5" y2="1">
+              <LinearGradient
+                id="flameOuterGrad"
+                x1="0.5"
+                y1="0"
+                x2="0.5"
+                y2="1"
+              >
                 <Stop offset="0%" stopColor="#FF9100" />
                 <Stop offset="60%" stopColor="#FF3D00" />
                 <Stop offset="100%" stopColor="#D50000" stopOpacity="0.8" />
               </LinearGradient>
 
               {/* Inner Golden Flame Gradient */}
-              <LinearGradient id="flameInnerGrad" x1="0.5" y1="0" x2="0.5" y2="1">
+              <LinearGradient
+                id="flameInnerGrad"
+                x1="0.5"
+                y1="0"
+                x2="0.5"
+                y2="1"
+              >
                 <Stop offset="0%" stopColor="#FFEA00" />
                 <Stop offset="70%" stopColor="#FFC400" />
                 <Stop offset="100%" stopColor="#FF9100" />
@@ -303,12 +406,7 @@ export function DiyaGraphic({
   );
 }
 
-export function TextR({
-  children,
-  style,
-  serif = false,
-  ...rest
-}: any) {
+export function TextR({ children, style, serif = false, ...rest }: any) {
   const { language } = useLanguage();
   return (
     <Text
@@ -316,10 +414,13 @@ export function TextR({
       style={[
         {
           color: C.ink,
-          fontFamily: serif && language !== 'hi' ? 'Georgia' : undefined,
+          fontFamily: serif && language !== "hi" ? "Georgia" : undefined,
         },
         style,
-        language === 'hi' && { fontFamily: undefined, includeFontPadding: true },
+        language === "hi" && {
+          fontFamily: undefined,
+          includeFontPadding: true,
+        },
       ]}
     >
       {children}
@@ -340,14 +441,20 @@ export function Screen({
   contentStyle?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
 }) {
-
-  const nightBg = '#0B0D19';
+  const nightBg = "#0B0D19";
   const insets = useSafeAreaInsets();
   const dockHeight = useDockHeight();
   const bottomClearance = Math.max(dockHeight + insets.bottom + 24, 130);
 
   const content = (
-    <View style={[styles.content, night && { backgroundColor: nightBg }, !scroll && { flex: 1, paddingBottom: insets.bottom + 12 }, contentStyle]}>
+    <View
+      style={[
+        styles.content,
+        night && { backgroundColor: nightBg },
+        !scroll && { flex: 1, paddingBottom: insets.bottom + 12 },
+        contentStyle,
+      ]}
+    >
       <DawnMeshBackdrop night={night} />
       <View style={[styles.responsiveWrapper, !scroll && { flex: 1 }]}>
         {children}
@@ -358,12 +465,16 @@ export function Screen({
   return (
     <SafeAreaView
       style={[styles.safe, night && { backgroundColor: nightBg }]}
-      edges={['top', 'left', 'right']}
+      edges={["top", "left", "right"]}
     >
       {scroll ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scroll, { paddingBottom: bottomClearance }, contentContainerStyle]}
+          contentContainerStyle={[
+            styles.scroll,
+            { paddingBottom: bottomClearance },
+            contentContainerStyle,
+          ]}
         >
           {content}
         </ScrollView>
@@ -382,21 +493,28 @@ export function Header({
   logo,
   showActions = true,
   rightAction,
+  containerRef,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title?: string;
   night?: boolean;
   back?: boolean;
   logo?: ReactNode;
   showActions?: boolean;
   rightAction?: ReactNode;
+  containerRef?: React.RefObject<View | null>;
 }) {
   const { text: translateText } = useLanguage();
-  const color = night ? '#F1F3F9' : C.ink;
-  const eyebrowColor = night ? '#F4B942' : C.saffron;
+  const color = night ? "#F1F3F9" : C.ink;
+  const eyebrowColor = night ? "#F4B942" : C.saffron;
 
   return (
-    <View style={styles.header}>
+    <View
+      ref={containerRef}
+      accessible
+      accessibilityRole="header"
+      style={styles.header}
+    >
       <View style={styles.brand}>
         {back ? (
           <Link href="/" asChild>
@@ -409,22 +527,52 @@ export function Header({
         ) : (
           <Image source={MORNING_RITUAL_LOGO} style={styles.logoMarkOnly} />
         )}
-        <View>
-          <TextR style={[styles.brandTitle, { color }]}>{title ?? translateText('Morning Ritual')}</TextR>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 }}>
-            {night && <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#F4B942' }} />}
-            <TextR style={[styles.eyebrow, { color: eyebrowColor }]}>{eyebrow}</TextR>
-          </View>
+        <View style={{ flexShrink: 1 }}>
+          <TextR serif style={[styles.brandTitle, { color }]}>
+            {title ?? translateText("Morning Ritual")}
+          </TextR>
+          {eyebrow ? (
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 4,
+                marginTop: 1,
+              }}
+            >
+              {night && (
+                <View
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: "#F4B942",
+                  }}
+                />
+              )}
+              <TextR style={[styles.eyebrow, { color: eyebrowColor }]}>
+                {eyebrow}
+              </TextR>
+            </View>
+          ) : null}
         </View>
       </View>
       {rightAction ? (
         <View style={styles.headerActions}>{rightAction}</View>
       ) : showActions ? (
         <View style={styles.headerActions}>
-          <Pressable style={[styles.actionBtn, night && { backgroundColor: 'rgba(255, 255, 255, 0.03)', borderColor: 'rgba(255, 255, 255, 0.08)' }]}>
-            <Bell size={20} color={night ? '#7D86A9' : C.inkSoft} />
+          <Pressable
+            style={[
+              styles.actionBtn,
+              night && {
+                backgroundColor: "rgba(255, 255, 255, 0.03)",
+                borderColor: "rgba(255, 255, 255, 0.08)",
+              },
+            ]}
+          >
+            <Bell size={20} color={night ? "#7D86A9" : C.inkSoft} />
           </Pressable>
-          <View style={[styles.avatar, { backgroundColor: '#E76F2E' }]}>
+          <View style={[styles.avatar, { backgroundColor: "#E76F2E" }]}>
             <User size={18} color="#0B0D19" strokeWidth={2.5} />
           </View>
         </View>
@@ -433,13 +581,13 @@ export function Header({
   );
 }
 
-type TabHref = '/' | '/today' | '/quiz' | '/night';
+type TabHref = "/" | "/today" | "/quiz" | "/progress";
 
 const tabs: { href: TabHref; label: string; IconComponent: typeof Flame }[] = [
-  { href: '/', label: 'Home', IconComponent: Flame },
-  { href: '/today', label: 'Today', IconComponent: Sun },
-  { href: '/quiz', label: 'Quiz', IconComponent: BookOpen },
-  { href: '/night', label: 'Night', IconComponent: Moon },
+  { href: "/", label: "Home", IconComponent: Flame },
+  { href: "/today", label: "Today", IconComponent: Sun },
+  { href: "/quiz", label: "Quiz", IconComponent: BookOpen },
+  { href: "/progress", label: "Daily Goal", IconComponent: Target },
 ];
 
 function AnimatedTabItem({
@@ -455,12 +603,15 @@ function AnimatedTabItem({
 }) {
   const { text: translateText } = useLanguage();
   const IconComp = tab.IconComponent;
-  const activeColor = night ? '#F4B942' : C.saffron;
-  const inactiveColor = night ? '#7D86A9' : C.muted;
+  const activeColor = night ? "#F4B942" : C.saffron;
+  const inactiveColor = night ? "#7D86A9" : C.muted;
   const scale = useSharedValue(active ? 1.05 : 1);
 
   React.useEffect(() => {
-    scale.value = withSpring(active ? 1.08 : 1, { damping: 14, stiffness: 180 });
+    scale.value = withSpring(active ? 1.08 : 1, {
+      damping: 14,
+      stiffness: 180,
+    });
   }, [active, scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -479,43 +630,49 @@ function AnimatedTabItem({
         pressed && { opacity: 0.88 },
       ]}
     >
-      <Animated.View style={[{ alignItems: 'center' }, animatedStyle]}>
-        <IconComp
-          size={22}
-          color={active ? activeColor : inactiveColor}
-        />
+      <Animated.View style={[{ alignItems: "center" }, animatedStyle]}>
+        <IconComp size={22} color={active ? activeColor : inactiveColor} />
         <TextR
           style={[
             styles.tabLabel,
             {
               color: active ? activeColor : inactiveColor,
-              fontWeight: active ? '800' : '600',
+              fontWeight: active ? "800" : "600",
             },
           ]}
         >
           {translateText(tab.label)}
         </TextR>
-        {active && <View style={[styles.activeDot, night && { backgroundColor: '#F4B942' }]} />}
+        {active && (
+          <View
+            style={[styles.activeDot, night && { backgroundColor: "#F4B942" }]}
+          />
+        )}
       </Animated.View>
     </Pressable>
   );
 }
 
 export function TabBar({ night }: { night?: boolean }) {
-
   const { setHeight } = React.useContext(DockContext);
   const path = usePathname();
   const router = useRouter();
   const inset = useSafeAreaInsets();
-  const isNight = night ?? path === '/night';
+  const isNight = night ?? false;
   const [keyboardVisible, setKeyboardVisible] = React.useState(false);
 
   React.useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
 
-    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
-    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    const showSub = Keyboard.addListener(showEvent, () =>
+      setKeyboardVisible(true),
+    );
+    const hideSub = Keyboard.addListener(hideEvent, () =>
+      setKeyboardVisible(false),
+    );
 
     return () => {
       showSub.remove();
@@ -534,13 +691,15 @@ export function TabBar({ night }: { night?: boolean }) {
       ]}
     >
       <View
-        onLayout={event => setHeight(event.nativeEvent.layout.height)}
+        onLayout={(event) => setHeight(event.nativeEvent.layout.height)}
         style={[
           styles.floatingTabDock,
           {
-            backgroundColor: isNight ? '#0B0D19' : 'rgba(255, 246, 238, 0.95)',
-            borderColor: isNight ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
-            borderBottomColor: isNight ? 'rgba(255, 255, 255, 0.04)' : 'rgba(180, 125, 95, 0.4)',
+            backgroundColor: isNight ? "#0B0D19" : "rgba(255, 246, 238, 0.95)",
+            borderColor: isNight ? "rgba(255, 255, 255, 0.08)" : "#FFFFFF",
+            borderBottomColor: isNight
+              ? "rgba(255, 255, 255, 0.04)"
+              : "rgba(180, 125, 95, 0.4)",
           },
         ]}
       >
@@ -570,12 +729,11 @@ export function Card({
   style?: StyleProp<ViewStyle>;
   night?: boolean;
 }) {
-
   return (
     <View
       style={[
         styles.card,
-        night && { backgroundColor: C.nightCard, borderColor: '#3C3D68' },
+        night && { backgroundColor: C.nightCard, borderColor: "#3C3D68" },
         style,
       ]}
     >
@@ -595,7 +753,6 @@ export function PillButton({
   secondary?: boolean;
   icon?: string;
 }) {
-
   return (
     <Pressable
       onPress={onPress}
@@ -625,88 +782,88 @@ export const styles = StyleSheet.create({
     backgroundColor: C.surface,
     paddingHorizontal: 16,
     paddingBottom: 20,
-    position: 'relative',
-    alignItems: 'center',
+    position: "relative",
+    alignItems: "center",
   },
   responsiveWrapper: {
-    width: '100%',
+    width: "100%",
     maxWidth: 640,
   },
   header: {
     height: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 16,
   },
   brand: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   backBtn: {
     width: 40,
     height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   diyaContainer: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
+    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderTopColor: "#FFFFFF",
     shadowColor: C.saffron,
     shadowOpacity: 0.12,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   logoMarkOnly: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   logoMark: {
     width: 38,
     height: 38,
     aspectRatio: 1,
-    resizeMode: 'contain',
+    resizeMode: "contain",
   },
   brandTitle: {
     fontSize: 21,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: -0.3,
     lineHeight: 25,
     color: C.ink,
   },
   eyebrow: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 1.5,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     marginTop: 1,
   },
   headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   actionBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderColor: "rgba(255, 255, 255, 0.95)",
     shadowColor: C.saffron,
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -717,8 +874,8 @@ export const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     shadowColor: C.primary,
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -726,13 +883,13 @@ export const styles = StyleSheet.create({
     elevation: 3,
   },
   card: {
-    backgroundColor: 'rgba(255, 248, 242, 0.88)',
+    backgroundColor: "rgba(255, 248, 242, 0.88)",
     borderRadius: R.card,
     padding: 20,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopColor: '#FFFFFF',
-    shadowColor: '#8C4010',
+    borderColor: "rgba(255, 255, 255, 0.9)",
+    borderTopColor: "#FFFFFF",
+    shadowColor: "#8C4010",
     shadowOpacity: 0.08,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 6 },
@@ -742,11 +899,11 @@ export const styles = StyleSheet.create({
     height: 54,
     borderRadius: R.pill,
     backgroundColor: C.saffron,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 20,
     borderTopWidth: 1.5,
-    borderTopColor: 'rgba(255, 255, 255, 0.4)',
+    borderTopColor: "rgba(255, 255, 255, 0.4)",
     shadowColor: C.saffron,
     shadowOpacity: 0.28,
     shadowRadius: 14,
@@ -754,38 +911,38 @@ export const styles = StyleSheet.create({
     elevation: 4,
   },
   secondary: {
-    backgroundColor: 'rgba(254, 236, 220, 0.9)',
+    backgroundColor: "rgba(254, 236, 220, 0.9)",
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
+    borderColor: "rgba(255, 255, 255, 0.9)",
     shadowOpacity: 0.05,
   },
   buttonText: {
     color: C.white,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   floatingTabDockWrap: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
-    alignItems: 'center',
+    alignItems: "center",
     paddingHorizontal: 16,
     zIndex: 100,
   },
   floatingTabDock: {
-    width: '100%',
+    width: "100%",
     maxWidth: 480,
     borderRadius: 32,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
     paddingVertical: 8,
     paddingHorizontal: 6,
     borderWidth: 1.5,
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(180, 125, 95, 0.4)',
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(180, 125, 95, 0.4)",
     borderBottomWidth: 3,
-    shadowColor: '#5C2B0B',
+    shadowColor: "#5C2B0B",
     shadowOpacity: 0.22,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 8 },
@@ -793,26 +950,26 @@ export const styles = StyleSheet.create({
   },
   tabItem: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 6,
     paddingHorizontal: 2,
     borderRadius: 20,
-    position: 'relative',
+    position: "relative",
   },
   tabItemActive: {
-    backgroundColor: 'rgba(254, 236, 220, 0.9)',
+    backgroundColor: "rgba(254, 236, 220, 0.9)",
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.85)',
+    borderColor: "rgba(255, 255, 255, 0.85)",
   },
   tabItemActiveNight: {
-    backgroundColor: 'rgba(35, 36, 74, 0.9)',
+    backgroundColor: "rgba(35, 36, 74, 0.9)",
     borderWidth: 1,
-    borderColor: 'rgba(60, 61, 104, 0.8)',
+    borderColor: "rgba(60, 61, 104, 0.8)",
   },
   tabLabel: {
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: 3,
   },
   activeDot: {

@@ -69,7 +69,7 @@ object AlarmPresentation {
     val p = prefs(context)
     if (p.getString("sessionId", null) != id || stage(context) == null) {
       check(p.edit().putString("sessionId", id).putString("stage", "wake").putBoolean("awake", true)
-        .remove("terminationReason").remove("checkpoint:breathe").remove("checkpoint:gita").commit()) { "Could not save ritual session" }
+        .remove("terminationReason").remove("wakeTransition").remove("checkpoint:breathe").remove("checkpoint:gita").commit()) { "Could not save ritual session" }
     }
     if (presentation.sessionId != id || presentation.status == "inactive") {
       removeCover()
@@ -91,6 +91,17 @@ object AlarmPresentation {
     if (next == "gita") require(data.getDouble("positionMs").isFinite() && data.getDouble("positionMs") >= 0 && data.getDouble("playedThroughMs").isFinite() && data.getDouble("playedThroughMs") >= 0)
     check(p.edit().putString("checkpoint:$next", raw).commit()) { "Could not save ritual checkpoint" }
     return true
+  }
+  fun saveWakeTransition(context: Context, id: String) {
+    main()
+    require(stage(context) == "wake" && prefs(context).getString("sessionId", null) == id) { "Alarm session changed" }
+    check(prefs(context).edit().putString("wakeTransition", id).commit()) { "Could not save ritual transition" }
+  }
+  fun clearWakeTransition(context: Context, id: String) {
+    main()
+    if (prefs(context).getString("wakeTransition", null) == id) {
+      check(prefs(context).edit().remove("wakeTransition").commit()) { "Could not finish ritual transition" }
+    }
   }
   fun intent(context: Context): Intent {
     val launch = if (!userUnlocked(context)) Intent(context, AlarmActivity::class.java) else context.packageManager.getLaunchIntentForPackage(context.packageName) ?: Intent(context, AlarmActivity::class.java)
@@ -155,6 +166,14 @@ object AlarmPresentation {
     }.onFailure { image.setImageResource(activity.applicationInfo.icon) }
     val button = view.findViewById<Button>(R.id.alarm_dismiss)
     button.text = AlarmStrings.text(activity, if (AlarmStore.isRinging(activity)) "☀  Hold to start my day" else "Continue my morning")
+    button.setOnClickListener {
+      val id = prefs(activity).getString("sessionId", null) ?: return@setOnClickListener
+      if (!activity.hasWindowFocus()) return@setOnClickListener
+      runCatching {
+        if (stage(activity) == "wake") AlarmController.startMyDay(activity, id)
+        activity.startActivity(intent(activity))
+      }.onFailure { Toast.makeText(activity, AlarmStrings.text(activity, "Could not continue the ritual. Please retry."), Toast.LENGTH_LONG).show() }
+    }
     button.setOnTouchListener { _, event ->
       when (event.actionMasked) {
         MotionEvent.ACTION_DOWN -> {
@@ -162,9 +181,12 @@ object AlarmPresentation {
           val heldSession = prefs(activity).getString("sessionId", null)
           hold = Runnable {
             if (stage(activity) == null || prefs(activity).getString("sessionId", null) != heldSession || !activity.hasWindowFocus()) return@Runnable
-            if (AlarmStore.isRinging(activity)) {
-              AlarmController.dismiss(activity, finishActivity = false)
-              setStage(activity, "breathe")
+            if (stage(activity) == "wake") {
+              runCatching { AlarmController.startMyDay(activity, heldSession ?: return@Runnable) }
+                .onFailure {
+                  Toast.makeText(activity, AlarmStrings.text(activity, "Could not continue the ritual. Please retry."), Toast.LENGTH_LONG).show()
+                  return@Runnable
+                }
             }
             button.text = AlarmStrings.text(activity, "Continue my morning")
             runCatching { activity.startActivity(intent(activity)) }.onFailure { AlarmLog.event("ritual_launch_failed", it.javaClass.simpleName) }
@@ -276,7 +298,7 @@ object AlarmPresentation {
   fun end(context: Context, reason: String = "exit", expectedId: String? = null) {
     main()
     if (expectedId != null && prefs(context).getString("sessionId", null) != expectedId) return
-    check(prefs(context).edit().remove("stage").remove("awake").remove("checkpoint:breathe").remove("checkpoint:gita")
+    check(prefs(context).edit().remove("stage").remove("awake").remove("wakeTransition").remove("checkpoint:breathe").remove("checkpoint:gita")
       .putString("terminationReason", reason).commit()) { "Could not end ritual session" }
     val clear = Runnable {
       host?.get()?.let { windowPolicy(it, false) }

@@ -1,8 +1,9 @@
+import { StorageRecoveryNotice } from '@/components/storage-recovery-notice';
 import { useGrowthFocusTarget } from '@/features/progress/tree/focus-target';
 import { useLanguage } from '@/i18n/provider';
-import { translate } from '@/i18n/translations';
+import { translate, type TranslationKey } from '@/i18n/translations';
 import type { AppLanguage } from '@/i18n/model';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   AppState,
@@ -17,13 +18,11 @@ import {
   Bell,
   BookOpen,
   Bookmark,
-  Check,
-  Flower2,
   Leaf,
-  Moon,
   Music,
   SlidersHorizontal,
   Sun,
+  Trophy,
 } from 'lucide-react-native';
 
 import { DiyaGraphic, Header, Screen, TextR } from '@/components/ritual-ui';
@@ -32,7 +31,6 @@ import { C } from '@/constants/ritual-theme';
 import { toneLabel } from '../../shared/content';
 import { useContent } from '@/state/content-store';
 import { saveTeaching } from '@/services/content-cache';
-import { useLocalDateKey } from '@/hooks/use-local-date-key';
 import {
   cancelScheduledAlarm,
   getAlarmHomeSnapshot,
@@ -121,6 +119,31 @@ function formatDays(days: readonly string[], language: AppLanguage) {
   return days.map(day => day in labels ? translate(labels[day as keyof typeof labels], undefined, language) : day).join(', ');
 }
 
+function getGreetingInfo(): { greeting: TranslationKey; subtitle: TranslationKey } {
+  const hour = new Date().getHours();
+  if (hour >= 4 && hour < 12) {
+    return {
+      greeting: 'Good Morning',
+      subtitle: "Today's ritual",
+    };
+  } else if (hour >= 12 && hour < 17) {
+    return {
+      greeting: 'Good Afternoon',
+      subtitle: "Today's ritual",
+    };
+  } else if (hour >= 17 && hour < 21) {
+    return {
+      greeting: 'Good Evening',
+      subtitle: "Today's ritual",
+    };
+  } else {
+    return {
+      greeting: 'Good Night',
+      subtitle: 'Night reflection',
+    };
+  }
+}
+
 export default function Home() {
   const growthFocus = useRef<View>(null);
   useGrowthFocusTarget(growthFocus);
@@ -128,7 +151,10 @@ export default function Home() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isSmall = width < 360;
+  const greetingInfo = useMemo(() => getGreetingInfo(), []);
 
+  const ritualStore = useRitual();
+  const gitaStore = useGitaProgress();
   const {
     alarmTime,
     alarmTone,
@@ -136,18 +162,16 @@ export default function Home() {
     alarmEnabled,
     setAlarmEnabled,
     alarmReady,
-  } = useRitual();
+  } = ritualStore;
   const {
     ready: gitaReady,
     bookmarks,
-    completedDates,
-    breathingCompletedDates,
     toggleBookmark,
-  } = useGitaProgress();
-  const today = useLocalDateKey();
+  } = gitaStore;
   const { practice: todayVerse, snapshot: content, fallback } = useContent();
   const [snapshot, setSnapshot] = useState<AlarmHomeSnapshot | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [alarmError, setAlarmError] = useState<string | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
 
@@ -155,9 +179,9 @@ export default function Home() {
     try {
       const next = await getAlarmHomeSnapshot();
       setSnapshot(next);
-      setAlarmError(null);
+      setSnapshotError(null);
     } catch {
-      setAlarmError("We could not confirm your alarm status. Try again before relying on it.");
+      setSnapshotError("We could not confirm your alarm status. Try again before relying on it.");
     }
   }, []);
 
@@ -187,6 +211,7 @@ export default function Home() {
     return () => subscription.remove();
   }, []);
 
+  const displayedAlarmError = alarmError ?? snapshotError;
   const status = getAlarmStatus(snapshot, isUpdating);
   const issue = getAlarmIssue(snapshot);
   const activeConfig = snapshot?.config;
@@ -197,11 +222,8 @@ export default function Home() {
   const displayTone = translateText(toneLabel(activeConfig?.tone.key ?? alarmTone));
   const displayDays = activeConfig?.weekdays ?? alarmDays;
   const alarmRequested = activeConfig?.enabled ?? alarmEnabled;
-  const reflectionComplete = completedDates.has(today);
-  const breathingComplete = breathingCompletedDates.has(today);
-  const ritualCount = Number(reflectionComplete) + Number(breathingComplete);
   const bookmarked = bookmarks.has(todayVerse.id);
-  const loading = !alarmReady || !gitaReady || (!snapshot && !alarmError);
+  const loading = (!alarmReady && !ritualStore.loadError) || (!gitaReady && !gitaStore.loadError) || (alarmReady && !snapshot && !snapshotError);
 
   const toggleAlarm = async () => {
     if (isUpdating || !snapshot?.available) return;
@@ -254,7 +276,13 @@ export default function Home() {
   if (loading) {
     return (
       <Screen>
-        <Header eyebrow={translate("Home")} showActions={false} />
+        <StorageRecoveryNotice store={ritualStore} />
+        <StorageRecoveryNotice store={gitaStore} />
+        <Header
+          title={translate(greetingInfo.greeting)}
+          eyebrow={translate(greetingInfo.subtitle)}
+          showActions={false}
+        />
         <View style={s.loadingCard} accessibilityRole="progressbar">
           <TextR serif style={s.loadingTitle}>{translate("Preparing your ritual")}</TextR>
           <TextR style={s.loadingSub}>{translate("Checking your alarm and today's progress.")}</TextR>
@@ -265,8 +293,12 @@ export default function Home() {
 
   return (
     <Screen>
+      <StorageRecoveryNotice store={ritualStore} />
+      <StorageRecoveryNotice store={gitaStore} />
       <Header
-        eyebrow={translate("Home")}
+        containerRef={growthFocus}
+        title={translate(greetingInfo.greeting)}
+        eyebrow={translate(greetingInfo.subtitle)}
         showActions={false}
         rightAction={
           <Pressable
@@ -285,24 +317,8 @@ export default function Home() {
         }
       />
 
-      {/* Devotional Greeting & Muhurta Badge Row */}
-      <View ref={growthFocus} accessible accessibilityRole="header" style={s.greetingContainer}>
-        <View style={s.greetingHeaderRow}>
-          <TextR serif style={[s.greetingTitle, isSmall && { fontSize: 24, lineHeight: 30 }]}>
-            {translate("Shubh Prabhat")}
-          </TextR>
-          <View style={s.muhurtaMiniBadge}>
-            <View style={s.pulseDot} />
-            <TextR style={s.muhurtaMiniText}>{translate("Today's ritual")}</TextR>
-          </View>
-        </View>
-        <TextR style={s.greetingSub}>
-          {translate("Rise with calm intention & pure presence.")}
-        </TextR>
-      </View>
-
       {/* 🪷 Enhanced Daily Goal & Streak Stepper Card */}
-      <DailyGoalCard link={true} showTree />
+      <DailyGoalCard link={true} />
 
       {/* Devotional Hero Alarm Card */}
       <Pressable
@@ -333,11 +349,11 @@ export default function Home() {
               event.stopPropagation();
               void toggleAlarm();
             }}
-            disabled={isUpdating || status === 'unavailable'}
+            disabled={!snapshot || isUpdating || status === 'unavailable'}
             accessibilityLabel={translate("Alarm enabled")}
             accessibilityHint={translateText(alarmRequested ? translate("Turn off your recurring alarm.") : translate("Schedule your recurring alarm."))}
             accessibilityRole="switch"
-            accessibilityState={{ checked: alarmRequested, disabled: isUpdating || status === 'unavailable' }}
+            accessibilityState={{ checked: alarmRequested, disabled: !snapshot || isUpdating || status === 'unavailable' }}
             style={[
               s.switchTrack,
               alarmRequested ? s.switchTrackOn : s.switchTrackOff,
@@ -408,7 +424,7 @@ export default function Home() {
           <TextR style={s.alarmStatusText}>{translate("Alarms are available in the Android development or release app.")}</TextR>
         )}
         {alarmRequested && (snapshot?.scheduleStatus === 'failed' || snapshot?.scheduleStatus === 'unknown') ? <TextR style={s.alarmErrorText}>{translate('Alarm scheduling could not be confirmed. Open alarm setup and retry.')}</TextR> : null}
-        {alarmError && <TextR style={s.alarmErrorText}>{translateText(alarmError)}</TextR>}
+        {displayedAlarmError && <TextR style={s.alarmErrorText}>{translateText(displayedAlarmError)}</TextR>}
       </Pressable>
 
       {/* Awakening Vibe Banner */}
@@ -451,10 +467,10 @@ export default function Home() {
             title={translate("Daily Gita")}
           />
           <TactileTile
-            href="/night"
-            icon={<Moon size={isSmall ? 20 : 24} color="#574239" />}
+            href="/quiz"
+            icon={<Trophy size={isSmall ? 20 : 24} color="#574239" />}
             bgColor="#F2DFD1"
-            title={translate("Night Rest")}
+            title={translate("Quiz")}
           />
         </View>
       </View>
@@ -504,6 +520,7 @@ export default function Home() {
             <TextR style={s.reflectText}>{translate("Reflect on Verse")} {todayVerse.verse} →</TextR>
           </Pressable>
           <Pressable
+            disabled={!gitaReady}
             onPress={() => { if (!bookmarked) void saveTeaching(todayVerse).catch(() => undefined); toggleBookmark(todayVerse.id); }}
             accessibilityRole="button"
             accessibilityLabel={translateText(bookmarked ? translate("Remove verse bookmark") : translate("Bookmark today's verse"))}
@@ -515,29 +532,6 @@ export default function Home() {
               fill={bookmarked ? C.saffron : 'transparent'}
             />
           </Pressable>
-        </View>
-      </View>
-
-      <View
-        accessible
-        style={s.sadhanaStrip}
-        accessibilityLabel={translate('progressAccessibility', { count: ritualCount })}
-      >
-        <View style={s.sadhanaLeft}>
-          <View style={s.sadhanaIconCircle}>
-            <Flower2 size={20} color="#023314" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <TextR style={s.sadhanaTitle}>{translate("Today's ritual ·")} {ritualCount}/2</TextR>
-            <TextR style={s.sadhanaSub} numberOfLines={2}>
-              {reflectionComplete ? translate("Gita reflection complete") : translate("Gita reflection pending")}
-              {' · '}
-              {breathingComplete ? translate("Breathing complete") : translate("Breathing pending")}
-            </TextR>
-          </View>
-        </View>
-        <View style={[s.progressCheck, ritualCount === 2 && s.progressCheckComplete]}>
-          <Check size={16} color={ritualCount === 2 ? C.white : C.greenDark} strokeWidth={3} />
         </View>
       </View>
 
@@ -570,72 +564,23 @@ const s = StyleSheet.create({
     fontWeight: '800',
     color: '#7A3E12',
   },
-  greetingContainer: {
-    marginTop: 0,
-    marginBottom: 14,
-  },
-  greetingHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  greetingTitle: {
-    fontSize: 27,
-    lineHeight: 33,
-    color: '#2A1808',
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-  muhurtaMiniBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(254, 194, 74, 0.22)',
-    paddingHorizontal: 10,
-    paddingVertical: 4.5,
-    borderRadius: 999,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(244, 185, 66, 0.6)',
-  },
-  pulseDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: C.primary,
-  },
-  muhurtaMiniText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: C.primary,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  greetingSub: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#7A583E',
-    marginTop: 3,
-    fontWeight: '500',
-  },
   heroAlarmCard: {
     position: 'relative',
     backgroundColor: 'rgba(255, 248, 242, 0.94)',
     borderRadius: 24,
     padding: 18,
-    borderWidth: 1.5,
+    borderWidth: 1.2,
     borderColor: 'rgba(255, 255, 255, 0.95)',
     borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(140, 64, 16, 0.18)',
-    borderBottomWidth: 3.5,
+    borderBottomColor: 'rgba(140, 64, 16, 0.15)',
+    borderBottomWidth: 2,
     marginBottom: 16,
     overflow: 'hidden',
     shadowColor: C.saffron,
-    shadowOpacity: 0.16,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 5,
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
   },
   alarmHeaderRow: {
     flexDirection: 'row',
@@ -851,18 +796,18 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255, 252, 248, 0.96)',
     borderRadius: 24,
     padding: 18,
-    borderWidth: 1.5,
+    borderWidth: 1.2,
     borderColor: 'rgba(255, 255, 255, 0.95)',
     borderTopColor: '#F4B942',
-    borderTopWidth: 3,
-    borderBottomColor: 'rgba(140, 64, 16, 0.14)',
-    borderBottomWidth: 3,
-    marginBottom: 18,
+    borderTopWidth: 2,
+    borderBottomColor: 'rgba(140, 64, 16, 0.12)',
+    borderBottomWidth: 2,
+    marginBottom: 20,
     shadowColor: C.saffron,
-    shadowOpacity: 0.14,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 3,
   },
   contentCachePillRow: {
     flexDirection: 'row',
@@ -985,57 +930,7 @@ const s = StyleSheet.create({
     elevation: 3,
     flexShrink: 0,
   },
-  sadhanaStrip: {
-    backgroundColor: 'rgba(248, 229, 214, 0.92)',
-    borderRadius: 20,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-    marginBottom: 20,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(42, 92, 51, 0.15)',
-    borderBottomWidth: 3,
-    shadowColor: C.green,
-    shadowOpacity: 0.14,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-  },
-  sadhanaLeft: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    minWidth: 0,
-  },
-  sadhanaIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: C.greenLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: C.green,
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 2,
-    flexShrink: 0,
-  },
-  sadhanaTitle: {
-    fontSize: 14.5,
-    fontWeight: '800',
-    color: C.ink,
-  },
-  sadhanaSub: {
-    fontSize: 12.5,
-    color: C.muted,
-    marginTop: 2,
-    fontWeight: '500',
-  },
+
   loadingCard: {
     backgroundColor: 'rgba(255, 248, 242, 0.94)',
     borderRadius: 24,
@@ -1110,17 +1005,5 @@ const s = StyleSheet.create({
   pressedControl: {
     opacity: 0.82,
     transform: [{ scale: 0.97 }],
-  },
-  progressCheck: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: C.greenLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  progressCheckComplete: {
-    backgroundColor: C.green,
   },
 });

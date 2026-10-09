@@ -111,6 +111,7 @@ declare class MorningAlarmNativeModule extends NativeModule<AlarmEvents> {
   getInstalledAlarmTone(): Promise<{ key: string | null; revision: string | null }>;
   schedule(config: NativeAlarmConfig): Promise<{ scheduled: boolean; scheduledAt?: number }>;
   cancel(): Promise<void>;
+  startMyDay?(id: string): Promise<{ stage: 'breathe' | 'gita'; scheduledAt: number | null }>;
   dismissAndScheduleNext(): Promise<number | null>;
   reconcile(): Promise<boolean>;
   scheduleTest(): Promise<number>;
@@ -277,6 +278,10 @@ export async function scheduleRecurringAlarm({
 }
 
 export async function cancelScheduledAlarm() { await NativeAlarm?.cancel(); }
+export async function startMyDay(sessionId: string) {
+  if (!NativeAlarm?.startMyDay) throw new Error('Update the Android app to restore ritual progress.');
+  return NativeAlarm.startMyDay(sessionId);
+}
 export async function dismissAlarmAndScheduleNext(sessionId?: string) {
   if (!NativeAlarm) throw new Error("Native alarm service is unavailable.");
   if (sessionId) {

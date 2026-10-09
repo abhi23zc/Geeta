@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Award, Check, Flame, Trophy } from 'lucide-react-native';
 import { TextR } from '@/components/ritual-ui';
@@ -13,14 +13,16 @@ interface MilestoneRoadmapProps {
 
 export function MilestoneRoadmap({ progress }: MilestoneRoadmapProps) {
   const { t, formatNumber } = useLanguage();
+  const { width } = useWindowDimensions();
+  const isSmall = width < 375;
   const currentStreak = progress.tree.level;
   const milestones = progress.tree.bonuses ?? [];
 
   const m7Unlocked = milestones.includes(7) || currentStreak >= 7;
   const m30Unlocked = milestones.includes(30) || currentStreak >= 30;
 
-  const m7Progress = Math.min(100, Math.round((Math.min(currentStreak, 7) / 7) * 100));
-  const m30Progress = Math.min(100, Math.round((Math.min(currentStreak, 30) / 30) * 100));
+  const m7Progress = m7Unlocked ? 100 : Math.round((currentStreak / 7) * 100);
+  const m30Progress = m30Unlocked ? 100 : Math.round((currentStreak / 30) * 100);
 
   return (
     <View style={s.container}>
@@ -33,9 +35,9 @@ export function MilestoneRoadmap({ progress }: MilestoneRoadmapProps) {
         </TextR>
       </View>
 
-      <View style={s.milestoneGrid}>
+      <View style={[s.milestoneGrid, isSmall && { gap: 8 }]}>
         {/* ── 7-Day Tapasya Milestone ─────────────────────────────────────── */}
-        <View style={[s.milestoneCard3D, m7Unlocked && s.milestoneCardUnlocked3D]}>
+        <View style={[s.milestoneCard3D, isSmall && { padding: 11 }, m7Unlocked && s.milestoneCardUnlocked3D]}>
           <View style={StyleSheet.absoluteFill} pointerEvents="none">
             <Svg width="100%" height="100%">
               <Defs>
@@ -51,7 +53,7 @@ export function MilestoneRoadmap({ progress }: MilestoneRoadmapProps) {
           <View style={s.cardTop}>
             <View style={[s.medallionWrap3D, m7Unlocked && s.medallionWrapUnlocked]}>
               {m7Unlocked ? (
-                <Check size={16} color={C.greenDark} strokeWidth={2.8} />
+                <Check size={16} color="#92400E" strokeWidth={2.8} />
               ) : (
                 <Flame size={16} color={C.saffron} />
               )}
@@ -63,11 +65,11 @@ export function MilestoneRoadmap({ progress }: MilestoneRoadmapProps) {
             </View>
           </View>
 
-          <TextR style={s.milestoneName}>{t('Level {count} of 30', { count: 7 })}</TextR>
+          <TextR style={s.milestoneName}>{t('Unlock at level {count}', { count: formatNumber(7) })}</TextR>
           <TextR style={s.milestoneStatus}>
             {m7Unlocked
-              ? t('Complete')
-              : `${formatNumber(Math.min(currentStreak, 7))} / ${t('Level {count} of 30', { count: 7 })}`}
+              ? t('Bonus earned')
+              : t('{current} / {target} levels', { current: formatNumber(currentStreak), target: formatNumber(7) })}
           </TextR>
 
           <View style={s.progressBarTrack3D}>
@@ -98,7 +100,7 @@ export function MilestoneRoadmap({ progress }: MilestoneRoadmapProps) {
           <View style={s.cardTop}>
             <View style={[s.medallionWrap3D, m30Unlocked && s.medallionWrapUnlocked]}>
               {m30Unlocked ? (
-                <Check size={16} color={C.greenDark} strokeWidth={2.8} />
+                <Check size={16} color="#92400E" strokeWidth={2.8} />
               ) : (
                 <Award size={16} color={C.goldDark} />
               )}
@@ -110,11 +112,11 @@ export function MilestoneRoadmap({ progress }: MilestoneRoadmapProps) {
             </View>
           </View>
 
-          <TextR style={s.milestoneName}>{t('Level {count} of 30', { count: 30 })}</TextR>
+          <TextR style={s.milestoneName}>{t('Unlock at level {count}', { count: formatNumber(30) })}</TextR>
           <TextR style={s.milestoneStatus}>
             {m30Unlocked
-              ? t('Complete')
-              : `${formatNumber(Math.min(currentStreak, 30))} / ${t('Level {count} of 30', { count: 30 })}`}
+              ? t('Bonus earned')
+              : t('{current} / {target} levels', { current: formatNumber(currentStreak), target: formatNumber(30) })}
           </TextR>
 
           <View style={s.progressBarTrack3D}>
@@ -166,27 +168,28 @@ const s = StyleSheet.create({
     backgroundColor: '#FFFDF8',
     borderRadius: 20,
     padding: 14,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
+    borderWidth: 1.2,
     borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(140, 64, 16, 0.18)',
-    borderBottomWidth: 3,
+    borderBottomColor: 'rgba(140, 64, 16, 0.16)',
+    borderLeftColor: 'rgba(255, 255, 255, 0.95)',
+    borderRightColor: 'rgba(217, 119, 6, 0.15)',
+    borderBottomWidth: 2,
     gap: 8,
     shadowColor: '#8C4010',
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     elevation: 3,
     overflow: 'hidden',
     position: 'relative',
   },
   milestoneCardUnlocked3D: {
-    borderColor: 'rgba(244, 185, 66, 0.7)',
+    borderColor: 'rgba(244, 185, 66, 0.65)',
     borderTopColor: '#FFFFFF',
-    borderBottomColor: 'rgba(140, 94, 13, 0.35)',
-    borderBottomWidth: 3,
+    borderBottomColor: 'rgba(140, 94, 13, 0.25)',
+    borderBottomWidth: 2,
     shadowColor: C.gold,
-    shadowOpacity: 0.18,
+    shadowOpacity: 0.14,
     shadowRadius: 12,
   },
   cardTop: {
@@ -208,9 +211,9 @@ const s = StyleSheet.create({
     borderBottomWidth: 2,
   },
   medallionWrapUnlocked: {
-    backgroundColor: '#D6F5E1',
-    borderColor: 'rgba(94, 158, 104, 0.5)',
-    borderBottomColor: 'rgba(42, 92, 51, 0.3)',
+    backgroundColor: '#FEF3C7',
+    borderColor: 'rgba(217, 119, 6, 0.4)',
+    borderBottomColor: 'rgba(180, 83, 9, 0.25)',
   },
   bonusPill3D: {
     backgroundColor: 'rgba(254, 194, 74, 0.22)',
@@ -221,8 +224,8 @@ const s = StyleSheet.create({
     borderColor: 'rgba(244, 185, 66, 0.5)',
   },
   bonusPillUnlocked: {
-    backgroundColor: 'rgba(94, 158, 104, 0.18)',
-    borderColor: 'rgba(94, 158, 104, 0.4)',
+    backgroundColor: 'rgba(254, 194, 74, 0.35)',
+    borderColor: 'rgba(217, 119, 6, 0.4)',
   },
   bonusPillText: {
     fontSize: 12,
@@ -230,31 +233,31 @@ const s = StyleSheet.create({
     color: '#8C5E0D',
   },
   bonusPillTextUnlocked: {
-    color: C.greenDark,
+    color: '#92400E',
   },
   milestoneName: {
-    fontSize: 16,
+    fontSize: 15.5,
     fontWeight: '800',
     color: '#2A1808',
   },
   milestoneStatus: {
-    fontSize: 13,
+    fontSize: 12.5,
     color: '#7A583E',
     fontWeight: '600',
   },
   progressBarTrack3D: {
     height: 7,
-    borderRadius: 3.5,
-    backgroundColor: 'rgba(222, 192, 180, 0.3)',
+    borderRadius: 4,
+    backgroundColor: '#EFE5D6',
     overflow: 'hidden',
     marginTop: 2,
   },
   progressBarFill3D: {
     height: '100%',
     backgroundColor: C.saffron,
-    borderRadius: 3.5,
+    borderRadius: 4,
   },
   progressBarFillUnlocked: {
-    backgroundColor: C.green,
+    backgroundColor: '#D97706',
   },
 });

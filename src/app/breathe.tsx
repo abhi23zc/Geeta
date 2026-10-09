@@ -512,8 +512,8 @@ export default function Breathe() {
   const headerIconSize = isSmall ? 16 : isTablet ? 20 : 18;
 
   return (
-    <Screen scroll={height < 700 || fontScale > 1.2}>
-      <View style={s.singleViewportContainer}>
+    <Screen scroll={height < 700 || fontScale > 1.15}>
+      <View style={[s.singleViewportContainer, (height < 700 || fontScale > 1.15) && { flex: undefined, gap: 20 }]}>
         {/* ─── 1. Top Header Row with Addictive 5-Bead Sadhana Tracker ────────── */}
         <View style={s.topHeaderRow}>
           <TactileRoundButton
@@ -1268,7 +1268,7 @@ const s = StyleSheet.create({
     borderColor: "rgba(255, 255, 255, 0.95)",
     borderTopColor: "#FFFFFF",
     borderBottomColor: "rgba(216, 144, 64, 0.25)",
-    borderBottomWidth: 3.5,
+    borderBottomWidth: 2.5,
     shadowColor: "#8C4010",
     shadowOpacity: 0.18,
     shadowRadius: 24,

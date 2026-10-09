@@ -35,10 +35,9 @@ function SeedReveal({ poster, onEnd }: { poster: number; onEnd: () => void }) {
     animation.start(({ finished }) => { if (finished) onEnd(); });
     return () => animation.stop();
   }, [opacity, onEnd]);
-  return <View style={[StyleSheet.absoluteFill, { backgroundColor: '#F8EFDC' }]}><Animated.View style={[StyleSheet.absoluteFill, { opacity }]}><Image source={poster} contentFit="contain" style={StyleSheet.absoluteFill} /></Animated.View></View>;
+  return <View style={[StyleSheet.absoluteFill, { backgroundColor: '#FAF1E4' }]}><Animated.View style={[StyleSheet.absoluteFill, { opacity }]}><Image source={poster} contentFit="contain" style={StyleSheet.absoluteFill} /></Animated.View></View>;
 }
 function TreePlayback({ asset, onEnd, onError, simulateFailure }: { asset: TreeAsset; onEnd: () => void; onError: () => void; simulateFailure: boolean }) {
-  const [visible, setVisible] = useState(false);
   const frame = useRef(false);
   const player = useVideoPlayer(simulateFailure ? null : asset.video!, p => {
     p.muted = true; p.loop = false; p.staysActiveInBackground = false; p.audioMixingMode = 'mixWithOthers';
@@ -53,9 +52,19 @@ function TreePlayback({ asset, onEnd, onError, simulateFailure }: { asset: TreeA
     // useVideoPlayer releases the native player on unmount; do not access it after its cleanup.
     return () => { clearTimeout(timeout); clearTimeout(watchdog); };
   }, [player, asset.duration, onError, simulateFailure]);
-  return <>
-    <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} fullscreenOptions={{ enable: false }} allowsPictureInPicture={false} playsInline surfaceType="textureView" onFirstFrameRender={() => { frame.current = true; setVisible(true); }} accessible={false} />
-    {!visible && <Image source={asset.poster} contentFit="contain" style={StyleSheet.absoluteFill} />}
-  </>;
+
+  return (
+    <VideoView
+      player={player}
+      style={StyleSheet.absoluteFill}
+      contentFit="contain"
+      nativeControls={false}
+      fullscreenOptions={{ enable: false }}
+      allowsPictureInPicture={false}
+      playsInline
+      onFirstFrameRender={() => { frame.current = true; }}
+      accessible={false}
+    />
+  );
 }
-const s = StyleSheet.create({ scene: { width: '100%', aspectRatio: 16 / 9, borderRadius: 16, overflow: 'hidden', backgroundColor: '#F8EFDC' } });
+const s = StyleSheet.create({ scene: { width: '100%', aspectRatio: 16 / 9, backgroundColor: '#FAF1E4' } });

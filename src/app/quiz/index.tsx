@@ -339,7 +339,7 @@ const s = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
     borderBottomColor: 'rgba(190, 140, 110, 0.35)',
-    borderBottomWidth: 3.5,
+    borderBottomWidth: 2.5,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',

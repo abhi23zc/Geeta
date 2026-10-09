@@ -1,111 +1,84 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { toneLabel } from "../../shared/content";
-import {
-  createContext,
-  PropsWithChildren,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { toneLabel } from '../../shared/content';
+import { createContext, type PropsWithChildren, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { configTime, getNativeAlarmConfig, isNativeAlarmAvailable, migrateLegacyAlarm, type AlarmDayId, type NativeAlarmConfig } from '@/services/alarm';
+import { useRecoverableStore } from './use-recoverable-store';
+import { DEFAULT_ALARM, parseAlarmSettings, salvageAlarmSettings, type AlarmSettings } from './persisted-models';
 
-import {
-  configTime,
-  migrateLegacyAlarm,
-  type AlarmDayId,
-} from "@/services/alarm";
-
-type RitualState = {
-  alarmTime: string;
-  setAlarmTime: (value: string) => void;
-  alarmTone: string;
-  setAlarmTone: (value: string) => void;
-  alarmDays: AlarmDayId[];
-  setAlarmDays: (value: AlarmDayId[]) => void;
-  alarmEnabled: boolean;
-  setAlarmEnabled: (value: boolean) => void;
-  alarmReady: boolean;
-  reflection: string;
-  setReflection: (value: string) => void;
+type RitualState = AlarmSettings & {
+  setAlarmTime(value: string): void; setAlarmTone(value: string): void;
+  setAlarmDays(value: AlarmDayId[]): void; setAlarmEnabled(value: boolean): void;
+  alarmReady: boolean; loading: boolean; loadError: string | null; saveError: boolean; corrupt: boolean;
+  retryLoad(): Promise<void>; retrySave(): Promise<void>; recover(): Promise<void>;
+  reflection: string; setReflection(value: string): void;
 };
-
-type PersistedAlarm = Pick<
-  RitualState,
-  "alarmTime" | "alarmTone" | "alarmDays" | "alarmEnabled"
->;
-
-const ALARM_SETTINGS_KEY = "morning-ritual:alarm-settings";
-const DEFAULT_DAYS: AlarmDayId[] = ["mon", "tue", "wed", "thu", "fri", "sat"];
 const Context = createContext<RitualState | null>(null);
-
+const nativeSettings = (config: NativeAlarmConfig): AlarmSettings => ({ alarmTime: configTime(config), alarmTone: toneLabel(config.tone.key ?? 'gita'), alarmDays: config.weekdays, alarmEnabled: config.enabled });
 export function RitualProvider({ children }: PropsWithChildren) {
-  const [alarmTime, setAlarmTime] = useState("06:30");
-  const [alarmTone, setAlarmTone] = useState("Raag Bhairav & Sacred Flute");
-  const [alarmDays, setAlarmDays] = useState<AlarmDayId[]>(DEFAULT_DAYS);
-  const [alarmEnabled, setAlarmEnabled] = useState(false);
-  const [alarmReady, setAlarmReady] = useState(false);
-  const [reflection, setReflection] = useState(
-    "Warm sunlight on my balcony while reciting morning Gayatri mantra; peaceful, unhurried conversation with mother over ginger tea.",
-  );
-
-  useEffect(() => {
-    AsyncStorage.getItem(ALARM_SETTINGS_KEY)
-      .then(async (value) => {
-        const saved = value
-          ? (JSON.parse(value) as Partial<PersistedAlarm>)
-          : {};
-        const native = await migrateLegacyAlarm(saved);
-        if (native) {
-          setAlarmTime(configTime(native));
-          setAlarmTone(toneLabel(native.tone.key ?? "gita"));
-          setAlarmDays(native.weekdays);
-          setAlarmEnabled(native.enabled);
-          return;
-        }
-        if (typeof saved.alarmTime === "string") setAlarmTime(saved.alarmTime);
-        if (typeof saved.alarmTone === "string") setAlarmTone(saved.alarmTone);
-        if (Array.isArray(saved.alarmDays)) setAlarmDays(saved.alarmDays);
-        if (typeof saved.alarmEnabled === "boolean") setAlarmEnabled(saved.alarmEnabled);
-      })
-      .catch(() => undefined)
-      .finally(() => setAlarmReady(true));
+  const store = useRecoverableStore('morning-ritual:alarm-settings', DEFAULT_ALARM, parseAlarmSettings, salvageAlarmSettings);
+  const { ready: mirrorReady, data: mirrorData, update: updateMirror } = store;
+  const [settings, setSettings] = useState(DEFAULT_ALARM);
+  const [nativeLoaded, setNativeLoaded] = useState(!isNativeAlarmAvailable);
+  const [nativeReady, setNativeReady] = useState(!isNativeAlarmAvailable);
+  const [nativeError, setNativeError] = useState<string | null>(null);
+  const native = useRef<NativeAlarmConfig | null>(null);
+  const mounted = useRef(true);
+  const loadFlight = useRef<Promise<boolean> | null>(null);
+  const loadNative = useCallback(() => {
+    if (loadFlight.current) return loadFlight.current;
+    loadFlight.current = (async () => {
+      if (!isNativeAlarmAvailable) return true;
+      try {
+        const config = await getNativeAlarmConfig();
+        if (!mounted.current) return false;
+        native.current = config;
+        setNativeLoaded(true);
+        if (config) { setSettings(nativeSettings(config)); setNativeReady(true); }
+        else setNativeReady(false);
+        setNativeError(null);
+        return true;
+      } catch { if (mounted.current) setNativeError('Alarm settings could not be loaded. Please retry.'); return false; }
+    })().finally(() => { loadFlight.current = null; });
+    return loadFlight.current;
   }, []);
-
+  useEffect(() => { mounted.current = true; void loadNative(); return () => { mounted.current = false; }; }, [loadNative]);
+  const migrationFlight = useRef(false);
+  const hydrated = useRef(false);
   useEffect(() => {
-    if (!alarmReady) return;
-    const settings: PersistedAlarm = {
-      alarmTime,
-      alarmTone,
-      alarmDays,
-      alarmEnabled,
-    };
-    AsyncStorage.setItem(ALARM_SETTINGS_KEY, JSON.stringify(settings)).catch(
-      () => undefined,
-    );
-  }, [alarmDays, alarmEnabled, alarmReady, alarmTime, alarmTone]);
-
-  const value = useMemo(
-    () => ({
-      alarmTime,
-      setAlarmTime,
-      alarmTone,
-      setAlarmTone,
-      alarmDays,
-      setAlarmDays,
-      alarmEnabled,
-      setAlarmEnabled,
-      alarmReady,
-      reflection,
-      setReflection,
-    }),
-    [alarmDays, alarmEnabled, alarmReady, alarmTime, alarmTone, reflection],
-  );
-
-  return <Context.Provider value={value}>{children}</Context.Provider>;
+    if (!mirrorReady || hydrated.current || nativeError || migrationFlight.current) return;
+    if (isNativeAlarmAvailable && !nativeLoaded) return;
+    migrationFlight.current = true;
+    void (async () => {
+      try {
+        const config = isNativeAlarmAvailable ? await migrateLegacyAlarm(mirrorData) : null;
+        if (!mounted.current) return false;
+        native.current = config;
+        const next = config ? nativeSettings(config) : mirrorData;
+        setSettings(next);
+        updateMirror(() => next);
+        hydrated.current = true;
+        setNativeReady(true);
+      } catch { if (mounted.current) setNativeError('Alarm settings could not be loaded. Please retry.'); }
+      finally { migrationFlight.current = false; }
+    })();
+  }, [mirrorReady, mirrorData, updateMirror, nativeReady, nativeLoaded, nativeError]);
+  const change = (patch: Partial<AlarmSettings>) => {
+    // Native scheduling callers may still update their UI mirror while damaged JS data awaits recovery.
+    setSettings(current => ({ ...current, ...patch }));
+    store.update(current => ({ ...current, ...patch }));
+  };
+  const retryLoad = async () => { await loadNative(); await store.retryLoad(); };
+  const recover = async () => {
+    // Re-read the authority before recovery; never replace native settings with defaults.
+    if (!(await loadNative())) return;
+    await store.recover(value => native.current ? nativeSettings(native.current) : value);
+  };
+  const [reflection, setReflection] = useState('Warm sunlight on my balcony while reciting morning Gayatri mantra; peaceful, unhurried conversation with mother over ginger tea.');
+  return <Context.Provider value={{ ...settings,
+    setAlarmTime: value => change({ alarmTime: value }), setAlarmTone: value => change({ alarmTone: value }),
+    setAlarmDays: value => change({ alarmDays: value }), setAlarmEnabled: value => change({ alarmEnabled: value }),
+    alarmReady: isNativeAlarmAvailable ? nativeReady : store.ready,
+    loading: store.loading, loadError: nativeError ?? store.loadError, saveError: store.saveError, corrupt: store.corrupt,
+    retryLoad, retrySave: store.retrySave, recover, reflection, setReflection,
+  }}>{children}</Context.Provider>;
 }
-
-export function useRitual() {
-  const context = useContext(Context);
-  if (!context) throw new Error("Missing RitualProvider");
-  return context;
-}
+export function useRitual() { const value = useContext(Context); if (!value) throw new Error('Missing RitualProvider'); return value; }

@@ -105,6 +105,11 @@ class MorningAlarmModule : Module() {
       mapOf("cancelled" to true)
     } }
 
+    AsyncFunction("startMyDay") { id: String ->
+      val activity = appContext.currentActivity ?: throw IllegalStateException("Ritual screen unavailable")
+      AlarmController.startMyDay(activity, id)
+    }.runOnQueue(Queues.MAIN)
+
     AsyncFunction("dismissAndScheduleNext") { AlarmController.dismiss(context, finishActivity = false)?.toDouble() }.runOnQueue(Queues.MAIN)
     AsyncFunction("dismissRitualOccurrence") { id: String ->
       require(AlarmPresentation.state(context)["sessionId"] == id && AlarmStore.isRinging(context)) { "Alarm session changed" }

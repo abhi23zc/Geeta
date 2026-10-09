@@ -26,7 +26,6 @@ import {
   Clock3,
   Dumbbell,
   Leaf,
-  Moon,
   Pencil,
   PenLine,
   Plus,
@@ -765,22 +764,6 @@ export default function Today() {
                 <TextR style={[s.primaryText, isSmall && s.primaryTextSmall]}>
                    {translate("Add mindful task")} </TextR>
               </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={translate("Open evening reflection")}
-                onPress={() => router.navigate("/night")}
-                style={({ pressed }) => [s.evening, pressed && s.pressed]}
-              >
-                <View style={s.eveningIconWrap}>
-                  <Moon size={20} color={C.primary} strokeWidth={2.2} />
-                </View>
-                <View style={s.taskCopy}>
-                  <TextR style={s.taskTitle}>{translate("Evening reflection")}</TextR>
-                  <TextR style={s.help}>
-                     {translate("Close your day with a little gratitude.")} </TextR>
-                </View>
-                <ChevronRight size={18} color={C.primary} strokeWidth={2.4} />
-              </Pressable>
             </View>
           ) : null
         }
@@ -1032,33 +1015,6 @@ const s = StyleSheet.create({
     fontSize: 14,
   },
   pressed: { opacity: 0.8, transform: [{ scale: 0.985 }] },
-  evening: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 16,
-    borderRadius: 20,
-    backgroundColor: "#FFF1E5",
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.95)",
-    borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(215, 150, 100, 0.2)",
-    borderBottomWidth: 2,
-    marginTop: 4,
-    shadowColor: "#8C4010",
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  },
-  eveningIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "#FCE1CE",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   help: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
   notice: {
     padding: 16,

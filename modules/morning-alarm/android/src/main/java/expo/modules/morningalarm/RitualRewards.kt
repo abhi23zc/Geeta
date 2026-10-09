@@ -26,6 +26,7 @@ object RitualRewards {
   @Synchronized fun awaken(context: Context) {
     val p = prefs(context)
     if (p.getBoolean("test", true) || !matchesSession(context) || !AlarmStore.isRinging(context) || AlarmPresentation.state(context)["stage"] != "wake") return
+    if (p.contains("wakeAt")) return
     check(p.edit().putString("wakeAt", Instant.now().toString()).commit()) { "Could not save wake receipt" }
   }
   @Synchronized fun occurrence(context: Context): Map<String, Any?> {

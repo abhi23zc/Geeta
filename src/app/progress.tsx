@@ -1,13 +1,13 @@
-import { Screen, TextR, useDockHeight } from "@/components/ritual-ui";
+import { Screen, TextR } from "@/components/ritual-ui";
 import { SacredLotusCoin } from "@/components/sacred-lotus-coin";
 import { C } from "@/constants/ritual-theme";
-import { useGrowthFocusTarget } from "@/features/progress/tree/focus-target";
-import { GrowthCard } from "@/features/progress/tree/growth-card";
 import { DailyGoalCard } from "@/features/progress/daily-goal-card";
 import { LedgerList } from "@/features/progress/ledger-list";
 import { MilestoneRoadmap } from "@/features/progress/milestone-roadmap";
 import { useProgress } from "@/features/progress/provider";
 import { SadhanaCalendar } from "@/features/progress/sadhana-calendar";
+import { useGrowthFocusTarget } from "@/features/progress/tree/focus-target";
+import { GrowthCard } from "@/features/progress/tree/growth-card";
 import { useLanguage } from "@/i18n/provider";
 import { useRouter } from "expo-router";
 import {
@@ -17,7 +17,7 @@ import {
   ChevronUp,
   Flame,
   HelpCircle,
-  Trophy,
+  Trophy
 } from "lucide-react-native";
 import { useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
@@ -34,7 +34,6 @@ export default function ProgressScreen() {
   useGrowthFocusTarget(growthFocus);
   const router = useRouter();
   const { t, formatNumber } = useLanguage();
-  const dockHeight = useDockHeight();
 
   const { progress: p, today } = useProgress();
   const [rulesOpen, setRulesOpen] = useState(false);
@@ -64,9 +63,7 @@ export default function ProgressScreen() {
 
   return (
     <Screen>
-      <View
-        style={[s.container, { paddingBottom: Math.max(dockHeight + 24, 56) }]}
-      >
+      <View style={[s.container, { paddingBottom: 32 }]}>
         {/* ── 1. Top Bar with Back Button ──────────────────────────────────── */}
         <View style={s.topBar}>
           <Pressable
@@ -79,14 +76,24 @@ export default function ProgressScreen() {
             <TextR style={s.backButtonText}>{t("Home")}</TextR>
           </Pressable>
 
-          <View ref={growthFocus} accessible accessibilityRole="header"><TextR style={s.screenTitle}>
-            {t("Progress")} · {t("Daily goal")}
-          </TextR></View>
+          <View ref={growthFocus} accessible accessibilityRole="header">
+            <TextR style={s.screenTitle}>
+              {t("Progress")} · {t("Daily goal")}
+            </TextR>
+          </View>
 
           <View style={{ width: 44 }} />
         </View>
 
-        <GrowthCard screen="progress" cycle={p.tree.cycle} streak={p.tree.level} completed={Boolean(p.days[today]?.rewarded)} count={(p.days[today]?.ritual ? 1 : 0) + (p.days[today]?.quiz ? 1 : 0)} />
+        <GrowthCard
+          screen="progress"
+          cycle={p.tree.cycle}
+          streak={p.tree.level}
+          completed={Boolean(p.days[today]?.rewarded)}
+          count={
+            (p.days[today]?.ritual ? 1 : 0) + (p.days[today]?.quiz ? 1 : 0)
+          }
+        />
 
         {/* ── 2. Hero Sacred Lotus Points & 3D Stats Card ───────────────────── */}
         <View style={s.heroCard3D}>
@@ -120,14 +127,27 @@ export default function ProgressScreen() {
           </View>
 
           <View style={s.balanceRow}>
-            <SacredLotusCoin size={48} />
-            <View style={s.balanceText}>
-            <TextR style={s.heroSubtitle}>{t("Points")}</TextR>
-            <TextR serif style={s.heroBalance}>
-              {formatNumber(p.balance)}
-            </TextR>
+            <View style={s.balanceLeftGroup}>
+              <SacredLotusCoin size={46} />
+              <View style={s.balanceText}>
+                <TextR style={s.heroSubtitle}>{t("Points")}</TextR>
+                <TextR serif style={s.heroBalance}>
+                  {formatNumber(p.balance)}
+                </TextR>
+              </View>
+            </View>
+
+            {/* Balanced Right Level Status Badge */}
+            <View style={s.statusBadgeRight}>
+              {/* <Sparkles size={13} color="#92400E" /> */}
+              <TextR style={s.statusBadgeRightText}>
+                {t("Level {count} of 30", {
+                  count: formatNumber(p.tree.level),
+                })}
+              </TextR>
             </View>
           </View>
+
           <View style={s.heroContent}>
             {/* 3 Metrics 3D Relief Container */}
             <View style={s.metricsRow3D}>
@@ -149,9 +169,9 @@ export default function ProgressScreen() {
 
               <View style={s.metricItem3D}>
                 <View
-                  style={[s.metricIconCircle, { backgroundColor: "#FFF0CF" }]}
+                  style={[s.metricIconCircle, { backgroundColor: "#FEF3C7" }]}
                 >
-                  <Trophy size={14} color={C.goldDark} />
+                  <Trophy size={14} color="#B45309" />
                 </View>
                 <TextR style={s.metricValue}>{formatNumber(p.best)}d</TextR>
                 <TextR style={s.metricLabel}>{t("Best streak")}</TextR>
@@ -161,9 +181,9 @@ export default function ProgressScreen() {
 
               <View style={s.metricItem3D}>
                 <View
-                  style={[s.metricIconCircle, { backgroundColor: "#D6F5E1" }]}
+                  style={[s.metricIconCircle, { backgroundColor: "#FDE68A" }]}
                 >
-                  <Award size={14} color={C.greenDark} />
+                  <Award size={14} color="#92400E" />
                 </View>
                 <TextR style={s.metricValue}>{formatNumber(p.total)}d</TextR>
                 <TextR style={s.metricLabel}>{t("Completed days")}</TextR>
@@ -171,7 +191,6 @@ export default function ProgressScreen() {
             </View>
           </View>
         </View>
-
 
         {/* ── 3. Today's Goal Action Card ───────────────────────────────────── */}
         <DailyGoalCard link={false} />
@@ -185,7 +204,17 @@ export default function ProgressScreen() {
         {/* ── 6. Points Ledger Timeline ─────────────────────────────────────── */}
         <LedgerList entries={p.ledger ?? []} />
 
-        {__DEV__ && <Pressable accessibilityRole="button" style={{ minHeight: 48, justifyContent: 'center' }} onPress={() => router.push('./dev/tree-preview')}><TextR style={{ color: C.saffron }}>Preview tree growth · Development</TextR></Pressable>}
+        {__DEV__ && (
+          <Pressable
+            accessibilityRole="button"
+            style={{ minHeight: 48, justifyContent: "center" }}
+            onPress={() => router.push("./dev/tree-preview")}
+          >
+            <TextR style={{ color: C.saffron }}>
+              Preview tree growth · Development
+            </TextR>
+          </Pressable>
+        )}
 
         {/* ── 7. Sadhana Rules & Wisdom Accordion ───────────────────────────── */}
         <View style={s.rulesCard3D}>
@@ -263,14 +292,15 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 4,
+    marginBottom: 6,
+    paddingHorizontal: 2,
   },
   backButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     paddingVertical: 7,
-    paddingHorizontal: 12,
+    paddingHorizontal: 13,
     borderRadius: 999,
     backgroundColor: "#FFF2E2",
     borderWidth: 1,
@@ -288,92 +318,126 @@ const s = StyleSheet.create({
     fontSize: 17,
     fontWeight: "800",
     color: C.ink,
+    letterSpacing: -0.2,
   },
   heroCard3D: {
     backgroundColor: "#FFFDF9",
-    borderRadius: 26,
-    padding: 16,
+    borderRadius: 24,
+    padding: 18,
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.95)",
+    borderWidth: 1.2,
     borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(140, 64, 16, 0.2)",
-    borderBottomWidth: 3.5,
+    borderBottomColor: "rgba(140, 64, 16, 0.16)",
+    borderLeftColor: "rgba(255, 255, 255, 0.95)",
+    borderRightColor: "rgba(217, 119, 6, 0.15)",
+    borderBottomWidth: 2,
     shadowColor: "#8C4010",
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 4,
-    gap: 10,
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+    gap: 12,
     overflow: "hidden",
     position: "relative",
   },
   balanceRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     width: "100%",
+  },
+  balanceLeftGroup: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
-  balanceText: { flex: 1 },
-  heroContent: {
-    alignItems: "center",
-    width: "100%",
+  balanceText: {
+    gap: 1,
   },
   heroSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "800",
-    letterSpacing: 1.6,
+    letterSpacing: 1.2,
     textTransform: "uppercase",
     color: "#8C5E0D",
   },
   heroBalance: {
-    fontSize: 32,
+    fontSize: 30,
+    lineHeight: 36,
     fontWeight: "800",
     color: "#3E2000",
-    marginTop: 1,
+  },
+  statusBadgeRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1.2,
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(217, 119, 6, 0.25)",
+    borderLeftColor: "rgba(255, 255, 255, 0.9)",
+    borderRightColor: "rgba(217, 119, 6, 0.15)",
+    shadowColor: "#8C5E0D",
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statusBadgeRightText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#92400E",
+  },
+  heroContent: {
+    alignItems: "center",
+    width: "100%",
   },
   metricsRow3D: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
     width: "100%",
-    backgroundColor: "rgba(254, 240, 226, 0.7)",
+    backgroundColor: "rgba(255, 246, 235, 0.85)",
     borderRadius: 18,
-    paddingVertical: 12,
+    paddingVertical: 13,
     paddingHorizontal: 8,
-    borderWidth: 1,
-    borderColor: "rgba(222, 192, 180, 0.45)",
+    borderWidth: 1.2,
     borderTopColor: "#FFFFFF",
-    borderBottomColor: "rgba(140, 64, 16, 0.15)",
+    borderBottomColor: "rgba(140, 64, 16, 0.14)",
+    borderLeftColor: "rgba(255, 255, 255, 0.9)",
+    borderRightColor: "rgba(217, 119, 6, 0.12)",
     borderBottomWidth: 2,
   },
   metricItem3D: {
     alignItems: "center",
-    gap: 3,
+    gap: 4,
     flex: 1,
   },
   metricIconCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
   metricValue: {
-    fontSize: 16,
+    fontSize: 16.5,
     fontWeight: "800",
     color: "#2A1808",
   },
   metricLabel: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: "#7A583E",
     fontWeight: "700",
     textAlign: "center",
   },
   metricDivider: {
     width: 1,
-    height: 32,
+    height: 28,
     backgroundColor: "rgba(140, 64, 16, 0.12)",
+    alignSelf: "center",
   },
   rulesCard3D: {
     backgroundColor: "rgba(255, 252, 248, 0.95)",
@@ -383,7 +447,7 @@ const s = StyleSheet.create({
     borderColor: "rgba(222, 192, 180, 0.4)",
     borderTopColor: "#FFFFFF",
     borderBottomColor: "rgba(140, 64, 16, 0.12)",
-    borderBottomWidth: 2.5,
+    borderBottomWidth: 2,
     gap: 10,
   },
   rulesHeader: {

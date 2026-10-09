@@ -25,10 +25,10 @@ export function pinContent(id: string) {
   pins.set(id, (pins.get(id) ?? 0) + 1);
   const owner = `play-${Date.now()}-${Math.random()}`;
   let released = false;
-  const renew = async () => { if (!released) await (await db()).runAsync('INSERT OR REPLACE INTO playback_pins VALUES(?,?,?)', owner, id, Date.now() + 90000); };
+  const renew = async () => { const d = await db(); if (!released) await d.runAsync('INSERT OR REPLACE INTO playback_pins VALUES(?,?,?)', owner, id, Date.now() + 90000); };
   void renew().catch(() => undefined);
   const heartbeat = setInterval(() => { void renew().catch(() => undefined); }, 30000);
-  return () => { released = true; clearInterval(heartbeat); const n = (pins.get(id) ?? 1) - 1; if (n) pins.set(id, n); else pins.delete(id); void db().then(d => d.runAsync('DELETE FROM playback_pins WHERE owner=?', owner)).catch(() => undefined); };
+  return () => { if (released) return; released = true; clearInterval(heartbeat); const n = (pins.get(id) ?? 1) - 1; if (n) pins.set(id, n); else pins.delete(id); void db().then(d => d.runAsync('DELETE FROM playback_pins WHERE owner=?', owner)).catch(() => undefined); };
 }
 export function cancelContentSync() { cancelled = true; void cancelDownload?.().catch(() => undefined); }
 async function db() {
@@ -54,7 +54,7 @@ async function setSetting(key: string, value: string) { await (await db()).runAs
 function resolve(row: DayRow, asset?: AssetRow): GitaVerse {
   const practice = JSON.parse(row.json) as PublishedPractice;
   const { narration, ...text } = practice;
-  return { ...text, narration: asset && new File(directory(), asset.path).exists ? { assetId: asset.id, asset: narration.asset, audioSource: { uri: new File(directory(), asset.path).uri }, completionMs: narration.completionMs, segments: narration.segments } : undefined };
+  return { ...text, narration: { assetId: narration.asset.id, asset: narration.asset, audioSource: { uri: new File(directory(), asset?.path ?? `${narration.asset.id}-${narration.asset.sha256}.audio`).uri }, completionMs: narration.completionMs, segments: narration.segments } };
 }
 export async function readContent(): Promise<CacheSnapshot> {
   const d = await db();
@@ -97,6 +97,44 @@ export async function prepareSavedReplay(id: string): Promise<{ practice: GitaVe
     const release = pinContent(file.id);
     return { practice: resolve({ date: '', json: row.json, asset: file.id }, file), release };
   } finally { await d.runAsync('UPDATE lease SET owner=NULL,expires=0 WHERE owner=?', owner); notify(); }
+}
+/** Prepare only the frozen revision. Never fetch a newer publication to replace its text or cues. */
+export async function preparePracticeRecording(practice: GitaVerse): Promise<{ narration: NonNullable<GitaVerse['narration']>; release: () => void }> {
+  if (typeof practice.narration?.audioSource === 'number') return { narration: practice.narration, release: () => {} };
+  if (Platform.OS !== 'android') throw new Error('Recording downloads require Android. You can complete by reading.');
+  if (inFlight) await inFlight;
+  const d = await db(), owner = `practice-${Date.now()}-${Math.random()}`;
+  const acquired = await d.runAsync('UPDATE lease SET owner=?,expires=? WHERE id=1 AND expires<?', owner, Date.now() + 450000, Date.now());
+  if (!acquired.changes) throw new Error('Content refresh is running. Try again shortly.');
+  cancelled = false;
+  let release: (() => void) | undefined;
+  try {
+    let narration = practice.narration;
+    if (!narration?.asset && practice.revision) {
+      const rows = await d.getAllAsync<{ json: string }>('SELECT json FROM days UNION ALL SELECT json FROM saved_media');
+      const match = rows.map(row => JSON.parse(row.json) as PublishedPractice).find(row => row.id === practice.id && row.revision === practice.revision && (!narration?.assetId || row.narration.asset.id === narration.assetId));
+      if (match && (!narration || (match.narration.completionMs === narration.completionMs && JSON.stringify(match.narration.segments) === JSON.stringify(narration.segments)))) {
+        narration = { ...match.narration, assetId: match.narration.asset.id, audioSource: { uri: '' } };
+      }
+    }
+    if (!narration?.asset) throw new Error('Matching recording metadata is unavailable. You can complete by reading.');
+    const asset = narration.asset;
+    const existing = await d.getFirstAsync<AssetRow>('SELECT * FROM assets WHERE id=?', asset.id);
+    const file = existing ? new File(directory(), existing.path) : new File(directory(), `${asset.id}-${asset.sha256}.audio`);
+    const healthy = file.exists && file.size === asset.bytes && await hashContentFile(file.uri) === asset.sha256;
+    if (!healthy) {
+      const network = await Network.getNetworkStateAsync();
+      if (!network.isConnected || network.isInternetReachable === false) throw new Error('Connect to repair this recording, or complete by reading.');
+      if (await setting('wifiOnly') === 'true' && network.type !== Network.NetworkStateType.WIFI) throw new Error('Waiting for Wi-Fi');
+    }
+    const downloaded = await download(asset, owner);
+    release = pinContent(asset.id);
+    return { narration: { ...narration, assetId: asset.id, audioSource: { uri: new File(directory(), downloaded.path).uri } }, release };
+  } finally {
+    try { await d.runAsync('UPDATE lease SET owner=NULL,expires=0 WHERE owner=?', owner); }
+    catch (error) { release?.(); throw error; }
+    finally { notify(); }
+  }
 }
 export async function prepareAlarmPreview(key: string): Promise<string> {
   if (inFlight) await inFlight;
@@ -168,14 +206,14 @@ async function retry<T>(operation: () => Promise<T>): Promise<T> {
 async function download(asset: AudioAsset, owner: string): Promise<AssetRow> {
   const d = await db();
   const existing = await d.getFirstAsync<AssetRow>('SELECT * FROM assets WHERE id=?', asset.id);
-  if (existing && existing.hash === asset.sha256 && new File(directory(), existing.path).exists && new File(directory(), existing.path).size === asset.bytes) return existing;
+  if (existing && existing.hash === asset.sha256 && new File(directory(), existing.path).exists && new File(directory(), existing.path).size === asset.bytes && await hashContentFile(new File(directory(), existing.path).uri) === asset.sha256) return existing;
   const path = `${asset.id}-${asset.sha256}.audio`, file = new File(directory(), path);
   if (file.exists && file.size === asset.bytes && await hashContentFile(file.uri) === asset.sha256) {
     await d.runAsync('INSERT OR REPLACE INTO assets VALUES(?,?,?,?)', asset.id, path, asset.bytes, asset.sha256);
     return { id: asset.id, path, bytes: asset.bytes, hash: asset.sha256 };
   }
   const used = (await d.getFirstAsync<{ total: number }>('SELECT COALESCE(SUM(bytes),0) total FROM assets'))!.total;
-  if (used + asset.bytes > 300 * MB || Paths.availableDiskSpace < asset.bytes + 50 * MB) throw new Error('Not enough free storage for upcoming content');
+  if (used - (existing?.bytes ?? 0) + asset.bytes > 300 * MB || Paths.availableDiskSpace < asset.bytes + 50 * MB) throw new Error('Not enough free storage for upcoming content');
   await retry(async () => {
     if (!(await d.getFirstAsync('SELECT id FROM lease WHERE owner=? AND expires>?', owner, Date.now()))) throw new Error('Sync ownership expired');
     const temp = new File(directory(), `${asset.id}.partial`); if (temp.exists) temp.delete();

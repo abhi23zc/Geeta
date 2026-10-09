@@ -1,5 +1,19 @@
 # Alarm reliability and ritual recovery
 
+## October 2026 storage, transition, playback, and picker fixes
+
+Gita progress and the JS alarm mirror now distinguish a missing record from a failed read or invalid record. No defaults are persisted after failed hydration. Retry preserves the original; explicit recovery rereads the source, writes and verifies a uniquely named backup, salvages valid fields, then replaces the primary record. Failed saves retain the newest queued snapshot for retry. Native alarm configuration loads independently of JS mirror failures and remains authoritative during recovery. Home keeps alarm command errors separate from snapshot errors, so polling cannot erase a failed scheduling/cancellation message.
+
+React Wake and native fallback call one session-bound `startMyDay` operation. It commits transition intent before stopping playback, preserves an existing awakening receipt, advances to Breathing, and clears intent after success. A retry can advance Wake after sound has already stopped; an already advanced Breathing/Gita session cannot regress. Stale or ended sessions are rejected. The old bridge methods remain available, but this new operation requires a rebuilt Android app; an older native build receives an update message.
+
+Saved recording preparation uses command generations plus live focus/foreground eligibility. Pause, blur, background, removal, and unmount invalidate pending work and release pins; a stale result releases its own pin and cannot start playback or clear a newer command's busy state. Storage/retry/recovery messages have English, Hindi, and Hinglish copy. Wake supports screen-reader activation, an explicit accessibility action, and keyboard activation through the same guarded operation. Wake and Breathing can scroll at large text sizes or short heights.
+
+The alarm picker uses virtualized continuous wheels, native animated number scale/opacity and a fixed selection lens, fixed row snapping, and throttled selection haptics. Minute movement adds signed minute deltas to one atomic time value: 59 → 00 carries an hour, 00 → 59 borrows an hour, and noon/midnight update AM/PM. Hour movement preserves minutes. Recentring a wheel emits no time change. Adjacent values are tappable; adjustable accessibility actions and arrow keys use the same time arithmetic. Saving is blocked while either wheel is moving.
+
+Automated coverage includes hydration read failures, backup/verification failures, salvage, native-authority recovery, failed-write retry, stale replay completion/pin ownership, native transition failure injection, and exhaustive minute carry/borrow arithmetic. The root suite contains 20 passing test files; native debug and release each contain 27 passing tests. App/admin/Functions TypeScript checks, app lint, all-platform production export, and the local release APK are validation gates. Physical acceptance is still pending; no APK was installed and no device data was cleared.
+
+Additional device checks: fast/reversed wheel gestures across 59/00 and 11/12; simultaneous wheel movement; interruption of an automatic hour animation; tap, keyboard, and TalkBack adjustments; large fonts; leaving/backgrounding during movement; Save after settling; injected storage failures and wake-stage commit failure. Check lock-screen, process-death, and direct-boot cases in the matrix below. Night functionality and quiz editorial status remain outside this implementation's agreed scope.
+
 This implementation keeps the existing single React host, Android alarm module, three awakening sounds, and Wake → Breathing → Gita flow. Existing alarm configuration, quiz history, language preferences, and shared points storage are not reset. The runtime rules use Expo SDK 57.
 
 ## Scheduling and delivery

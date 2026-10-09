@@ -56,7 +56,8 @@ test('screens and bridge retain occurrence guards, checkpoint serialization, and
   const wake = source('../src/app/alarm/wake.tsx');
   assert.match(wake, /clearTimeout\(holdTimerRef.current\)/);
   assert.match(wake, /addListener\('blur', cancelHold\)/);
-  assert.match(wake, /state.sessionId !== session.current/);
+  assert.match(wake, /const expectedSession = session.current/);
+  assert.match(wake, /state.sessionId !== expectedSession/);
   const gitaSource = source('../src/app/gita.tsx');
   assert.match(gitaSource, /setPointsPending\(!\(await refreshRewards\(\)\)\)/);
   assert.match(gitaSource, /disabled=\{!canCompleteGita/);

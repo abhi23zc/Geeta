@@ -16,10 +16,7 @@ import { useReducedMotion } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import {
   Bookmark,
-  BookOpen,
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
   FileText,
   Flower2,
   HelpCircle,
@@ -48,7 +45,6 @@ import {
   QuizScreen,
   useCopy,
 } from '@/features/quiz/ui';
-import { LanguagePicker } from '@/i18n/language-picker';
 import { C } from '@/constants/ritual-theme';
 
 export default function Play() {
@@ -58,7 +54,6 @@ export default function Play() {
   const t = useCopy();
 
   const [selection, setSelection] = useState<{ key: string; id: string } | null>(null);
-  const [sourceKey, setSourceKey] = useState<string | null>(null);
   const focused = useIsFocused();
   const reduced = useReducedMotion();
   const alarm = useAlarmPresentation();
@@ -69,7 +64,6 @@ export default function Play() {
 
   const questionKey = `${session?.id}:${q?.id}`;
   const selected = selection?.key === questionKey ? selection.id : null;
-  const sourceOpen = sourceKey === questionKey;
 
   const leave = useCallback(
     (done: () => void) => {
@@ -528,41 +522,6 @@ export default function Play() {
             <Copy style={{ color: C.ink, lineHeight: 24 }}>
               {q.explanation[lang]}
             </Copy>
-
-            {/* Collapsible Source & Tradition Accordion */}
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setSourceKey(sourceOpen ? null : questionKey)}
-              style={s.sourceToggle}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <BookOpen size={14} color={C.primary} />
-                <Copy small style={{ color: C.primary, fontWeight: '700' }}>
-                  {sourceOpen
-                    ? t('Hide scripture source', 'संदर्भ छिपाएं')
-                    : t('View scripture & tradition', 'संदर्भ व शास्त्र देखें')}
-                </Copy>
-              </View>
-              {sourceOpen ? <ChevronUp size={16} color={C.primary} /> : <ChevronDown size={16} color={C.primary} />}
-            </Pressable>
-
-            {sourceOpen && (
-              <View style={s.sourceContent}>
-                {q.source && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <FileText size={13} color={C.primary} />
-                    <Copy small style={{ color: C.inkSoft, fontWeight: '600' }}>
-                      {q.source[lang]}
-                    </Copy>
-                  </View>
-                )}
-                {q.context && (
-                  <Copy small style={{ color: C.muted, marginTop: 4 }}>
-                    {q.context[lang]}
-                  </Copy>
-                )}
-              </View>
-            )}
           </Panel>
 
           {/* Save Wisdom & Continue Controls */}
@@ -592,13 +551,6 @@ export default function Play() {
         </View>
       )}
 
-      {/* Language Switcher Footer Tile */}
-      <View style={s.languageFooter}>
-        <Copy small style={{ color: C.muted, fontWeight: '700' }}>
-          {t('Language', 'भाषा')}
-        </Copy>
-        <LanguagePicker />
-      </View>
     </QuizScreen>
   );
 }
@@ -680,34 +632,13 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sourceToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(220, 190, 165, 0.4)',
-    marginTop: 4,
-  },
-  sourceContent: {
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    padding: 10,
-    borderRadius: 12,
-  },
-  languageFooter: {
-    marginTop: 8,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(230, 210, 195, 0.5)',
-    gap: 6,
-  },
   celebrationCard: {
     backgroundColor: 'rgba(255, 250, 242, 0.98)',
     borderRadius: 24,
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
     borderBottomColor: 'rgba(190, 140, 110, 0.4)',
-    borderBottomWidth: 4,
+    borderBottomWidth: 2.5,
     padding: 20,
     alignItems: 'center',
     gap: 10,

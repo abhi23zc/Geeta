@@ -1,5 +1,6 @@
+import { StorageRecoveryNotice } from '@/components/storage-recovery-notice';
 import { useLanguage } from '@/i18n/provider';
-import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
+import { setAudioModeAsync, useAudioPlayer } from "expo-audio";
 import { useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
 import {
   Bookmark,
@@ -55,33 +56,20 @@ import {
 import { useLocalDateKey } from "@/hooks/use-local-date-key";
 import { replaceAppRoute } from "@/navigation/route-actions";
 import { completeRewardStage, getRewardOccurrence, getAlarmPlaybackState, getAlarmPresentationState, getRitualCheckpoint, hasInvalidRitualCheckpoint, saveRitualCheckpoint, requestRitualUnlock, setAlarmRitualScreenAwake } from "@/services/alarm";
-import { advanceListening, canCompleteGita, validNarration, type GitaCheckpoint, type ListeningSample } from '@/services/ritual-checkpoint';
+import { canCompleteGita, validNarration, type GitaCheckpoint } from '@/services/ritual-checkpoint';
 import { useProgress } from '@/features/progress/provider';
 import { progressTransaction } from '@/features/progress/transactions';
 import { useGitaProgress } from "@/state/gita-store";
 import { useRitual } from "@/state/ritual-store";
 import { useContent } from "@/state/content-store";
-import { pinContent, saveTeaching } from "@/services/content-cache";
+import { pinContent, preparePracticeRecording, saveTeaching } from "@/services/content-cache";
+
+import { alignedCues, createGitaPlayback, type PlaybackView } from '@/services/gita-playback';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const EMPTY_SEGMENTS: readonly GitaNarrationSegment[] = [];
-
-/**
- * `useAudioPlayer` owns and releases its native player when this screen
- * unmounts. Focus and AppState cleanup can race that release on Android, so
- * cleanup commands must be harmless if the native object has gone away.
- */
-function runPlayerCommand(command: () => void | Promise<unknown>) {
-  try {
-    const result = command();
-    if (result && typeof (result as Promise<unknown>).catch === "function") {
-      void (result as Promise<unknown>).catch(() => undefined);
-    }
-  } catch {
-    // A released player is expected during navigation/HMR teardown.
-  }
-}
 
 /**
  * Converts academic Sanskrit IAST diacritics to clean, spoken phonetics.
@@ -237,15 +225,15 @@ function SacredShlokaLine({
   }));
 
   const sanskritDynamicStyle = isSmall
-    ? { fontSize: 20, lineHeight: 30 }
+    ? { fontSize: 19, lineHeight: 28 }
     : isTablet
     ? { fontSize: 28, lineHeight: 42 }
     : undefined;
 
   const phoneticDynamicStyle = isSmall
-    ? { fontSize: 13, lineHeight: 18 }
+    ? { fontSize: 12, lineHeight: 17 }
     : isTablet
-    ? { fontSize: 17, lineHeight: 25 }
+    ? { fontSize: 16.5, lineHeight: 24 }
     : undefined;
 
   return (
@@ -327,9 +315,9 @@ function MeaningSentenceRow({
   }));
 
   const meaningDynamicStyle = isSmall
-    ? { fontSize: 15, lineHeight: 23 }
+    ? { fontSize: 14.5, lineHeight: 22 }
     : isTablet
-    ? { fontSize: 20, lineHeight: 30 }
+    ? { fontSize: 21, lineHeight: 31 }
     : undefined;
 
   return (
@@ -388,14 +376,14 @@ function MascotStage({
     transform: [{ scale: 0.95 + auraGlow.value * 0.1 }],
   }));
 
-  const mascotSize = isSmall ? 145 : isCompact ? 165 : isTablet ? 240 : 205;
-  const daisHeight = isSmall ? 150 : isCompact ? 165 : isTablet ? 245 : 210;
+  const mascotSize = isSmall ? 160 : isCompact ? 175 : isTablet ? 290 : 230;
+  const daisHeight = isSmall ? 165 : isCompact ? 180 : isTablet ? 295 : 235;
 
   return (
-    <View style={[s.daisContainer, { height: daisHeight, marginTop: isSmall ? 0 : 2, marginBottom: isSmall ? 2 : 4 }]}>
+    <View style={[s.daisContainer, { height: daisHeight, marginTop: 2, marginBottom: isSmall || isCompact ? 2 : 6 }]}>
       {/* Soft Orangish Dawn Light Halo */}
       <Animated.View style={[s.daisAuraHalo, auraAnimStyle]} pointerEvents="none">
-        <Svg width={360} height={daisHeight + 20} viewBox="0 0 360 230" preserveAspectRatio="xMidYMid meet">
+        <Svg width="100%" height={daisHeight + 25} viewBox="0 0 360 230" preserveAspectRatio="xMidYMid meet">
           <Defs>
             <RadialGradient id="softOrangeAura" cx="50%" cy="50%" rx="50%" ry="50%">
               <Stop offset="0%" stopColor="#FDBA74" stopOpacity="0.55" />
@@ -524,7 +512,8 @@ function WordMeaningsTray({
 // ─── Main Gita Screen ────────────────────────────────────────────────────────
 export default function Gita() {
   const { t: translate } = useLanguage();
-  const { ready } = useGitaProgress();
+  const progressStore = useGitaProgress();
+  const { ready } = progressStore;
   const { ready: contentReady } = useContent();
   const currentDate = useLocalDateKey();
   const [today] = useState(currentDate);
@@ -534,11 +523,12 @@ export default function Gita() {
         <View style={s.loading}>
           <MovingChakra size={32} color={C.saffron} />
           <TextR style={s.loadingText}>{translate("Preparing today’s contemplation…")}</TextR>
+          <StorageRecoveryNotice store={progressStore} />
         </View>
       </Screen>
     );
   }
-  return <GitaContent key={today} today={today} />;
+  return <><StorageRecoveryNotice store={progressStore} /><GitaContent key={today} today={today} /></>;
 }
 
 function GitaContent({ today }: { today: string }) {
@@ -552,9 +542,9 @@ function GitaContent({ today }: { today: string }) {
   const completingReward = useRef(false);
   const { alarmTime } = useRitual();
   const { width, height } = useWindowDimensions();
-  const isSmall = width < 360;
+  const isSmall = width < 375;
   const isTablet = width >= 768;
-  const isCompact = height < 750;
+  const isCompact = height < 780;
   const reduceMotion = useReducedMotion();
 
   const content = useContent();
@@ -565,11 +555,11 @@ function GitaContent({ today }: { today: string }) {
   });
   const [fallback] = useState(() => content.fallback);
   useEffect(() => verse.narration?.assetId ? pinContent(verse.narration.assetId) : undefined, [verse]);
-  const narration = verse.narration;
-  const player = useAudioPlayer(narration?.audioSource ?? null, {
+  const [narration, setNarration] = useState(verse.narration);
+  const insets = useSafeAreaInsets();
+  const player = useAudioPlayer(verse.narration?.audioSource ?? null, {
     updateInterval: 80,
   });
-  const status = useAudioPlayerStatus(player);
   const progressStore = useGitaProgress();
 
   const [viewTab, setViewTab] = useState<"shloka" | "meaning" | "padartha">(
@@ -589,44 +579,74 @@ function GitaContent({ today }: { today: string }) {
   useEffect(() => {
     if (restored?.complete && entry === 'alarm' && !rewardOccurrence.current?.test) void refreshRewards().then(ok => setPointsPending(!ok));
   }, [entry, refreshRewards, restored]);
+  const controllerRef = useRef<ReturnType<typeof createGitaPlayback> | null>(null);
   const checkpoint = useRef<GitaCheckpoint | null>(null);
-  const previousSample = useRef<ListeningSample | null>(null);
   const latestPosition = useRef(restored?.positionMs ?? 0);
   const latestThrough = useRef(restored?.playedThroughMs ?? (narration?.segments[0]?.startMs ?? 0));
-  const lastMovement = useRef(0);
-  useEffect(() => { lastMovement.current = Date.now(); }, []);
-  const restoredPosition = useRef(restored ? Math.min(restored.positionMs, restored.playedThroughMs) : null);
-  const commandGeneration = useRef(0);
   const persist = useCallback(async (override?: Partial<GitaCheckpoint>) => {
     if (checkpoint.current) await saveRitualCheckpoint({ ...checkpoint.current, positionMs: latestPosition.current, playedThroughMs: latestThrough.current, ...override });
   }, []);
   const autoStartAttempted = useRef(false);
   const manualTabSelection = useRef(false);
   const blessingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const playbackIntent = useRef(false);
   const focusedRef = useRef(false);
   useEffect(() => {
-    checkpoint.current = sessionId ? { version: 1, sessionId, stage: 'gita', verse, positionMs: latestPosition.current, playedThroughMs: latestThrough.current,
-      completionMs: narration?.completionMs ?? 0, readingAvailable, readingConfirmed, complete: sessionComplete, paused: !playbackIntent.current } : null;
+    checkpoint.current = sessionId ? { version: 1, sessionId, stage: 'gita', verse: { ...verse, narration }, positionMs: latestPosition.current, playedThroughMs: latestThrough.current,
+      completionMs: narration?.completionMs ?? 0, readingAvailable, readingConfirmed, complete: sessionComplete, paused: controllerRef.current?.getView().state !== 'playing' } : null;
     if (sessionId) void persist().then(() => setCheckpointError(error => error === 'Could not save ritual progress. Please retry.' ? '' : error)).catch(() => setCheckpointError('Could not save ritual progress. Please retry.'));
   }, [narration, persist, readingAvailable, readingConfirmed, sessionComplete, sessionId, verse]);
+  const [playback, setPlayback] = useState<PlaybackView>(() => ({ state: narration ? 'loading' : 'unavailable',
+    positionMs: restored?.positionMs ?? 0, throughMs: restored?.playedThroughMs ?? narration?.segments[0]?.startMs ?? 0, readingAvailable, preparing: false, reason: '' }));
+  const diagnostics = useRef(0);
+  useEffect(() => {
+    const controller = createGitaPlayback({
+      narration: verse.narration, positionMs: restored ? Math.min(restored.positionMs, restored.playedThroughMs) : verse.narration?.segments[0]?.startMs ?? 0,
+      throughMs: restored?.playedThroughMs ?? verse.narration?.segments[0]?.startMs ?? 0, readingAvailable: !verse.narration || !!restored?.readingAvailable,
+      player, initiallyPaused: !!restored,
+      eligible: () => focusedRef.current && AppState.currentState === 'active' && (!sessionId ||
+        (getAlarmPresentationState().sessionId === sessionId && getAlarmPresentationState().stage === 'gita')),
+      prepare: () => preparePracticeRecording(verse),
+      repaired: async repaired => {
+        if (checkpoint.current) {
+          const updated = { ...checkpoint.current, verse: { ...verse, narration: repaired }, completionMs: repaired.completionMs };
+          await saveRitualCheckpoint(updated);
+          if (controllerRef.current === controller && focusedRef.current && AppState.currentState === 'active') checkpoint.current = updated;
+        }
+      },
+      installed: setNarration,
+      changed: next => {
+        latestPosition.current = next.positionMs;
+        latestThrough.current = next.throughMs;
+        setPlayedThroughMs(previous => previous === next.throughMs ? previous : next.throughMs);
+        if (next.readingAvailable) setReadingAvailable(true);
+        setPlayback(next);
+      },
+      diagnostic: (event, generation, state) => {
+        if (__DEV__ && diagnostics.current++ < 120) console.debug('[gita-playback]', { player: player.id, event, generation, state });
+      },
+    });
+    controllerRef.current = controller;
+    if (__DEV__ && diagnostics.current++ < 120) console.debug('[gita-playback]', { player: player.id, event: 'subscribe' });
+    const subscription = player.addListener('playbackStatusUpdate', controller.observe);
+    controller.observe(player.currentStatus);
+    const timer = setInterval(() => controller.tick(), 1000);
+    return () => { clearInterval(timer); subscription.remove(); controller.dispose(); controllerRef.current = null; };
+  }, [player, restored, sessionId, verse]);
   useEffect(() => {
     const timer = setInterval(() => {
-      if (sessionId && focusedRef.current && AppState.currentState === 'active') void persist().then(() => setCheckpointError(error => error === 'Could not save ritual progress. Please retry.' ? '' : error)).catch(() => setCheckpointError('Could not save ritual progress. Please retry.'));
-      if (narration && !sessionComplete && (!status.isLoaded || playbackIntent.current) && Date.now() - lastMovement.current > 15000) setReadingAvailable(true);
+      if (sessionId && focusedRef.current && AppState.currentState === 'active') void persist({ paused: controllerRef.current?.getView().state !== 'playing' }).catch(() => setCheckpointError('Could not save ritual progress. Please retry.'));
     }, 5000);
     return () => { clearInterval(timer); void persist({ paused: true }).catch(() => undefined); };
-  }, [narration, persist, sessionComplete, sessionId, status.isLoaded]);
+  }, [persist, sessionId]);
 
   useEffect(() => {
     if (focused) void setAlarmRitualScreenAwake(!sessionComplete);
   }, [focused, sessionComplete]);
 
   const segments = narration?.segments ?? EMPTY_SEGMENTS;
-  const startMs = segments[0]?.startMs ?? 0;
   const completionMs = narration?.completionMs ?? 0;
-  const currentMs = Math.round(status.currentTime * 1000);
-  const isPlaying = Boolean(narration && status.playing);
+  const currentMs = playback.positionMs;
+  const isPlaying = playback.state === 'playing';
   const readerLabels = verse.readerLabels ?? {
     primary: translate('Shloka'),
     interpretation: translate('Meaning'),
@@ -644,50 +664,15 @@ function GitaContent({ today }: { today: string }) {
     : [];
 
   const pause = useCallback(() => {
-    commandGeneration.current++;
-    playbackIntent.current = false;
-    previousSample.current = null;
-    runPlayerCommand(() => player.pause());
+    controllerRef.current?.cancel();
     void persist({ paused: true }).catch(() => setCheckpointError('Could not save ritual progress. Please retry.'));
-  }, [persist, player]);
-
-  const startNarration = useCallback(() => {
-    if (!narration) return;
-    const command = ++commandGeneration.current;
-    playbackIntent.current = true;
-    lastMovement.current = Date.now();
-    previousSample.current = null;
-    void player.seekTo(startMs / 1000).then(() => {
-      if (command !== commandGeneration.current || !focusedRef.current || AppState.currentState !== 'active') return;
-      latestPosition.current = startMs;
-      player.play();
-    }).catch(() => { playbackIntent.current = false; setReadingAvailable(true); });
-  }, [narration, player, startMs]);
-  const resumeNarration = useCallback(() => {
-    if (!narration || !focusedRef.current || AppState.currentState !== 'active') return;
-    const command = ++commandGeneration.current;
-    playbackIntent.current = true;
-    previousSample.current = null;
-    lastMovement.current = Date.now();
-    const position = restoredPosition.current;
-    const seek = position == null ? Promise.resolve() : player.seekTo(position / 1000);
-    void seek.then(() => {
-      if (command !== commandGeneration.current || !focusedRef.current || AppState.currentState !== 'active') return;
-      restoredPosition.current = null;
-      player.play();
-    }).catch(() => { playbackIntent.current = false; setReadingAvailable(true); });
-  }, [narration, player]);
-
+  }, [persist]);
+  const startNarration = useCallback(() => { void controllerRef.current?.play(true); }, []);
+  const resumeNarration = useCallback(() => { void controllerRef.current?.play(); }, []);
   const playFromStart = useCallback(() => {
-    if (!narration) return;
     autoStartAttempted.current = true;
-    setSessionComplete(false);
-    setReadingAvailable(false);
-    setReadingConfirmed(false);
-    manualTabSelection.current = false;
-    setViewTab("shloka");
-    startNarration();
-  }, [narration, startNarration]);
+    void controllerRef.current?.play(true);
+  }, []);
 
   const selectTab = useCallback((tab: "shloka" | "meaning" | "padartha") => {
     manualTabSelection.current = true;
@@ -695,7 +680,7 @@ function GitaContent({ today }: { today: string }) {
   }, []);
 
   const completePractice = useCallback(async () => {
-    if (completingReward.current || !focusedRef.current || !canCompleteGita(latestThrough.current, completionMs, readingAvailable && readingConfirmed)) return;
+    if (sessionComplete || completingReward.current || !focusedRef.current || !canCompleteGita(latestThrough.current, completionMs, readingAvailable && readingConfirmed)) return;
     if (sessionId && (getAlarmPresentationState().sessionId !== sessionId || getAlarmPresentationState().stage !== 'gita')) return;
     completingReward.current = true;
     pause();
@@ -713,7 +698,7 @@ function GitaContent({ today }: { today: string }) {
     } catch {
       Alert.alert(translate('Progress'), translate('Could not save ritual progress. Please retry.'));
     } finally { completingReward.current = false; }
-  }, [completionMs, entry, pause, persist, progressStore, readingAvailable, readingConfirmed, refreshRewards, sessionId, translate, verse.id]);
+  }, [completionMs, entry, pause, persist, progressStore, readingAvailable, readingConfirmed, refreshRewards, sessionComplete, sessionId, translate, verse.id]);
 
   const exitToHome = useCallback(() => {
     pause();
@@ -750,7 +735,7 @@ function GitaContent({ today }: { today: string }) {
       sessionComplete ||
       entry !== "alarm" ||
       !narration ||
-      !status.isLoaded ||
+      playback.state !== 'ready' ||
       restored ||
       autoStartAttempted.current
     ) return;
@@ -766,42 +751,20 @@ function GitaContent({ today }: { today: string }) {
       })
       .catch(startIfVisible);
     return () => { cancelled = true; };
-  }, [entry, focused, narration, restored, sessionComplete, startNarration, status.isLoaded]);
+  }, [entry, focused, narration, restored, sessionComplete, startNarration, playback.state]);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state !== "active") {
-        commandGeneration.current++;
-        previousSample.current = null;
-        void persist({ paused: !playbackIntent.current }).catch(() => setCheckpointError('Could not save ritual progress. Please retry.'));
-        if (!getAlarmPresentationState().active) playbackIntent.current = false;
-        runPlayerCommand(() => player.pause());
-      }
-      else if (playbackIntent.current && focusedRef.current) resumeNarration();
+    const subscription = AppState.addEventListener('change', state => {
+      if (state !== 'active') pause();
     });
     return () => subscription.remove();
-  }, [persist, player, resumeNarration]);
-
-  useEffect(() => {
-    if (!narration || sessionComplete) return;
-    const sample = { positionMs: currentMs, now: Date.now(), playing: status.playing && !status.isBuffering, visible: focusedRef.current && AppState.currentState === 'active' };
-    if (currentMs !== latestPosition.current) lastMovement.current = sample.now;
-    latestPosition.current = Math.min(currentMs, completionMs);
-    const through = advanceListening(latestThrough.current, previousSample.current, sample, completionMs);
-    latestThrough.current = through;
-    previousSample.current = sample;
-    setPlayedThroughMs(through);
-    if (status.isLoaded && status.duration > 0 && status.duration * 1000 < completionMs - 150) setReadingAvailable(true);
-    if (currentMs >= completionMs && status.playing) {
-      pause();
-      runPlayerCommand(() => player.seekTo(completionMs / 1000));
-    }
-  }, [completionMs, currentMs, narration, pause, player, readingAvailable, sessionComplete, status.duration, status.isBuffering, status.isLoaded, status.playing]);
+  }, [pause]);
 
   useEffect(() => {
     if (!narration || !isPlaying || manualTabSelection.current) return;
     const meaningStart = narration.segments.find((segment) => segment.kind === "meaning")?.startMs;
-    setViewTab(meaningStart && currentMs >= meaningStart ? "meaning" : "shloka");
+    const targetTab = meaningStart && currentMs >= meaningStart ? "meaning" : "shloka";
+    setViewTab((prev) => (prev === targetTab ? prev : targetTab));
   }, [currentMs, isPlaying, narration]);
 
   useEffect(() => () => {
@@ -836,11 +799,11 @@ function GitaContent({ today }: { today: string }) {
     blessingTimer.current = setTimeout(() => setBlessingMessage(null), 3800);
   };
 
-  const headerBtnSize = isSmall ? 36 : isTablet ? 46 : isCompact ? 38 : 42;
-  const headerIconSize = isSmall ? 16 : isTablet ? 20 : 18;
+  const headerBtnSize = isSmall ? 34 : isTablet ? 44 : isCompact ? 36 : 38;
+  const headerIconSize = isSmall ? 15 : isTablet ? 20 : 17;
 
   return (
-    <Screen contentContainerStyle={[s.screenContent, { paddingBottom: isCompact ? 46 : 60 }]}>
+    <Screen contentContainerStyle={[s.screenContent, { paddingBottom: Math.max(insets.bottom, 16) + (isCompact ? 28 : 40) }]}>
       {checkpointError ? <Pressable accessibilityRole="button" onPress={() => { void persist().then(() => setCheckpointError('')).catch(() => setCheckpointError('Could not save ritual progress. Please retry.')); }}><TextR accessibilityRole="alert">{translateText(checkpointError)}</TextR></Pressable> : null}
       {pointsPending ? <Pressable accessibilityRole="button" onPress={() => { void refreshRewards().then(ok => setPointsPending(!ok)); }} style={{ padding: 12 }}><TextR accessibilityRole="alert">{translate('Practice completed; points pending. Tap to retry.')}</TextR></Pressable> : null}
       {entry === "alarm" ? (
@@ -866,27 +829,27 @@ function GitaContent({ today }: { today: string }) {
         </TactileRoundButton>
 
         {/* Sacred Chapter Pill with Morning Sadhana Streak */}
-        <View style={[s.chapterPill, isSmall && { paddingHorizontal: 9, paddingVertical: 5, gap: 4 }]}>
+        <View style={[s.chapterPill, isSmall && { paddingHorizontal: 7, paddingVertical: 5, gap: 4 }]}>
           <View style={s.chapterDotGlow}>
             <View style={s.chapterDot} />
           </View>
           <TextR
             numberOfLines={1}
             ellipsizeMode="tail"
-            style={[s.chapterText, isSmall && { fontSize: 9.5 }, isTablet && { fontSize: 13 }]}
+            style={[s.chapterText, isSmall && { fontSize: 9 }, isTablet && { fontSize: 13 }]}
           >
             {referenceLabel}
           </TextR>
           {currentStreak > 0 && (
             <View style={[s.streakBadge, isSmall && { paddingHorizontal: 4, paddingVertical: 1 }]}>
-              <Flame size={isSmall ? 10 : 12} color="#D97706" fill="#F59E0B" />
-              <TextR style={[s.streakBadgeText, isSmall && { fontSize: 9 }]}>{translate('daysCount', { count: currentStreak })}</TextR>
+              <Flame size={isSmall ? 9 : 11} color="#D97706" fill="#F59E0B" />
+              <TextR numberOfLines={1} style={[s.streakBadgeText, isSmall && { fontSize: 8.5 }]}>{currentStreak}d</TextR>
             </View>
           )}
         </View>
 
         {/* Top Tactile Action Cluster */}
-        <View style={[s.headerActions, isSmall && { gap: 5 }]}>
+        <View style={[s.headerActions, isSmall && { gap: 4 }]}>
           <TactileRoundButton
             onPress={() => { if (!isBookmarked) void saveTeaching(verse).catch(() => undefined); progressStore.toggleBookmark(verse.id); }}
             accessibilityLabel={translateText(isBookmarked ? translate("Remove verse bookmark") : translate("Bookmark verse"))}
@@ -946,39 +909,58 @@ function GitaContent({ today }: { today: string }) {
               </View>
             </View>
           ) : null}
-          {narration ? <View style={s.recoveryActions}>
-            <Pressable accessibilityRole="button" onPress={isPlaying ? pause : resumeNarration} style={s.recoveryButton}><TextR>{translate(isPlaying ? 'Pause practice' : 'Resume practice')}</TextR></Pressable>
-            <Pressable accessibilityRole="button" onPress={playFromStart} style={s.recoveryButton}><TextR>{translate('Retry narration')}</TextR></Pressable>
-          </View> : null}
-          {readingAvailable ? <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: readingConfirmed }} onPress={() => setReadingConfirmed(value => !value)} style={[s.recoveryButton, readingConfirmed && { borderColor: C.greenDark }]}>
-            <TextR>{translate(narration ? 'Audio is unavailable. You can retry or complete after reading.' : 'Complete after reading')}</TextR>
-            <TextR>{translate(readingConfirmed ? 'Reading confirmed' : 'I have read and reflected on this teaching')}</TextR>
-          </Pressable> : null}
+          {narration ? (
+            <>
+              <View style={s.recoveryActions}>
+                <Pressable accessibilityRole="button"
+                  accessibilityState={{ disabled: playback.preparing || playback.state === 'loading' || playback.state === 'unavailable' }}
+                  disabled={playback.preparing || playback.state === 'loading' || playback.state === 'unavailable'}
+                  onPress={isPlaying ? pause : playback.state === 'finished' ? playFromStart : resumeNarration}
+                  style={s.recoveryButton}>
+                  <TextR style={s.recoveryButtonText}>{translate(isPlaying ? 'Pause' : playback.state === 'finished' ? 'Replay' : playback.state === 'paused' ? 'Resume' : 'Play')}</TextR>
+                </Pressable>
+                {readingAvailable ? <Pressable accessibilityRole="button" disabled={playback.preparing}
+                  accessibilityState={{ disabled: playback.preparing }} onPress={() => { void controllerRef.current?.retry(); }} style={s.recoveryButton}>
+                  <TextR style={s.recoveryButtonText}>{translate('Retry narration')}</TextR>
+                </Pressable> : null}
+              </View>
+            </>
+          ) : null}
+          {readingAvailable ? (
+            <View>
+              <TextR>{translateText(playback.reason || (narration ? 'Audio is unavailable. You can retry or complete after reading.' : 'A reviewed recording is not available for this verse yet.'))}</TextR>
+              <Pressable accessibilityRole="checkbox" accessibilityLabel={translate('I have read and reflected on this teaching.')}
+                accessibilityState={{ checked: readingConfirmed }} onPress={() => setReadingConfirmed(value => !value)}
+                style={[s.recoveryButton, readingConfirmed && { borderColor: C.greenDark }]}>
+                <TextR style={s.recoveryButtonText}>{readingConfirmed ? '✓ ' : '☐ '}{translate('I have read and reflected on this teaching.')}</TextR>
+              </Pressable>
+            </View>
+          ) : null}
 
           {/* ─── 3. Unified Sacred Shloka Sanctum ───────────────────────────── */}
           <View style={[s.shlokaCardWrapper, isCompact && { marginBottom: 10 }]}>
             <View
               style={[
                 s.shlokaCard3D,
-                isSmall && { paddingVertical: 12, paddingHorizontal: 10, borderRadius: 20 },
-                isTablet && { paddingVertical: 24, paddingHorizontal: 22, borderRadius: 28 },
-                !isSmall && !isTablet && isCompact && { paddingVertical: 14, paddingHorizontal: 12 },
+                isSmall && { paddingVertical: 14, paddingHorizontal: 12, borderRadius: 20 },
+                isTablet && { paddingVertical: 28, paddingHorizontal: 22, borderRadius: 28 },
+                !isSmall && !isTablet && isCompact && { paddingVertical: 16, paddingHorizontal: 14 },
               ]}
             >
               {/* Tab Switcher */}
-              <View style={[s.cardTabRow, isCompact && { marginBottom: 10 }]}>
+              <View style={[s.cardTabRow, isCompact && { marginBottom: 8 }]}>
                 <Pressable
                   accessibilityLabel={translateText(readerLabels.primary)}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: viewTab === "shloka" }}
                   onPress={() => selectTab("shloka")}
-                  style={[s.cardTab, isSmall && { paddingHorizontal: 13, paddingVertical: 5.5 }, isTablet && { paddingHorizontal: 24, paddingVertical: 9 }, viewTab === "shloka" && s.cardTabActive]}
+                  style={[s.cardTab, isSmall && { paddingHorizontal: 11, paddingVertical: 5 }, isTablet && { paddingHorizontal: 22, paddingVertical: 8 }, viewTab === "shloka" && s.cardTabActive]}
                 >
                   <TextR
                     style={[
                       s.cardTabText,
-                      isSmall && { fontSize: 13.5 },
-                      isTablet && { fontSize: 17 },
+                      isSmall && { fontSize: 12 },
+                      isTablet && { fontSize: 16 },
                       viewTab === "shloka" && s.cardTabTextActive,
                     ]}
                   >
@@ -991,13 +973,13 @@ function GitaContent({ today }: { today: string }) {
                   accessibilityRole="tab"
                   accessibilityState={{ selected: viewTab === "meaning" }}
                   onPress={() => selectTab("meaning")}
-                  style={[s.cardTab, isSmall && { paddingHorizontal: 13, paddingVertical: 5.5 }, isTablet && { paddingHorizontal: 24, paddingVertical: 9 }, viewTab === "meaning" && s.cardTabActive]}
+                  style={[s.cardTab, isSmall && { paddingHorizontal: 11, paddingVertical: 5 }, isTablet && { paddingHorizontal: 22, paddingVertical: 8 }, viewTab === "meaning" && s.cardTabActive]}
                 >
                   <TextR
                     style={[
                       s.cardTabText,
-                      isSmall && { fontSize: 13.5 },
-                      isTablet && { fontSize: 17 },
+                      isSmall && { fontSize: 12 },
+                      isTablet && { fontSize: 16 },
                       viewTab === "meaning" && s.cardTabTextActive,
                     ]}
                   >
@@ -1010,13 +992,13 @@ function GitaContent({ today }: { today: string }) {
                   accessibilityRole="tab"
                   accessibilityState={{ selected: viewTab === "padartha" }}
                   onPress={() => selectTab("padartha")}
-                  style={[s.cardTab, isSmall && { paddingHorizontal: 13, paddingVertical: 5.5 }, isTablet && { paddingHorizontal: 24, paddingVertical: 9 }, viewTab === "padartha" && s.cardTabActive]}
+                  style={[s.cardTab, isSmall && { paddingHorizontal: 11, paddingVertical: 5 }, isTablet && { paddingHorizontal: 22, paddingVertical: 8 }, viewTab === "padartha" && s.cardTabActive]}
                 >
                   <TextR
                     style={[
                       s.cardTabText,
-                      isSmall && { fontSize: 13.5 },
-                      isTablet && { fontSize: 17 },
+                      isSmall && { fontSize: 12 },
+                      isTablet && { fontSize: 16 },
                       viewTab === "padartha" && s.cardTabTextActive,
                     ]}
                   >
@@ -1026,17 +1008,17 @@ function GitaContent({ today }: { today: string }) {
               </View>
 
               {/* Central Dynamic Verse Stage */}
-              <View style={[s.wordStage, isCompact && { minHeight: 120, paddingVertical: 4 }]}>
+              <View style={[s.wordStage, isSmall && { minHeight: 110 }, isCompact && { minHeight: 125, paddingVertical: 4 }]}>
                 {viewTab === "shloka" && (
                   <Animated.View entering={FadeIn.duration(240)} style={s.sanskritList}>
-                    {sanskrit.length ? (
+                    {alignedCues(verse.sanskrit, sanskrit, verse.transliteration) ? (
                       sanskrit.map((segment, idx) => (
                         <SacredShlokaLine
                           key={String(segment.startMs) + segment.text}
                           segment={segment}
                           currentMs={currentMs}
                           isPlaying={isPlaying}
-                          transliteration={transliterationLines[idx]}
+                          transliteration={transliterationLines.filter(Boolean)[idx]}
                           isSmall={isSmall}
                           isTablet={isTablet}
                         />
@@ -1047,8 +1029,8 @@ function GitaContent({ today }: { today: string }) {
                           serif
                           style={[
                             s.staticSanskrit,
-                            isSmall && { fontSize: 20, lineHeight: 30 },
-                            isTablet && { fontSize: 27, lineHeight: 40 },
+                            isSmall && { fontSize: 19, lineHeight: 28 },
+                            isTablet && { fontSize: 28, lineHeight: 42 },
                           ]}
                         >
                           {verse.sanskrit}
@@ -1057,7 +1039,7 @@ function GitaContent({ today }: { today: string }) {
                           serif
                           style={[
                             s.staticTransliteration,
-                            isSmall && { fontSize: 13, lineHeight: 19 },
+                            isSmall && { fontSize: 12, lineHeight: 17 },
                             isTablet && { fontSize: 16.5, lineHeight: 24 },
                           ]}
                         >
@@ -1070,7 +1052,7 @@ function GitaContent({ today }: { today: string }) {
 
                 {viewTab === "meaning" && (
                   <Animated.View entering={FadeIn.duration(240)} style={s.meaningList}>
-                    {hindi.length ? (
+                    {alignedCues(verse.meaning, hindi) ? (
                       hindi.map((segment) => (
                         <MeaningSentenceRow
                           key={String(segment.startMs) + segment.text}
@@ -1085,8 +1067,8 @@ function GitaContent({ today }: { today: string }) {
                       <TextR
                         style={[
                           s.staticMeaning,
-                          isSmall && { fontSize: 15, lineHeight: 23 },
-                          isTablet && { fontSize: 19.5, lineHeight: 29 },
+                          isSmall && { fontSize: 14.5, lineHeight: 22 },
+                          isTablet && { fontSize: 21, lineHeight: 31 },
                         ]}
                       >
                         {verse.meaning}
@@ -1111,8 +1093,8 @@ function GitaContent({ today }: { today: string }) {
           </View>
 
           <Pressable
-            accessibilityHint={translate('Finish the narration or confirm offline reading. An alarm-led ritual earns 10 points once daily.')}
-            accessibilityLabel={translate("Complete today’s contemplation")}
+            accessibilityHint={translate('Finish the narration or confirm offline reading.')}
+            accessibilityLabel={translate(canCompleteGita(playedThroughMs, completionMs, readingAvailable && readingConfirmed) ? 'Complete today’s contemplation' : readingAvailable ? 'Confirm reading to complete' : readingAvailable ? 'Confirm reading to complete' : 'Finish narration to complete')}
             accessibilityRole="button"
             accessibilityState={{ disabled: !canCompleteGita(playedThroughMs, completionMs, readingAvailable && readingConfirmed) }}
             disabled={!canCompleteGita(playedThroughMs, completionMs, readingAvailable && readingConfirmed)}
@@ -1127,7 +1109,7 @@ function GitaContent({ today }: { today: string }) {
           >
             <CheckCircle2 size={isSmall ? 18 : isTablet ? 23 : 20} color={C.white} strokeWidth={2.4} />
             <TextR style={[s.completeButtonText, isSmall && { fontSize: 13.5 }, isTablet && { fontSize: 17 }]}>
-               {translate(canCompleteGita(playedThroughMs, completionMs, readingAvailable && readingConfirmed) ? "Complete today’s contemplation" : 'Finish narration to complete')} </TextR>
+               {translate(canCompleteGita(playedThroughMs, completionMs, readingAvailable && readingConfirmed) ? "Complete today’s contemplation" : readingAvailable ? 'Confirm reading to complete' : 'Finish narration to complete')} </TextR>
           </Pressable>
         </Animated.View>
       ) : (
@@ -1210,11 +1192,19 @@ function GitaContent({ today }: { today: string }) {
             </View>
           </View>
 
+          <WordMeaningsTray words={verse.words} onSelectWord={setSelectedWord} selectedWord={selectedWord} isSmall={isSmall} isTablet={isTablet} />
+          {narration && playback.reason ? <TextR>{translateText(playback.reason)}</TextR> : null}
+          {narration && readingAvailable ? <Pressable accessibilityRole="button" accessibilityState={{ disabled: playback.preparing }}
+            disabled={playback.preparing} onPress={() => { void controllerRef.current?.retry(); }} style={s.recoveryButton}>
+            <TextR style={s.recoveryButtonText}>{translate('Retry narration')}</TextR>
+          </Pressable> : null}
           {narration ? (
             <Pressable
-              accessibilityLabel={translate("Listen to recitation again")}
+              disabled={playback.preparing || playback.state === 'loading' || playback.state === 'unavailable'}
+              accessibilityState={{ disabled: playback.preparing || playback.state === 'loading' || playback.state === 'unavailable' }}
+              accessibilityLabel={translate(isPlaying ? 'Pause' : 'Replay')}
               accessibilityRole="button"
-              onPress={playFromStart}
+              onPress={isPlaying ? pause : playFromStart}
               style={({ pressed }) => [
                 s.relistenBtn,
                 isSmall && { paddingHorizontal: 14, paddingVertical: 8 },
@@ -1224,25 +1214,9 @@ function GitaContent({ today }: { today: string }) {
             >
               <RotateCcw size={isSmall ? 13 : isTablet ? 16 : 14.5} color={C.saffron} />
               <TextR style={[s.relistenText, isSmall && { fontSize: 12.5 }, isTablet && { fontSize: 15 }]}>
-                 {translate("Listen to recitation again")} </TextR>
+                 {translate(isPlaying ? 'Pause' : 'Replay')} </TextR>
             </Pressable>
-          ) : (
-            <Pressable
-              accessibilityLabel={translate("Review today’s verse")}
-              accessibilityRole="button"
-              onPress={() => setSessionComplete(false)}
-              style={({ pressed }) => [
-                s.relistenBtn,
-                isSmall && { paddingHorizontal: 14, paddingVertical: 8 },
-                isTablet && { paddingHorizontal: 26, paddingVertical: 13 },
-                pressed && s.pressed,
-              ]}
-            >
-              <RotateCcw size={isSmall ? 13 : isTablet ? 16 : 14.5} color={C.saffron} />
-              <TextR style={[s.relistenText, isSmall && { fontSize: 12.5 }, isTablet && { fontSize: 15 }]}>
-                 {translate("Review today’s verse")} </TextR>
-            </Pressable>
-          )}
+          ) : null}
         </Animated.View>
       )}
     </Screen>
@@ -1251,10 +1225,40 @@ function GitaContent({ today }: { today: string }) {
 
 // ─── Stylesheet ───────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  recoveryActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12, marginVertical: 8 },
-  recoveryButton: { minHeight: 44, padding: 12, borderRadius: 14, backgroundColor: C.sand, borderWidth: 1, borderColor: C.hairline, justifyContent: 'center', flexShrink: 1 },
+  recoveryActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginVertical: 4,
+  },
+  recoveryButton: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 248, 240, 0.95)",
+    borderWidth: 1,
+    borderColor: "rgba(229, 107, 39, 0.22)",
+    borderTopColor: "#FFFFFF",
+    borderBottomColor: "rgba(180, 125, 95, 0.25)",
+    borderBottomWidth: 1.5,
+    shadowColor: "#8C4010",
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+    justifyContent: "center",
+    alignItems: "center",
+    flexShrink: 1,
+  },
+  recoveryButtonText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#6D3212",
+  },
   screenContent: {
-    paddingBottom: 36,
+    paddingBottom: 24,
     maxWidth: 600,
     width: "100%",
     alignSelf: "center",
@@ -1305,17 +1309,20 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 6,
-    paddingHorizontal: 2,
+    paddingHorizontal: 0,
+    gap: 6,
   },
   chapterPill: {
     flex: 1,
+    minWidth: 0,
+    overflow: "hidden",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginHorizontal: 8,
-    gap: 7,
-    paddingHorizontal: 13,
-    paddingVertical: 7,
+    marginHorizontal: 4,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 999,
     backgroundColor: "rgba(255, 248, 240, 0.95)",
     borderWidth: 1.5,
@@ -1330,43 +1337,46 @@ const s = StyleSheet.create({
     elevation: 3,
   },
   chapterDotGlow: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: "rgba(229, 107, 39, 0.16)",
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
   chapterDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: C.saffron,
   },
   chapterText: {
+    flexShrink: 1,
     color: "#9A3C08",
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "800",
-    letterSpacing: 1.1,
+    letterSpacing: 0.4,
   },
   streakBadge: {
+    flexShrink: 0,
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
-    backgroundColor: "rgba(254, 236, 220, 0.9)",
+    gap: 2.5,
+    backgroundColor: "rgba(254, 236, 220, 0.92)",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 999,
-    marginLeft: 3,
+    marginLeft: 2,
   },
   streakBadgeText: {
     color: "#9A3C08",
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: "800",
   },
   headerActions: {
     flexDirection: "row",
-    gap: 7,
+    gap: 6,
   },
 
   // ─── Tactile Button Base ───────────────────────────────────────────────────
@@ -1414,14 +1424,14 @@ const s = StyleSheet.create({
     justifyContent: "center",
     position: "relative",
     marginTop: 2,
-    marginBottom: 4,
-    height: 210,
+    marginBottom: 6,
+    height: 235,
   },
   daisAuraHalo: {
     position: "absolute",
     alignSelf: "center",
-    width: 360,
-    height: 230,
+    width: "100%",
+    height: 255,
   },
   mascotTouch: {
     zIndex: 10,
@@ -1495,23 +1505,23 @@ const s = StyleSheet.create({
   // ─── Unified Sacred Shloka Card ────────────────────────────────────────────
   shlokaCardWrapper: {
     marginHorizontal: 0,
-    marginBottom: 14,
+    marginBottom: 10,
   },
   shlokaCard3D: {
     backgroundColor: "rgba(255, 252, 248, 0.98)",
     borderRadius: 24,
-    paddingVertical: 18,
+    paddingVertical: 20,
     paddingHorizontal: 16,
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.95)",
     borderTopColor: "#FFFFFF",
     borderBottomColor: "rgba(216, 144, 64, 0.4)",
-    borderBottomWidth: 3.5,
+    borderBottomWidth: 2.5,
     shadowColor: "#8C4010",
-    shadowOpacity: 0.16,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
     position: "relative",
     overflow: "hidden",
   },
@@ -1522,14 +1532,14 @@ const s = StyleSheet.create({
     alignSelf: "center",
     backgroundColor: "rgba(254, 236, 220, 0.75)",
     borderRadius: 999,
-    padding: 4.5,
-    marginBottom: 14,
+    padding: 3.5,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.9)",
   },
   cardTab: {
-    paddingHorizontal: 18,
-    paddingVertical: 7,
+    paddingHorizontal: 16,
+    paddingVertical: 6.5,
     borderRadius: 999,
   },
   cardTabActive: {
@@ -1541,7 +1551,7 @@ const s = StyleSheet.create({
     elevation: 3,
   },
   cardTabText: {
-    fontSize: 15.5,
+    fontSize: 14,
     fontWeight: "700",
     color: "#7D5845",
   },
@@ -1554,41 +1564,42 @@ const s = StyleSheet.create({
   wordStage: {
     minHeight: 140,
     justifyContent: "center",
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   sanskritList: {
-    gap: 16,
+    gap: 12,
     paddingVertical: 4,
+    paddingBottom: 8,
     alignItems: "center",
   },
   sacredLineWrap: {
-    paddingVertical: 4,
-    paddingHorizontal: 6,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
     alignItems: "center",
   },
   sacredLineSanskrit: {
-    fontSize: 24,
-    lineHeight: 36,
+    fontSize: 23.5,
+    lineHeight: 34,
     fontWeight: "600",
     color: "#7E6759",
     textAlign: "center",
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   sacredLineSanskritResting: {
     color: "#2E180D",
     fontWeight: "700",
-    fontSize: 25.5,
-    lineHeight: 39,
+    fontSize: 23.5,
+    lineHeight: 34,
   },
   sacredLineSanskritComplete: {
-    fontSize: 25,
-    lineHeight: 38,
+    fontSize: 23,
+    lineHeight: 33.5,
     color: "#3F2618",
     fontWeight: "700",
   },
   sacredLineSanskritActive: {
-    fontSize: 27.5,
-    lineHeight: 41,
+    fontSize: 25,
+    lineHeight: 36,
     color: "#842A04",
     fontWeight: "800",
     textShadowColor: "rgba(235, 110, 30, 0.2)",
@@ -1596,63 +1607,63 @@ const s = StyleSheet.create({
     textShadowRadius: 6,
   },
   sacredLinePhonetic: {
-    fontSize: 15,
+    fontSize: 14.5,
     color: "#9E877A",
     fontStyle: "italic",
     textAlign: "center",
-    marginTop: 6,
-    lineHeight: 21,
+    marginTop: 4,
+    lineHeight: 20.5,
   },
   sacredLinePhoneticResting: {
     color: "#5C4335",
-    fontSize: 15.5,
+    fontSize: 14.5,
     fontStyle: "italic",
-    lineHeight: 22.5,
+    lineHeight: 20.5,
   },
   sacredLinePhoneticComplete: {
-    fontSize: 15.5,
+    fontSize: 14.5,
     color: "#52372A",
-    lineHeight: 22.5,
+    lineHeight: 20.5,
   },
   sacredLinePhoneticActive: {
-    fontSize: 16.5,
+    fontSize: 15,
     color: "#6D3212",
     fontWeight: "600",
-    lineHeight: 23.5,
+    lineHeight: 21,
   },
   staticVerseBlock: {
     alignItems: "center",
-    gap: 10,
+    gap: 8,
     paddingHorizontal: 4,
   },
   staticSanskrit: {
     color: "#2E180D",
-    fontSize: 23,
-    lineHeight: 36,
+    fontSize: 23.5,
+    lineHeight: 34,
     fontWeight: "700",
     textAlign: "center",
   },
   staticTransliteration: {
     color: "#5C4335",
     fontSize: 14.5,
-    lineHeight: 22,
+    lineHeight: 20.5,
     fontStyle: "italic",
     textAlign: "center",
   },
 
   // ─── Bhavartha Meaning Stage ───────────────────────────────────────────────
   meaningList: {
-    gap: 16,
-    paddingVertical: 6,
-    paddingHorizontal: 6,
+    gap: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
   },
   meaningRow: {
-    paddingVertical: 4,
-    paddingHorizontal: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 4,
   },
   meaningSentenceText: {
-    fontSize: 17.5,
-    lineHeight: 27,
+    fontSize: 17,
+    lineHeight: 26,
     color: "#7E6759",
     fontWeight: "500",
     textAlign: "center",
@@ -1660,25 +1671,25 @@ const s = StyleSheet.create({
   meaningSentenceResting: {
     color: "#2E180D",
     fontWeight: "600",
-    fontSize: 18,
-    lineHeight: 28,
+    fontSize: 17,
+    lineHeight: 26,
   },
   meaningSentenceComplete: {
-    fontSize: 18,
-    lineHeight: 28,
+    fontSize: 17,
+    lineHeight: 26,
     color: "#3F2618",
     fontWeight: "600",
   },
   meaningSentenceActive: {
-    fontSize: 19.5,
-    lineHeight: 30,
+    fontSize: 18,
+    lineHeight: 27.5,
     color: "#842A04",
     fontWeight: "800",
   },
   staticMeaning: {
     color: C.ink,
     fontSize: 17,
-    lineHeight: 27,
+    lineHeight: 26,
     fontWeight: "600",
     textAlign: "center",
     paddingHorizontal: 4,
@@ -1713,7 +1724,6 @@ const s = StyleSheet.create({
   },
   padarthaChipsRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: 7,
     justifyContent: "center",
   },
@@ -1807,7 +1817,7 @@ const s = StyleSheet.create({
     borderColor: "rgba(255, 255, 255, 0.95)",
     borderTopColor: "#FFFFFF",
     borderBottomColor: "rgba(216, 144, 64, 0.4)",
-    borderBottomWidth: 3.5,
+    borderBottomWidth: 2.5,
     shadowColor: "#8C4010",
     shadowOpacity: 0.16,
     shadowRadius: 20,
@@ -1903,24 +1913,24 @@ const s = StyleSheet.create({
   },
 
   completeButton: {
-    minHeight: 56,
-    borderRadius: 28,
-    marginTop: 2,
+    minHeight: 52,
+    borderRadius: 26,
+    marginTop: 4,
     marginBottom: 8,
     paddingHorizontal: 18,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 9,
+    gap: 8,
     backgroundColor: C.saffron,
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.9)",
     borderBottomColor: "#A8470C",
     borderBottomWidth: 3,
     shadowColor: C.saffron,
-    shadowOpacity: 0.24,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
   completeButtonPressed: {
@@ -1928,12 +1938,15 @@ const s = StyleSheet.create({
     transform: [{ scale: 0.985 }],
   },
   completeButtonText: {
+    flexShrink: 1,
+    textAlign: "center",
     color: C.white,
-    fontSize: 15,
-    fontWeight: "900",
+    fontSize: 14.5,
+    fontWeight: "800",
   },
 
   relistenBtn: {
+    minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
