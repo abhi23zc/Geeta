@@ -20,6 +20,7 @@ import {
   FileText,
   Flower2,
   HelpCircle,
+  RotateCcw,
   Trophy,
   Users,
   Zap,
@@ -31,6 +32,7 @@ import {
   bestKey,
   continueSession,
   scoreSession,
+  restartActiveSession,
   submitAnswer,
 } from '@/features/quiz/engine';
 import { confirmAction } from '@/features/quiz/actions';
@@ -89,6 +91,42 @@ export default function Play() {
     if (router.canGoBack()) router.back();
     else router.replace('/quiz');
   };
+
+  const resetRound = () => {
+    if (busy || !session || session.phase === 'results') return;
+    const expectedId = session.id;
+    confirmAction(
+      t('Reset this quiz?', 'इस क्विज़ को रीसेट करें?'),
+      t(
+        'Start these same questions again from question 1. This round’s answers will be cleared. Saved questions, quiz history, learning progress and points will stay safe.',
+        'यही प्रश्न पहले प्रश्न से फिर शुरू होंगे। इस दौर के उत्तर मिट जाएंगे। सहेजे प्रश्न, क्विज़ इतिहास, सीखने की प्रगति और अंक सुरक्षित रहेंगे।'
+      ),
+      t('Reset quiz', 'क्विज़ रीसेट करें'),
+      () => {
+        if (!navigation.isFocused()) return;
+        void (async () => {
+          let restarted = false;
+          const success = await commit(p => {
+            const next = restartActiveSession(p, expectedId);
+            restarted = next !== p;
+            return next;
+          });
+          if (success && restarted) {
+            setSelection(null);
+            AccessibilityInfo.announceForAccessibility(t('Quiz restarted from question 1.', 'क्विज़ पहले प्रश्न से फिर शुरू हुई।'));
+          }
+        })();
+      }
+    );
+  };
+  const resetControl = session && session.phase !== 'results' ? (
+    <Pressable accessibilityRole="button" accessibilityLabel={t('Reset this quiz', 'इस क्विज़ को रीसेट करें')}
+      accessibilityState={{ disabled: busy }} disabled={busy} onPress={resetRound}
+      style={({ pressed }) => [s.resetButton, busy && { opacity: 0.5 }, pressed && { opacity: 0.75 }]}>
+      <RotateCcw size={18} color={C.primary} />
+      <Copy small style={s.resetButtonText}>{t('Reset', 'रीसेट')}</Copy>
+    </Pressable>
+  ) : null;
 
   const saveQuestion = () => {
     if (q) {
@@ -358,6 +396,7 @@ export default function Play() {
         title={t('Pass the phone', 'फोन आगे दें')}
         subtitle={t('Multiplayer Round', 'परिवार की क्विज़')}
         onBack={back}
+        rightElement={resetControl}
       >
         <Panel gold glow style={s.handoverCard}>
           <View style={s.handoverAvatarCircle}>
@@ -413,6 +452,7 @@ export default function Play() {
           : t('Discover & Learn', 'ज्ञान व संस्कार')
       }
       onBack={back}
+      rightElement={resetControl}
     >
       {/* Animated Top Progress Bar */}
       <QuizProgressBar
@@ -556,6 +596,13 @@ export default function Play() {
 }
 
 const s = StyleSheet.create({
+  resetButton: {
+    minHeight: 48, minWidth: 48, paddingHorizontal: 8,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+    borderRadius: 16, borderWidth: 1, borderColor: 'rgba(225, 205, 190, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+  },
+  resetButtonText: { color: C.primary, fontWeight: '700' },
   questionCard: {
     backgroundColor: 'rgba(255, 252, 248, 0.98)',
     borderRadius: 22,

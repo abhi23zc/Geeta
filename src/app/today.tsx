@@ -16,12 +16,11 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { usePathname, useRouter } from "expo-router";
+import { usePathname } from "expo-router";
 import {
   BookOpen,
   Check,
   ChevronDown,
-  ChevronRight,
   ChevronUp,
   Clock3,
   Dumbbell,
@@ -531,7 +530,6 @@ export default function Today() {
   const { width } = useWindowDimensions();
   const isSmall = width < 360;
   const isTablet = width >= 768;
-  const router = useRouter();
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) =>
@@ -549,18 +547,21 @@ export default function Today() {
   );
 
   const sections = useMemo(
-    () => [
-      {
-        title: translate("Your intentions"),
-        completed: false,
-        data: tasks.filter((task) => !task.done),
-      },
-      {
-        title: translate('completedSection', { count: done }),
-        completed: true,
-        data: expanded ? tasks.filter((task) => task.done) : [],
-      },
-    ],
+    () => {
+      if (tasks.length === 0) return [];
+      return [
+        {
+          title: translate("Your intentions"),
+          completed: false,
+          data: tasks.filter((task) => !task.done),
+        },
+        {
+          title: translate('completedSection', { count: done }),
+          completed: true,
+          data: expanded ? tasks.filter((task) => task.done) : [],
+        },
+      ];
+    },
     [tasks, done, expanded, translate],
   );
 

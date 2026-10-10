@@ -55,6 +55,16 @@ export function startSession(bank: QuizBank, progress: QuizProgress, options: St
     index: 0, answers: {}, acknowledged: [], phase: options.mode === 'turns' ? 'handover' : 'question', players, startedAt: now.toISOString(),
   };
 }
+/** Restart only an unfinished frozen round; learned progress and completed rewards stay intact. */
+export function restartActiveSession(progress: QuizProgress, expectedId: string, now = new Date(), random = Math.random): QuizProgress {
+  const session = progress.active;
+  if (!session || session.id !== expectedId || session.phase === 'results') return progress;
+  return { ...progress, active: { ...session,
+    id: `${session.id}:restart:${now.getTime()}-${random().toString(36).slice(2, 10)}`,
+    index: 0, answers: {}, acknowledged: [],
+    phase: session.mode === 'turns' ? 'handover' : 'question', startedAt: now.toISOString(),
+  } };
+}
 export function submitAnswer(progress: QuizProgress, option: string, today = dateKey()): QuizProgress {
   const session = progress.active;
   if (!session || session.phase !== 'question') return progress;

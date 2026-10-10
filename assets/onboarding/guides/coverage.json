@@ -1,0 +1,420 @@
+[
+  {
+    "manufacturer": "google",
+    "name": "Android / Pixel",
+    "sdkInt": 34,
+    "complete": false,
+    "pages": [
+      {
+        "id": "notifications",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "exact",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "channel",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "fullscreen",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "battery",
+        "screenshot": null,
+        "state": "capture-required"
+      }
+    ]
+  },
+  {
+    "manufacturer": "samsung",
+    "name": "Samsung",
+    "sdkInt": 34,
+    "complete": false,
+    "pages": [
+      {
+        "id": "notifications",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "exact",
+        "screenshot": "samsung-exact",
+        "state": "captured-example"
+      },
+      {
+        "id": "channel",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "fullscreen",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "battery",
+        "screenshot": "samsung-battery",
+        "state": "captured-example"
+      }
+    ]
+  },
+  {
+    "manufacturer": "xiaomi",
+    "name": "Xiaomi / Redmi / POCO",
+    "sdkInt": 34,
+    "complete": false,
+    "pages": [
+      {
+        "id": "notifications",
+        "screenshot": "xiaomi-miui14-notifications",
+        "state": "captured-example"
+      },
+      {
+        "id": "exact",
+        "screenshot": "xiaomi-miui14-exact",
+        "state": "captured-example"
+      },
+      {
+        "id": "channel",
+        "screenshot": "xiaomi-miui14-channel",
+        "state": "captured-example"
+      },
+      {
+        "id": "fullscreen",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "lockscreen",
+        "screenshot": "xiaomi-miui14-lockscreen",
+        "state": "captured-example"
+      },
+      {
+        "id": "background-popup",
+        "screenshot": "xiaomi-miui14-background-popup",
+        "state": "captured-example"
+      },
+      {
+        "id": "startup",
+        "screenshot": "xiaomi-miui14-startup",
+        "state": "captured-example"
+      },
+      {
+        "id": "battery",
+        "screenshot": "xiaomi-battery",
+        "state": "captured-example"
+      }
+    ]
+  },
+  {
+    "manufacturer": "oppo",
+    "name": "OPPO",
+    "sdkInt": 34,
+    "complete": false,
+    "pages": [
+      {
+        "id": "notifications",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "exact",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "channel",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "fullscreen",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "startup",
+        "screenshot": "oppo-autostart",
+        "state": "captured-example"
+      },
+      {
+        "id": "battery",
+        "screenshot": "oppo-battery",
+        "state": "captured-example"
+      }
+    ]
+  },
+  {
+    "manufacturer": "realme",
+    "name": "realme",
+    "sdkInt": 34,
+    "complete": false,
+    "pages": [
+      {
+        "id": "notifications",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "exact",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "channel",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "fullscreen",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "startup",
+        "screenshot": "realme-battery",
+        "state": "captured-example"
+      },
+      {
+        "id": "battery",
+        "screenshot": "realme-battery",
+        "state": "captured-example"
+      }
+    ]
+  },
+  {
+    "manufacturer": "oneplus",
+    "name": "OnePlus",
+    "sdkInt": 34,
+    "complete": false,
+    "pages": [
+      {
+        "id": "notifications",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "exact",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "channel",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "fullscreen",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "startup",
+        "screenshot": "oneplus-battery",
+        "state": "captured-example"
+      },
+      {
+        "id": "battery",
+        "screenshot": null,
+        "state": "capture-required"
+      }
+    ]
+  },
+  {
+    "manufacturer": "vivo",
+    "name": "Vivo / iQOO",
+    "sdkInt": 34,
+    "complete": false,
+    "pages": [
+      {
+        "id": "notifications",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "exact",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "channel",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "fullscreen",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "startup",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "battery",
+        "screenshot": "vivo-background",
+        "state": "captured-example"
+      }
+    ]
+  },
+  {
+    "manufacturer": "huawei",
+    "name": "Huawei",
+    "sdkInt": 34,
+    "complete": false,
+    "pages": [
+      {
+        "id": "notifications",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "exact",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "channel",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "fullscreen",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "startup",
+        "screenshot": "huawei-autostart",
+        "state": "captured-example"
+      },
+      {
+        "id": "battery",
+        "screenshot": null,
+        "state": "capture-required"
+      }
+    ]
+  },
+  {
+    "manufacturer": "honor",
+    "name": "Honor",
+    "sdkInt": 34,
+    "complete": false,
+    "pages": [
+      {
+        "id": "notifications",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "exact",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "channel",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "fullscreen",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "startup",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "battery",
+        "screenshot": null,
+        "state": "capture-required"
+      }
+    ]
+  },
+  {
+    "manufacturer": "unknown",
+    "name": "Unknown manufacturer",
+    "sdkInt": 34,
+    "complete": false,
+    "pages": [
+      {
+        "id": "notifications",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "exact",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "channel",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "fullscreen",
+        "screenshot": null,
+        "state": "capture-required"
+      },
+      {
+        "id": "battery",
+        "screenshot": null,
+        "state": "capture-required"
+      }
+    ]
+  },
+  {
+    "manufacturer": "xiaomi",
+    "name": "Xiaomi / Redmi / POCO",
+    "sdkInt": 33,
+    "complete": true,
+    "pages": [
+      {
+        "id": "notifications",
+        "screenshot": "xiaomi-miui14-notifications",
+        "state": "captured-example"
+      },
+      {
+        "id": "exact",
+        "screenshot": "xiaomi-miui14-exact",
+        "state": "captured-example"
+      },
+      {
+        "id": "channel",
+        "screenshot": "xiaomi-miui14-channel",
+        "state": "captured-example"
+      },
+      {
+        "id": "lockscreen",
+        "screenshot": "xiaomi-miui14-lockscreen",
+        "state": "captured-example"
+      },
+      {
+        "id": "background-popup",
+        "screenshot": "xiaomi-miui14-background-popup",
+        "state": "captured-example"
+      },
+      {
+        "id": "startup",
+        "screenshot": "xiaomi-miui14-startup",
+        "state": "captured-example"
+      },
+      {
+        "id": "battery",
+        "screenshot": "xiaomi-battery",
+        "state": "captured-example"
+      }
+    ]
+  }
+]

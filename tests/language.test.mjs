@@ -8,11 +8,11 @@ import { compileBank, TOPICS, validateBank } from '../src/features/quiz/bank.ts'
 import { emptyProgress, startSession, reconcileBank, submitAnswer, continueSession } from '../src/features/quiz/engine.ts';
 import { parseProgress } from '../src/features/quiz/storage.ts';
 import { taskDisplayTitle } from '../src/i18n/task-copy.ts';
-import { seedTasks, parseTasksData } from '../src/state/tasks-model.ts';
+import { sampleTasks, parseTasksData } from '../src/state/tasks-model.ts';
 const content = Object.fromEntries(await Promise.all(TOPICS.map(async t => [t.id, JSON.parse(await readFile(new URL(`../src/features/quiz/content/${t.id}.json`, import.meta.url), 'utf8'))])));
 const bank = compileBank(content);
 test('template display localizes without changing stored or user-authored text', () => {
-  const seed = seedTasks('2026-10-04');
+  const seed = sampleTasks('2026-10-04');
   const original = JSON.stringify(seed);
   assert.equal(taskDisplayTitle(seed.records[1], 'hinglish'), 'Project proposal poora karein');
   assert.equal(taskDisplayTitle(seed.records[1], 'hi'), 'परियोजना प्रस्ताव पूरा करें');

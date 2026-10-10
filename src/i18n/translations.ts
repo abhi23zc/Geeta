@@ -1,7 +1,12 @@
 import { interpolate, type AppLanguage } from './model.ts';
+import { onboardingCopy } from './onboarding-copy.ts';
 
 // App-owned copy only. User-authored and published sacred content must not pass through this catalog.
 export const catalog = {
+  ...onboardingCopy,
+  "Required access is ready": ["आवश्यक अनुमति तैयार है", "Zaroori permission taiyaar hai"],
+  "Alarm ritual": ["अलार्म साधना", "Alarm sadhana"],
+  "Go to homepage": ["होमपेज पर जाएं", "Homepage par jaayein"],
   "Connect to repair this recording, or complete by reading.": ["रिकॉर्डिंग ठीक करने के लिए इंटरनेट से जुड़ें, या पढ़कर पूरा करें।", "Recording theek karne ke liye internet se judein, ya padhkar poora karein."],
   "Matching recording metadata is unavailable. You can complete by reading.": ["इस रिकॉर्डिंग की जानकारी उपलब्ध नहीं है। आप पढ़कर पूरा कर सकते हैं।", "Is recording ki jaankari available nahi hai. Aap padhkar poora kar sakte hain."],
   "Recording downloads require Android. You can complete by reading.": ["रिकॉर्डिंग डाउनलोड के लिए Android आवश्यक है। आप पढ़कर पूरा कर सकते हैं।", "Recording download ke liye Android chahiye. Aap padhkar poora kar sakte hain."],
@@ -43,6 +48,9 @@ export const catalog = {
   "Each incomplete day lowers your tree by one level and resets the streak. Complete both practices to grow again. Partial days keep earned points.": ["हर अधूरे दिन वृक्ष एक स्तर घटता है और सिलसिला टूटता है। फिर बढ़ाने के लिए दोनों अभ्यास पूरे करें। अधूरे दिन के कमाए अंक बने रहते हैं।", "Har adhoore din ped ek level ghatta hai aur streak toot jaati hai. Phir badhane ke liye dono practices poori karein. Adhoore din ke kamaye points rehte hain."],
   "Ready to grow": ["बढ़ने को तैयार", "Badhne ko taiyaar"],
   "One more complete day": ["एक और पूरे अभ्यास वाला दिन", "Ek aur poore practice wala din"],
+  "Tree progress": ["वृक्ष की प्रगति", "Ped ki progress"],
+  "Tree complete": ["वृक्ष पूरा हुआ", "Ped poora hua"],
+  "One more complete day to reach Level {count}.": ["स्तर {count} तक पहुंचने के लिए एक और दिन दोनों अभ्यास पूरे करें।", "Level {count} tak pahunchne ke liye ek aur din dono practices poori karein."],
   "First milestone bonus": ["पहली उपलब्धि का बोनस", "Pehli milestone ka bonus"],
   "Today’s practice": ["आज का अभ्यास", "Aaj ki practice"],
   "One day of intention. A beginning.": ["संकल्प का पहला दिन। एक शुरुआत।", "Sankalp ka pehla din. Ek shuruaat."],

@@ -43,6 +43,9 @@ export type AlarmCapabilityStatus = {
   batteryOptimizationExempt: boolean;
   sdkInt: number;
   manufacturer: string;
+  brand?: string;
+  model?: string;
+  softwareVersion?: string;
   oemGuidance: boolean;
 };
 
@@ -81,7 +84,8 @@ export type AlarmHomeSnapshot = {
   scheduleError?: string | null;
 };
 
-export type SettingsDestination = { destination: string; fallback: boolean };
+export type SettingsDestination = { destination: string; fallback: boolean; requestedStep?: string };
+export type AlarmReliabilitySetting = "notifications" | "exact" | "channel" | "fullscreen" | "startup" | "battery" | "popup";
 
 type AlarmEvents = {
   alarmPresentationChanged(state: AlarmPresentationState): void;
@@ -128,6 +132,7 @@ declare class MorningAlarmNativeModule extends NativeModule<AlarmEvents> {
   openNotificationSettings(): Promise<SettingsDestination>;
   openNotificationChannelSettings(): Promise<SettingsDestination>;
   notifyWakeScreenReady(): Promise<void>;
+  openAlarmReliabilitySettings(stepId: AlarmReliabilitySetting): Promise<SettingsDestination>;
   openAutoStartSettings(): Promise<SettingsDestination>;
   openOemPermissionSettings(): Promise<SettingsDestination>;
   openBatterySettings(): Promise<SettingsDestination>;
@@ -241,6 +246,11 @@ export async function requestAlarmPermission() {
   const current = await Notifications.getPermissionsAsync();
   if (current.granted) return true;
   return (await Notifications.requestPermissionsAsync()).granted;
+}
+
+export async function canAskAlarmNotificationPermission() {
+  if (Platform.OS !== 'android') return false;
+  return (await Notifications.getPermissionsAsync()).canAskAgain;
 }
 
 export async function scheduleRecurringAlarm({
@@ -385,4 +395,14 @@ export async function migrateLegacyAlarm(legacy: LegacyAlarm) {
     await AsyncStorage.setItem(MIGRATION_KEY, "1");
   }
   return NativeAlarm.getConfig();
+}
+
+/** Older installed binaries remain usable while the updated bridge is rolled out. */
+export async function openAlarmReliabilitySettings(step: AlarmReliabilitySetting) {
+  if (!NativeAlarm) return undefined;
+  if (NativeAlarm.openAlarmReliabilitySettings) return NativeAlarm.openAlarmReliabilitySettings(step);
+  const action = { notifications: openNotificationSettings, exact: openExactAlarmSettings,
+    channel: openNotificationChannelSettings, fullscreen: openFullScreenIntentSettings,
+    startup: openAutoStartSettings, battery: openBatterySettings, popup: openOemPermissionSettings }[step];
+  return action();
 }

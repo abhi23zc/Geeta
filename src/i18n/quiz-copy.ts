@@ -1,4 +1,9 @@
 export const quizHinglish: Record<string, string> = {
+  'Reset this quiz': 'Is quiz ko reset karein',
+  'Reset this quiz?': 'Is quiz ko reset karein?',
+  'Quiz restarted from question 1.': 'Quiz pehle question se phir shuru hui.',
+  'Start these same questions again from question 1. This round’s answers will be cleared. Saved questions, quiz history, learning progress and points will stay safe.': 'Yehi questions pehle question se phir shuru honge. Is round ke answers clear honge. Saved questions, quiz history, learning progress aur points safe rahenge.',
+
   'This saved question is shown in English because its Hinglish version is unavailable.': 'Hinglish version available nahi hai, isliye yeh saved question English mein dikhaya hai.',
   'Knowledge collection': 'Gyaan collection',
   'Complete four different lessons in a topic to unlock each knowledge card.': 'Har knowledge card unlock karne ke liye topic ke chaar alag lessons poore karein.',

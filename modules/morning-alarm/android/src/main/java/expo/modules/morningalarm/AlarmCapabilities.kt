@@ -33,6 +33,9 @@ object AlarmCapabilities {
       "batteryOptimizationExempt" to context.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName),
       "sdkInt" to Build.VERSION.SDK_INT,
       "manufacturer" to Build.MANUFACTURER,
+      "brand" to Build.BRAND,
+      "model" to Build.MODEL,
+      "softwareVersion" to Build.VERSION.RELEASE,
       "oemGuidance" to true,
     )
   }

@@ -139,7 +139,6 @@ export default function ProgressScreen() {
 
             {/* Balanced Right Level Status Badge */}
             <View style={s.statusBadgeRight}>
-              {/* <Sparkles size={13} color="#92400E" /> */}
               <TextR style={s.statusBadgeRightText}>
                 {t("Level {count} of 30", {
                   count: formatNumber(p.tree.level),

@@ -90,10 +90,10 @@ test('complete text requires exact cue coverage and line alignment; one cue cann
 });
 test('tab changes cannot recreate focus callbacks or status subscriptions; replay never clears completion', () => {
   const screen = readFileSync(new URL('../src/app/gita.tsx', import.meta.url), 'utf8');
-  assert.match(screen, /subscription.remove\(\); controller.dispose\(\);[\s\S]*?\}, \[player, restored, sessionId, verse\]\)/);
+  assert.match(screen, /controller.dispose\(\);[\s\S]*?subscription.remove\(\);[\s\S]*?\}, \[player, restored, sessionId, verse\]\)/);
   const replay = screen.slice(screen.indexOf('const playFromStart'), screen.indexOf('const selectTab'));
   assert.doesNotMatch(replay, /setSessionComplete|setReadingAvailable|setReadingConfirmed|setViewTab/);
-  assert.match(screen, /sessionComplete \|\| completingReward.current/);
+  assert.match(screen, /sessionComplete\s*\|\|\s*completingReward.current/);
 });
 test('restored readiness remains paused until Resume and seeks only to retained evidence', async () => {
   const h = harness({ positionMs: 400, throughMs: 400, initiallyPaused: true });
@@ -142,4 +142,40 @@ test('a newer Play settles an older readiness wait and only the newest command c
   const first = h.controller.play(); const second = h.controller.play(); await first;
   h.loaded(true); h.status(0); await second;
   assert.equal(h.calls.filter(call => call === 'play').length, 1);
+});
+test('released native getters and methods cannot break blur or repeated disposal', async () => {
+  let released = false, finishSeek, views = 0;
+  const player = {
+    get id() { if (released) throw new Error('Cannot use shared object that was already released'); return 'captured-id'; },
+    get isLoaded() { if (released) throw new Error('released'); return true; },
+    pause() { if (released) throw new Error('released'); },
+    play() { assert.equal(released, false); },
+    seekTo: () => new Promise(resolve => { finishSeek = resolve; }),
+    replace() { assert.equal(released, false); },
+  };
+  const playerId = player.id, events = [];
+  const controller = createGitaPlayback({ narration, player, eligible: () => true,
+    changed: () => views++, diagnostic: event => events.push({ event, player: playerId }),
+    prepare: async () => ({ narration, release() {} }), repaired: async () => {} });
+  const pending = controller.play(); await flush(); released = true;
+  assert.doesNotThrow(() => controller.cancel());
+  const beforeDispose = views;
+  assert.doesNotThrow(() => { controller.dispose(); controller.cancel(); controller.dispose(); });
+  finishSeek(); await pending;
+  assert.equal(views, beforeDispose); assert.ok(events.every(event => event.player === 'captured-id'));
+  // A queued native event must be ignored before even inspecting its properties.
+  assert.doesNotThrow(() => controller.observe(new Proxy({}, { get() { throw new Error('released event'); } })));
+});
+test('diagnostic exceptions cannot interrupt cancellation or single-owner pin release', async () => {
+  let released = 0;
+  const h = harness({ diagnostic() { throw new Error('logging failure'); }, prepare: async () => ({ narration, release() { released++; } }) });
+  const pending = h.controller.retry(); await flush(); h.loaded(true); h.status(0); await pending;
+  assert.doesNotThrow(() => h.controller.cancel()); assert.equal(h.controller.getView().state, 'paused');
+  h.controller.dispose(); h.controller.dispose(); assert.equal(released, 1);
+});
+test('screen diagnostics use the captured ID and clear the controller before native teardown', () => {
+  const screen = readFileSync(new URL('../src/app/gita.tsx', import.meta.url), 'utf8');
+  assert.match(screen, /const playerId = player.id;/);
+  assert.doesNotMatch(screen, /player:\s*player.id/);
+  assert.match(screen, /if \(controllerRef.current === controller\) controllerRef.current = null;\s*controller.dispose\(\);/);
 });

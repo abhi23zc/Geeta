@@ -2,14 +2,20 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   seedTasks,
+  sampleTasks,
   tasksForDate,
   toggleTaskCompletion,
   parseTasksData,
   validTaskInput,
 } from "../src/state/tasks-model.ts";
 
-test("starter intentions are incomplete and ordered by scheduled time", () => {
+test("seedTasks initializes with an empty task list", () => {
   const tasks = tasksForDate(seedTasks("2026-10-03"), "2026-10-03");
+  assert.equal(tasks.length, 0);
+});
+
+test("starter sample intentions are incomplete and ordered by scheduled time", () => {
+  const tasks = tasksForDate(sampleTasks("2026-10-03"), "2026-10-03");
   assert.equal(tasks.length, 4);
   assert.ok(tasks.every((task) => !task.done));
   assert.deepEqual(
@@ -20,7 +26,7 @@ test("starter intentions are incomplete and ordered by scheduled time", () => {
 
 test("daily completion resets on the next local date and history survives", () => {
   const data = toggleTaskCompletion(
-    seedTasks("2026-10-03"),
+    sampleTasks("2026-10-03"),
     "surya",
     "2026-10-03",
   );
@@ -33,7 +39,7 @@ test("daily completion resets on the next local date and history survives", () =
 });
 
 test("one-time intentions carry forward until completion and can be unchecked that day", () => {
-  let data = seedTasks("2026-10-03");
+  let data = sampleTasks("2026-10-03");
   data.records[1].recurrence = "once";
   assert.ok(
     tasksForDate(data, "2026-10-05").some((task) => task.id === "proposal"),
@@ -55,7 +61,7 @@ test("one-time intentions carry forward until completion and can be unchecked th
 
 test("archiving preserves earlier completion but removes current and future occurrences", () => {
   const data = toggleTaskCompletion(
-    seedTasks("2026-10-03"),
+    sampleTasks("2026-10-03"),
     "surya",
     "2026-10-03",
   );
@@ -70,7 +76,7 @@ test("archiving preserves earlier completion but removes current and future occu
 });
 
 test("rapid toggles retain final state and unknown IDs never create completion records", () => {
-  let data = seedTasks("2026-10-03");
+  let data = sampleTasks("2026-10-03");
   for (let i = 0; i < 101; i++)
     data = toggleTaskCompletion(data, "read", "2026-10-03");
   assert.deepEqual(data.completions.read, ["2026-10-03"]);
@@ -100,7 +106,7 @@ test("invalid titles, times, categories, versions and dates are rejected", () =>
     "{}",
     '{"version":2}',
     JSON.stringify({
-      ...seedTasks("2026-10-03"),
+      ...sampleTasks("2026-10-03"),
       completions: { surya: ["2026-02-30"] },
     }),
   ])
@@ -108,7 +114,7 @@ test("invalid titles, times, categories, versions and dates are rejected", () =>
 });
 
 test("large lists keep scheduled intentions first and Anytime last", () => {
-  const data = seedTasks("2026-10-03");
+  const data = sampleTasks("2026-10-03");
   for (let i = 0; i < 100; i++)
     data.records.push({
       id: `extra-${i}`,

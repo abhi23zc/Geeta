@@ -3,7 +3,7 @@ import test from 'node:test';
 import { alarmDeviceProfile } from '../src/services/alarm-device.ts';
 
 test('manufacturer aliases share phone guidance and confirmation namespace', () => {
-  for (const [expected, brands] of Object.entries({ xiaomi: ['Xiaomi', 'Redmi', 'POCO'], samsung: ['SAMSUNG'], oppo: ['OPPO', 'Realme', 'OnePlus'], vivo: ['vivo', 'iQOO'], huawei: ['Huawei', 'Honor'] })) {
+  for (const [expected, brands] of Object.entries({ xiaomi: ['Xiaomi', 'Redmi', 'POCO'], samsung: ['SAMSUNG'], oppo: ['OPPO'], realme: ['Realme'], oneplus: ['OnePlus'], vivo: ['vivo', 'iQOO'], huawei: ['Huawei'], honor: ['Honor'] })) {
     for (const brand of brands) {
       const profile = alarmDeviceProfile(brand);
       assert.equal(profile.id, expected);

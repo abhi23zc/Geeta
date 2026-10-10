@@ -1,6 +1,8 @@
+import { AlarmReliabilityPrompt } from "@/features/onboarding/alarm-reliability";
 import { StorageRecoveryNotice } from '@/components/storage-recovery-notice';
 import { useGrowthFocusTarget } from '@/features/progress/tree/focus-target';
 import { useLanguage } from '@/i18n/provider';
+import { useOnboarding } from '@/features/onboarding/provider';
 import { translate, type TranslationKey } from '@/i18n/translations';
 import type { AppLanguage } from '@/i18n/model';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -149,6 +151,7 @@ export default function Home() {
   useGrowthFocusTarget(growthFocus);
   const { t: translate, text: translateText, language } = useLanguage();
   const router = useRouter();
+  const introduction = useOnboarding();
   const { width } = useWindowDimensions();
   const isSmall = width < 360;
   const greetingInfo = useMemo(() => getGreetingInfo(), []);
@@ -318,6 +321,10 @@ export default function Home() {
       />
 
       {/* 🪷 Enhanced Daily Goal & Streak Stepper Card */}
+      <Pressable accessibilityRole="button" accessibilityState={{ disabled: introduction.busy }} disabled={introduction.busy} onPress={() => { void introduction.replay(); }} style={{ minHeight: 48, marginHorizontal: 24, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <BookOpen size={18} color={C.primary} /><TextR style={{ color: C.primary, fontWeight: '700', flexShrink: 1 }}>{translate('App introduction')}</TextR>
+      </Pressable>
+      {introduction.error && <TextR accessibilityRole="alert" style={{ paddingHorizontal: 24, color: '#9D2525' }}>{translate('Introduction could not be saved. Please retry.')}</TextR>}
       <DailyGoalCard link={true} />
 
       {/* Devotional Hero Alarm Card */}
@@ -427,6 +434,8 @@ export default function Home() {
         {displayedAlarmError && <TextR style={s.alarmErrorText}>{translateText(displayedAlarmError)}</TextR>}
       </Pressable>
 
+      <AlarmReliabilityPrompt onPress={() => router.navigate('/alarm/help')} />
+
       {/* Awakening Vibe Banner */}
       <View style={s.vibeCard}>
         <View style={s.diyaGlowCircle}>
@@ -535,6 +544,11 @@ export default function Home() {
         </View>
       </View>
 
+      <Link href="/image-credits" asChild>
+        <Pressable accessibilityRole="link" style={{ alignSelf: 'center', minHeight: 48, justifyContent: 'center', paddingHorizontal: 16 }}>
+          <TextR style={{ fontSize: 12, color: C.muted }}>{translate("Image credits")}</TextR>
+        </Pressable>
+      </Link>
     </Screen>
   );
 }

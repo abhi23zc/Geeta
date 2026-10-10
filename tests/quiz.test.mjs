@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { compileBank, TOPICS, validateBank } from '../src/features/quiz/bank.ts';
-import { emptyProgress, startSession, submitAnswer, continueSession, revisionPool, reconcileBank, dateKey } from '../src/features/quiz/engine.ts';
+import { emptyProgress, startSession, submitAnswer, continueSession, revisionPool, reconcileBank, dateKey, restartActiveSession } from '../src/features/quiz/engine.ts';
+import { withQuizReward } from '../src/features/progress/quiz-receipts.ts';
 import { createQuizStorage, parseProgress } from '../src/features/quiz/storage.ts';
 
 const content = Object.fromEntries(await Promise.all(TOPICS.map(async t => [t.id, JSON.parse(await readFile(new URL(`../src/features/quiz/content/${t.id}.json`, import.meta.url), 'utf8'))])));
@@ -184,4 +185,52 @@ test('content correction changes revision while explicit question IDs remain sta
 test('additive v1 migration retains existing quiz data', () => {
   const p = emptyProgress(); delete p.bests;
   assert.deepEqual(parseProgress(JSON.stringify(p)), emptyProgress());
+});
+
+
+test('reset restarts the same frozen quiz without erasing saved learning or other quiz data', () => {
+  for (const mode of ['quick', 'journey', 'revision', 'together', 'turns']) {
+    const previous = finish(begin());
+    previous.saved = bank.questions.slice(0, 10).map(q => q.id);
+    previous.pendingRewards = [{ id: 'quiz:earlier', kind: 'quiz', completedAt: now.toISOString() }];
+    const options = mode === 'journey' ? { lesson: bank.lessons[0].id } : mode === 'revision' ? { revision: 'saved' } : mode === 'turns' ? { players: ['One', 'Two'] } : {};
+    let progress = begin(mode, options, previous);
+    if (progress.active.phase === 'handover') progress = { ...progress, active: { ...progress.active, phase: 'question' } };
+    progress = submitAnswer(progress, progress.active.questions[0].correct);
+    progress = continueSession(progress, bank);
+    const before = structuredClone(progress);
+    const restarted = restartActiveSession(progress, progress.active.id, new Date(2026, 9, 5), random);
+    assert.equal(restarted.active.index, 0);
+    assert.deepEqual(restarted.active.answers, {});
+    assert.deepEqual(restarted.active.acknowledged, []);
+    assert.equal(restarted.active.phase, mode === 'turns' ? 'handover' : 'question');
+    assert.equal(restarted.active.questions, progress.active.questions);
+    assert.equal(restarted.active.players, progress.active.players);
+    assert.notEqual(restarted.active.id, progress.active.id);
+    assert.deepEqual({ ...restarted, active: progress.active }, progress);
+    assert.deepEqual(progress, before);
+    assert.deepEqual(parseProgress(JSON.stringify(restarted)), restarted);
+    assert.equal(withQuizReward(progress, restarted, now.toISOString()), restarted);
+  }
+});
+test('reset ignores results and stale confirmation dialogs without modifying the current round', () => {
+  const progress = begin();
+  const restarted = restartActiveSession(progress, progress.active.id, now, random);
+  assert.equal(restartActiveSession(restarted, progress.active.id), restarted);
+  const again = restartActiveSession(restarted, restarted.active.id, now, random);
+  assert.notEqual(again.active.id, restarted.active.id);
+  const completed = finish(progress);
+  assert.equal(restartActiveSession(completed, completed.active.id), completed);
+  const empty = emptyProgress(); assert.equal(restartActiveSession(empty, 'missing'), empty);
+});
+test('failed reset persistence leaves the stored round available for retry', async () => {
+  let stored = JSON.stringify(begin()), fail = true;
+  const original = stored;
+  const storage = createQuizStorage(async raw => { if (fail) throw new Error('disk unavailable'); stored = raw; });
+  const current = parseProgress(stored);
+  const restarted = restartActiveSession(current, current.active.id, now, random);
+  await assert.rejects(storage.commit(restarted), /disk unavailable/);
+  assert.equal(stored, original);
+  fail = false; await storage.commit(restarted);
+  assert.deepEqual(parseProgress(stored).active, restarted.active);
 });

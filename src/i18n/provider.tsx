@@ -7,6 +7,7 @@ import { setTranslationLanguage, translate, translateText, type TranslationKey }
 
 import { alarmLanguageBootstrap } from './alarm-bootstrap';
 import { useAlarmPresentation } from '@/navigation/alarm-presentation';
+import { releaseStartupSplash } from '@/features/onboarding/startup-splash';
 
 type LanguageContext = {
   language: AppLanguage; busy: boolean; error: string | null;
@@ -51,10 +52,11 @@ export function LanguageProvider({ children }: React.PropsWithChildren) {
     alive.current = true;
     writer.current = createLanguageWriter(next => AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, JSON.stringify(next)), publish, () => hydrated.current);
     const timer = setTimeout(() => { void hydrate(); }, 0);
+    const deadline = setTimeout(() => { if (alive.current && !hydrated.current) setError('Language preference could not be loaded. Please retry.'); }, 5000);
     const listener = AppState.addEventListener('change', state => {
       if (state === 'active' && hydrated.current) syncNative(languageRef.current);
     });
-    return () => { alive.current = false; clearTimeout(timer); listener.remove(); };
+    return () => { alive.current = false; clearTimeout(timer); clearTimeout(deadline); listener.remove(); };
   }, [hydrate, publish, syncNative]);
   const setLanguage = useCallback(async (next: AppLanguage) => {
     if (!hydrated.current) return false;
@@ -67,7 +69,7 @@ export function LanguageProvider({ children }: React.PropsWithChildren) {
   const text = useCallback((value: string | undefined) => translateText(value, language), [language]);
   const formatDate = useCallback((date: Date, options?: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(language === 'hi' ? 'hi-IN-u-nu-latn' : 'en-IN', options).format(date), [language]);
   const formatNumber = useCallback((value: number) => new Intl.NumberFormat(language === 'hi' ? 'hi-IN-u-nu-latn' : 'en-IN').format(value), [language]);
-  if (!ready && !bootstrap.immediate) return <View style={{ flex: 1, backgroundColor: '#FFF8F0', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 20 }}>
+  if (!ready && !bootstrap.immediate) return <View onLayout={releaseStartupSplash} style={{ flex: 1, backgroundColor: '#FFF9F5', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 20 }}>
     {error ? <><Text accessibilityRole="alert">{error}</Text><Pressable accessibilityRole="button" onPress={() => { setError(null); void hydrate(); }} style={{ minHeight: 48, padding: 16 }}><Text>Retry / फिर प्रयास करें / Phir try karein</Text></Pressable></> : <ActivityIndicator accessibilityLabel="Loading language / भाषा लोड हो रही है" />}
   </View>;
   return <Context.Provider value={{ language, setLanguage, busy: busy || !ready, error, nativeSyncError, t, text, formatDate, formatNumber }}>{children}

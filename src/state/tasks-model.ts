@@ -84,7 +84,15 @@ export function parseTasksData(raw: string): TasksData {
   return data;
 }
 
-export function seedTasks(date: string): TasksData {
+export function seedTasks(_date?: string): TasksData {
+  return {
+    version: 1,
+    records: [],
+    completions: {},
+  };
+}
+
+export function sampleTasks(date: string): TasksData {
   const definitions: (TaskInput & { id: string })[] = [
     {
       id: "surya",

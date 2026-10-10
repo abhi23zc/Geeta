@@ -4,25 +4,26 @@ import { StorageRecoveryNotice } from '@/components/storage-recovery-notice';
 import { useLanguage } from '@/i18n/provider';
 import { translate } from '@/i18n/translations';
 import type { AppLanguage } from '@/i18n/model';
-import { useNavigation } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLocalSearchParams, useNavigation } from "expo-router";
+import { useOnboarding } from '@/features/onboarding/provider';
+import { OnboardingButton } from '@/features/onboarding/button';
+import { needsIntroduction } from '@/features/onboarding/model';
+import { useIsFocused } from 'expo-router/react-navigation';
 import {
   AlarmClockPlus,
   ArrowLeft,
   BellRing,
   Check,
-  ChevronDown,
-  ChevronUp,
   Flame,
   Leaf,
-  ShieldCheck,
   Sun,
   Wind,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   AppState,
+  BackHandler,
   Image,
   Pressable,
   StyleSheet,
@@ -32,25 +33,14 @@ import {
 
 import { MORNING_RITUAL_LOGO, Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
-import { replaceAppRoute } from "@/navigation/route-actions";
+import { pushAppRoute, replaceAppRoute } from "@/navigation/route-actions";
 import {
   ALARM_DAYS,
   AlarmDayId,
-  AlarmCapabilityStatus,
-  getNativeAlarmConfig,
+  getAlarmPresentationState,
   getAlarmCapabilityStatus,
-  openAutoStartSettings,
-  openBatterySettings,
-  openExactAlarmSettings,
-  openFullScreenIntentSettings,
-  openNotificationChannelSettings,
-  openNotificationSettings,
-  openOemPermissionSettings,
   scheduleRecurringAlarm,
-  scheduleTestAlarm,
-  SettingsDestination,
 } from "@/services/alarm";
-import { alarmDeviceProfile } from "@/services/alarm-device";
 import { useRitual } from "@/state/ritual-store";
 import { useContent } from "@/state/content-store";
 
@@ -92,7 +82,6 @@ const modes: {
   },
 ];
 
-const OEM_CONFIRMED_KEY = "morning-ritual:phone-confirmations-v2";
 
 const HOURS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
@@ -201,45 +190,6 @@ function formatDiff(diffMs: number, language: AppLanguage): string {
   return translate('alarmIn', { duration: parts.join(' ') }, language);
 }
 
-function ReadinessRow({
-  label,
-  ready,
-  onPress,
-  status,
-}: {
-  label: string;
-  ready: boolean;
-  onPress: () => void | Promise<void>;
-  status?: string;
-}) {
-  const { t: translate, text: translateText } = useLanguage();
-  return (
-    <View style={s.readinessRow}>
-      <View style={s.readinessRowLeft}>
-        <View style={[s.readinessStatus, ready && s.readinessStatusReady]}>
-          {ready ? <Check size={13} color={C.white} strokeWidth={3} /> : null}
-        </View>
-        <View style={s.readinessTextGroup}>
-          <TextR style={s.readinessLabel} numberOfLines={2}>
-            {label}
-          </TextR>
-          <TextR style={[s.readinessSubStatus, ready && s.readinessSubStatusReady]}>
-            {status ?? (ready ? translate("Verified") : translate("Needs action"))}
-          </TextR>
-        </View>
-      </View>
-      <Pressable
-        accessibilityHint={translate('androidSettingsFor', { label })}
-        accessibilityLabel={translateText(`${ready ? translate("Review") : translate("Set up")} ${label}`)}
-        accessibilityRole="button"
-        onPress={onPress}
-        style={({ pressed }) => [s.settingsButton, pressed && s.pressed]}
-      >
-        <TextR style={s.settingsButtonText}>{ready ? translate("Review") : translate("Open settings")}</TextR>
-      </Pressable>
-    </View>
-  );
-}
 
 export default function Setup() {
   const { t: translate } = useLanguage();
@@ -259,6 +209,16 @@ export default function Setup() {
 }
 
 function SetupContent() {
+  const { entry } = useLocalSearchParams<{ entry?: string }>();
+  const onboarding = useOnboarding();
+  const onboardingMode = entry === 'onboarding' && !!onboarding.record && needsIntroduction(onboarding.record);
+  const focused = useIsFocused();
+  const commandGeneration = useRef(0);
+  useEffect(() => {
+    const invalidate = () => { commandGeneration.current++; };
+    return invalidate;
+  }, [focused]);
+  const draft = onboardingMode ? onboarding.record?.draft : undefined;
   const { language, t: translate, text: translateText } = useLanguage();
   const navigation = useNavigation("/");
   const { width } = useWindowDimensions();
@@ -273,7 +233,7 @@ function SetupContent() {
     setAlarmDays,
     setAlarmEnabled,
   } = useRitual();
-  const parsed = useMemo(() => parseAlarm(alarmTime), [alarmTime]);
+  const parsed = useMemo(() => parseAlarm(draft?.time ?? alarmTime), [draft?.time, alarmTime]);
   const [pickedTime, setPickedTime] = useState(() =>
     (parsed.hour % 12 + (parsed.meridiem === 'PM' ? 12 : 0)) * 60 + parsed.minute);
   const hour24 = Math.floor(pickedTime / 60);
@@ -288,21 +248,29 @@ function SetupContent() {
   const [days, setDays] = useState(
     ALARM_DAYS.map((day) => ({
       ...day,
-      selected: alarmDays.includes(day.id),
+      selected: (draft?.days ?? alarmDays).includes(day.id),
     })),
   );
   const [mode, setMode] = useState<ModeKey>(
-    modes.find((item) => item.tone === alarmTone)?.key ?? "gita",
+    modes.find((item) => item.tone === (draft?.tone ?? alarmTone))?.key ?? "gita",
   );
   const [initializing, setInitializing] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [capabilities, setCapabilities] = useState<AlarmCapabilityStatus | null>(null);
-  const [confirmations, setConfirmations] = useState<Record<string, boolean>>({});
-  const [extraExpanded, setExtraExpanded] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [readinessExpanded, setReadinessExpanded] = useState(false);
   const [readinessMessage, setReadinessMessage] = useState("");
   const [saveError, setSaveError] = useState("");
+
+  const backToPractice = useCallback(() => {
+    if (saving || onboarding.busy || !focused || AppState.currentState !== 'active' || getAlarmPresentationState().active) return;
+    const attempt = ++commandGeneration.current;
+    void onboarding.update(record => ({ ...record, step: 'practice' })).then(saved => {
+      if (saved && attempt === commandGeneration.current && AppState.currentState === 'active' && !getAlarmPresentationState().active) replaceAppRoute(navigation, '/onboarding');
+    });
+  }, [saving, onboarding, focused, navigation]);
+  useEffect(() => {
+    if (!onboardingMode || !focused) return;
+    const listener = BackHandler.addEventListener('hardwareBackPress', () => { backToPractice(); return true; });
+    return () => listener.remove();
+  }, [onboardingMode, focused, backToPractice]);
 
   const [ticker, setTicker] = useState(0);
   useEffect(() => {
@@ -316,55 +284,19 @@ function SetupContent() {
     [hour, minute, meridiem, days, ticker, language]
   );
 
-  const refreshCapabilities = useCallback(async () => {
-    try {
-      const next = await getAlarmCapabilityStatus();
-      setCapabilities(next);
-      if (!next.notifications || !next.exactAlarm || !next.notificationChannelReady) setReadinessExpanded(true);
-      return next;
-    } catch {
-      return null;
-    }
-  }, []);
-
   useEffect(() => {
     let active = true;
-    Promise.all([
-      getNativeAlarmConfig().catch(() => null),
-      getAlarmCapabilityStatus().catch(() => null),
-      AsyncStorage.getItem(OEM_CONFIRMED_KEY).catch(() => null),
-    ]).then(([config, status, oemValue]) => {
-      if (!active) return;
-      setCapabilities(status);
-      try { setConfirmations(JSON.parse(oemValue ?? "{}")); } catch { setConfirmations({}); }
-      if (status) {
-        const ready = status.notifications && status.exactAlarm &&
-          status.notificationChannelReady;
-        setReadinessExpanded(!ready);
-      }
-      setInitializing(false);
+    getAlarmCapabilityStatus().catch(() => null).finally(() => {
+      if (active) setInitializing(false);
     });
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") refreshCapabilities();
+    const subscription = AppState.addEventListener("change", state => {
+      if (state !== "active") commandGeneration.current++;
     });
-    return () => {
-      active = false;
-      subscription.remove();
-    };
-  }, [refreshCapabilities]);
+    return () => { active = false; subscription.remove(); };
+  }, []);
 
   const selectedMode = modes.find((item) => item.key === mode) ?? modes[0];
   const { refresh: refreshContent } = useContent();
-
-  const coreReadiness = capabilities
-    ? [
-        capabilities.notifications,
-        capabilities.exactAlarm,
-        capabilities.notificationChannelReady,
-      ]
-    : [];
-  const coreReadyCount = coreReadiness.filter(Boolean).length;
-  const coreReady = coreReadiness.length === 3 && coreReadyCount === 3;
 
   const updateMeridiem = (next: "AM" | "PM") => {
     setPickedTime(time => time % 720 + (next === 'PM' ? 720 : 0));
@@ -381,6 +313,16 @@ function SetupContent() {
     }
 
     const time = toStoreTime(hour, minute, meridiem);
+    if (onboardingMode) {
+      const attempt = commandGeneration.current;
+      setSaving(true);
+      try {
+        const saved = await onboarding.update(record => ({ ...record, draft: { time, days: selectedDayIds, tone: selectedMode.tone }, step: 'permissions' }));
+        if (saved && attempt === commandGeneration.current && AppState.currentState === 'active' && !getAlarmPresentationState().active) replaceAppRoute(navigation, '/onboarding');
+        else setSaveError(translate('Introduction could not be saved. Please retry.'));
+      } finally { setSaving(false); }
+      return;
+    }
     setSaving(true);
     setSaveError("");
     setReadinessMessage("");
@@ -395,17 +337,15 @@ function SetupContent() {
       setAlarmDays(selectedDayIds);
       setAlarmEnabled(true);
       void refreshContent().catch(() => undefined);
-      setCapabilities(result.capabilities);
       const resultCoreReady = result.scheduled && result.capabilities.notifications &&
         result.capabilities.exactAlarm &&
         result.capabilities.notificationChannelReady;
       if (!resultCoreReady) {
-        setReadinessExpanded(true);
         if (result.scheduleStatus === 'failed' || result.scheduleStatus === 'unknown') {
           setSaveError(translate('Alarm scheduling could not be confirmed. Open alarm setup and retry.'));
           return;
         }
-        setReadinessMessage("Alarm saved. Complete the highlighted Android setting so it can ring reliably.");
+        setReadinessMessage("Alarm saved. Open Alarm help to review the required Android settings.");
         return;
       }
       setReadinessMessage("");
@@ -416,23 +356,6 @@ function SetupContent() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const profile = alarmDeviceProfile(capabilities?.manufacturer ?? "");
-  const openSettings = async (open: () => Promise<SettingsDestination | undefined>) => {
-    try {
-      const result = await open();
-      setReadinessMessage(result ? translate('openedSettings', { destination: translateText(result.destination) }) + (result.fallback ? ' ' + translate('manualInstructions') : '') : 'Android native settings are unavailable in this build.');
-    } catch (error) { setReadinessMessage(error instanceof Error ? error.message : translate("Open Settings manually and select this app.")); }
-  };
-  const testAlarm = async () => {
-    if (testing) return;
-    setTesting(true);
-    try {
-      await scheduleTestAlarm();
-      setReadinessMessage("Test alarm scheduled in 30 seconds. Lock your screen to check presentation. It stops after 30 seconds and keeps your saved alarm.");
-    } catch (error) { setReadinessMessage(error instanceof Error ? error.message : translate("Test could not be scheduled.")); }
-    finally { setTesting(false); }
   };
 
   const selectedDays = days.filter((day) => day.selected);
@@ -450,7 +373,7 @@ function SetupContent() {
           <Pressable
             accessibilityLabel={translate("Go back")}
             accessibilityRole="button"
-            onPress={() => navigation.goBack()}
+            onPress={() => onboardingMode ? backToPractice() : navigation.goBack()}
             style={({ pressed }) => [s.backButton, pressed && s.pressed]}
           >
             <ArrowLeft size={27} color={C.ink} strokeWidth={2.2} />
@@ -470,7 +393,7 @@ function SetupContent() {
           <TextR style={[s.mainTitle, isSmall && s.mainTitleSmall]}>{translate("Sacred Timing")}</TextR>
         </View>
         <Pressable
-          accessibilityLabel={translate("Save alarm")}
+          accessibilityLabel={translate(onboardingMode ? 'Continue to permissions' : "Save alarm")}
           accessibilityRole="button"
           accessibilityState={{ disabled: saving || initializing || pickingTime, busy: saving }}
           disabled={saving || initializing || pickingTime}
@@ -482,10 +405,12 @@ function SetupContent() {
           ]}
         >
           <TextR style={[s.saveText, isSmall && s.saveTextSmall]}>
-            {saving ? translate("Saving…") : initializing ? translate("Loading…") : translate("Save")}
+            {saving ? translate("Saving…") : initializing ? translate("Loading…") : translate(onboardingMode ? 'Continue' : "Save")}
           </TextR>
         </Pressable>
       </View>
+
+      {onboardingMode && <TextR style={{ paddingHorizontal: 24, paddingBottom: 16, color: C.muted }}>{translate('Alarm preferences are saved as a draft. Your alarm will only be enabled after you confirm scheduling.')}</TextR>}
 
       <View style={[s.timeCard, isSmall && s.timeCardSmall]}>
         <View style={s.windowTitle}>
@@ -572,92 +497,14 @@ function SetupContent() {
         ))}
       </View>
 
-      <View style={s.readinessCard}>
-        <Pressable
-          accessibilityLabel={`${translate('Alarm readiness')}, ${initializing ? translate('checking') : coreReady ? translate('ready') : translate('requirementsReady', { count: coreReadyCount })}`}
-          accessibilityRole="button"
-          accessibilityState={{ expanded: readinessExpanded }}
-          onPress={() => setReadinessExpanded((value) => !value)}
-          style={({ pressed }) => [s.readinessSummary, pressed && s.pressed]}
-        >
-          <View style={[s.readinessSummaryIcon, coreReady && s.readinessSummaryIconReady]}>
-            {coreReady ? (
-              <ShieldCheck size={20} color={C.white} strokeWidth={2.5} />
-            ) : (
-              <AlarmClockPlus size={20} color={C.saffron} strokeWidth={2.3} />
-            )}
-          </View>
-          <View style={s.readinessSummaryCopy}>
-            <TextR style={[s.readinessTitle, isSmall && s.readinessTitleSmall]}>{translate("Alarm readiness")}</TextR>
-            <TextR style={s.readinessSummaryText}>
-              {initializing
-                ? translate("Checking Android settings…")
-                : coreReady
-                  ? translate("Required Android access verified")
-                  : translate('requirementsReady', { count: coreReadyCount })}
-            </TextR>
-          </View>
-          {readinessExpanded ? (
-            <ChevronUp size={20} color={C.muted} />
-          ) : (
-            <ChevronDown size={20} color={C.muted} />
-          )}
-        </Pressable>
-        {readinessMessage ? <TextR style={s.readinessWarning}>{translateText(readinessMessage)}</TextR> : null}
+      {onboardingMode && saveError ? <TextR accessibilityRole="alert" style={s.saveError}>{translateText(saveError)}</TextR> : null}
+      {!onboardingMode && <View style={{ paddingHorizontal: 24, marginBottom: 24, gap: 12 }}>
+        {readinessMessage ? <TextR accessibilityLiveRegion="polite" style={s.readinessWarning}>{translateText(readinessMessage)}</TextR> : null}
         {saveError ? <TextR accessibilityRole="alert" style={s.saveError}>{translateText(saveError)}</TextR> : null}
-        {readinessExpanded ? (
-          <View style={s.readinessDetails}>
-            <TextR style={s.readinessIntro}>
-               {translate("Notifications and exact-alarm access are required. Full-screen access is optional; Android controls when an alarm screen appears.")} </TextR>
-            <ReadinessRow label={translate("Alarm notifications")} ready={capabilities?.notifications ?? false} onPress={() => openSettings(openNotificationSettings)} />
-            <ReadinessRow status={capabilities && capabilities.sdkInt < 31 ? translate("Not applicable") : undefined} label={translate("Alarms & reminders")} ready={capabilities?.exactAlarm ?? false} onPress={() => openSettings(openExactAlarmSettings)} />
-            <ReadinessRow label={translate("High-priority alarm channel")} ready={capabilities?.notificationChannelReady ?? false} onPress={() => openSettings(openNotificationChannelSettings)} />
-            <ReadinessRow status={capabilities && capabilities.sdkInt < 34 ? translate("Not applicable") : undefined} label={translate("Full-screen alarms (optional)")} ready={capabilities?.fullScreenIntent ?? false} onPress={() => openSettings(openFullScreenIntentSettings)} />
-            {!capabilities?.fullScreenIntent ? <TextR style={s.readinessIntro}>{translate("Without full-screen access, use the alarm notification to open or stop the alarm.")}</TextR> : null}
-            <TextR style={s.readinessFootnote}>
-               {translate("A force-stopped app or powered-off phone cannot ring. Without full-screen access, Android shows a persistent alarm notification.")} </TextR>
-          </View>
-        ) : null}
-        <View style={s.reliabilitySection}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ expanded: extraExpanded }}
-            onPress={() => setExtraExpanded(value => !value)}
-            style={({ pressed }) => [s.reliabilitySummary, pressed && s.pressed]}
-          >
-            <TextR style={[s.readinessTitle, isSmall && s.readinessTitleSmall]}>{translate("Extra reliability on your phone")}</TextR>
-            {extraExpanded ? <ChevronUp size={20} color={C.muted} /> : <ChevronDown size={20} color={C.muted} />}
-          </Pressable>
-          {extraExpanded ? <View style={s.readinessDetails}>
-            <TextR style={s.oemTitle}>{profile.name}</TextR>
-            <ReadinessRow label={translate("Background activity allowed")} ready={capabilities != null && !capabilities.batteryRestricted} status={capabilities && capabilities.sdkInt < 28 ? translate("Not applicable") : undefined} onPress={() => openSettings(openBatterySettings)} />
-            <ReadinessRow label={translate("Battery optimization exemption")} ready={capabilities?.batteryOptimizationExempt ?? false} onPress={() => openSettings(openBatterySettings)} />
-            <TextR style={s.readinessIntro}>{translate("These checks are separate. Battery exemption is advisory and does not verify your phone’s custom settings. Menu names vary by software version.")}</TextR>
-            {profile.steps.map(step => {
-              const key = `${profile.id}:${step.id}`;
-              const confirmed = confirmations[key] === true;
-              return <View key={key}>
-                <ReadinessRow label={translateText(step.label)} ready={confirmed} status={confirmed ? translate("User confirmed") : translate("Needs action")} onPress={() => openSettings(step.settings === "battery" ? openBatterySettings : step.settings === "autostart" ? openAutoStartSettings : openOemPermissionSettings)} />
-                <TextR style={s.readinessIntro}>{translateText(step.guidance)}</TextR>
-                <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: confirmed }} onPress={async () => {
-                  const next = { ...confirmations, [key]: !confirmed };
-                  setConfirmations(next);
-                  try { await AsyncStorage.setItem(OEM_CONFIRMED_KEY, JSON.stringify(next)); } catch { setReadinessMessage("Confirmation could not be saved. Try again."); }
-                }} style={s.confirmOem}><TextR style={s.confirmOemText}>{confirmed ? translate("✓ User confirmed") : translate("I checked this setting")}</TextR></Pressable>
-              </View>;
-            })}
-          </View> : null}
-          <Pressable
-            accessibilityRole="button"
-            disabled={testing || initializing}
-            onPress={testAlarm}
-            style={({ pressed }) => [s.testAlarmRow, pressed && s.pressed, (testing || initializing) && s.buttonDisabled]}
-          >
-            <TextR style={s.settingsButtonText}>{testing ? translate("Scheduling…") : translate("Test alarm in 30 seconds")}</TextR>
-          </Pressable>
-        </View>
-      </View>
-
+        <OnboardingButton secondary label={translate('Alarm help')} disabled={saving} onPress={() => {
+          if (focused && AppState.currentState === 'active' && !getAlarmPresentationState().active) pushAppRoute(navigation, '/alarm/help');
+        }} />
+      </View>}
       <View style={s.modeHeader}>
         <View style={s.modeHeaderLeft}>
           <TextR style={[s.label, isSmall && s.labelSmall]}>{translate("Morning Awakening Mode")}</TextR>
@@ -681,7 +528,7 @@ function SetupContent() {
       </View>
 
       <Pressable
-        accessibilityLabel={translate("Save alarm and morning ritual")}
+        accessibilityLabel={translate(onboardingMode ? 'Continue to permissions' : "Save alarm and morning ritual")}
         accessibilityRole="button"
         accessibilityState={{ disabled: saving || initializing || pickingTime, busy: saving }}
         disabled={saving || initializing || pickingTime}
@@ -695,9 +542,17 @@ function SetupContent() {
       >
         <Sun size={isSmall ? 20 : 23} color={C.white} />
         <TextR style={[s.primaryText, isSmall && s.primaryTextSmall]}>
-          {saving ? translate("Scheduling Alarm…") : initializing ? translate("Checking Alarm…") : translate("Save Alarm & Morning Ritual")}
+          {saving ? translate("Saving…") : initializing ? translate("Checking Alarm…") : translate(onboardingMode ? 'Continue to permissions' : "Save Alarm & Morning Ritual")}
         </TextR>
       </Pressable>
+      {onboardingMode && <OnboardingButton secondary label={translate('Set up later')} disabled={saving || onboarding.busy} style={{ marginTop: 12 }} onPress={() => {
+        if (focused && AppState.currentState === 'active' && !getAlarmPresentationState().active) {
+          const attempt = ++commandGeneration.current;
+          void onboarding.update(record => ({ ...record, completed: true, replaying: false })).then(saved => {
+            if (saved && attempt === commandGeneration.current && AppState.currentState === 'active' && !getAlarmPresentationState().active) replaceAppRoute(navigation, '/onboarding');
+          });
+        }
+      }} />}
     </Screen>
   );
 }

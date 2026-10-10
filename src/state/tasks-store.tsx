@@ -76,12 +76,23 @@ export function TasksProvider({ children }: React.PropsWithChildren) {
     return AsyncStorage.getItem(STORAGE_KEY)
       .then((raw) => {
         if (!mounted.current) return;
-        const next =
+        let next =
           raw === null ? seedTasks(localDateKey()) : parseTasksData(raw);
+        const filteredRecords = next.records.filter(
+          (t) => !t.templateId && !["surya", "proposal", "walk", "read"].includes(t.id),
+        );
+        if (filteredRecords.length !== next.records.length) {
+          next = {
+            ...next,
+            records: filteredRecords,
+          };
+          commit(next);
+        } else if (raw === null) {
+          commit(next);
+        }
         latest.current = next;
         setData(next);
         setLoadError(false);
-        if (raw === null) commit(next);
       })
       .catch(() => {
         if (mounted.current) setLoadError(true);

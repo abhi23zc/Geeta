@@ -434,12 +434,16 @@ export function Screen({
   scroll = true,
   contentStyle,
   contentContainerStyle,
+  scrollRef,
+  fullScreenBackground = false,
 }: {
   children: ReactNode;
   night?: boolean;
   scroll?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
+  scrollRef?: React.RefObject<ScrollView | null>;
+  fullScreenBackground?: boolean;
 }) {
   const nightBg = "#0B0D19";
   const insets = useSafeAreaInsets();
@@ -451,11 +455,12 @@ export function Screen({
       style={[
         styles.content,
         night && { backgroundColor: nightBg },
+        fullScreenBackground && { backgroundColor: 'transparent' },
         !scroll && { flex: 1, paddingBottom: insets.bottom + 12 },
         contentStyle,
       ]}
     >
-      <DawnMeshBackdrop night={night} />
+      {!fullScreenBackground && <DawnMeshBackdrop night={night} />}
       <View style={[styles.responsiveWrapper, !scroll && { flex: 1 }]}>
         {children}
       </View>
@@ -467,8 +472,10 @@ export function Screen({
       style={[styles.safe, night && { backgroundColor: nightBg }]}
       edges={["top", "left", "right"]}
     >
+      {fullScreenBackground && <DawnMeshBackdrop night={night} />}
       {scroll ? (
         <ScrollView
+          ref={scrollRef}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
             styles.scroll,

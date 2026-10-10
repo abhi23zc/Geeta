@@ -60,7 +60,7 @@ test('screens and bridge retain occurrence guards, checkpoint serialization, and
   assert.match(wake, /state.sessionId !== expectedSession/);
   const gitaSource = source('../src/app/gita.tsx');
   assert.match(gitaSource, /setPointsPending\(!\(await refreshRewards\(\)\)\)/);
-  assert.match(gitaSource, /disabled=\{!canCompleteGita/);
+  assert.match(gitaSource, /disabled=\{\s*!canCompleteGita/);
   const alarm = source('../src/services/alarm.ts');
   assert.match(alarm, /checkpointTail.then/);
   assert.match(alarm, /snapshot.scheduleStatus === 'scheduled'/);

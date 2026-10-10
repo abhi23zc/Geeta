@@ -153,44 +153,14 @@ class MorningAlarmModule : Module() {
       )
     }
 
-    AsyncFunction("openExactAlarmSettings") {
-      openResolved(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-        Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}"))
-      else appDetails(), if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) "Alarms & reminders" else "App details")
-    }
-    AsyncFunction("openFullScreenIntentSettings") {
-      openResolved(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-        Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, Uri.parse("package:${context.packageName}"))
-      else appDetails(), if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) "Full-screen alarms" else "App details")
-    }
-    AsyncFunction("openNotificationSettings") {
-      openResolved(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-      else appDetails(), if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) "App notifications" else "App details")
-    }
-    AsyncFunction("openNotificationChannelSettings") {
-      openResolved(if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-        Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
-          .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
-          .putExtra(Settings.EXTRA_CHANNEL_ID, AlarmService.CHANNEL_ID)
-      else appDetails(), if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) "Alarm notification channel" else "App details")
-    }
-    AsyncFunction("openAutoStartSettings") {
-      val target = when (Build.MANUFACTURER.lowercase()) {
-        "xiaomi", "redmi", "poco" -> Intent().setClassName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity")
-        "oppo", "realme", "oneplus" -> Intent().setClassName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity")
-        "vivo", "iqoo" -> Intent().setClassName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity")
-        "huawei", "honor" -> Intent().setClassName("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity")
-        else -> appDetails()
-      }
-      openResolved(target, if (target.component == null) "App details" else "Phone auto-start settings")
-    }
-    AsyncFunction("openOemPermissionSettings") {
-      openResolved(appDetails(), "App details")
-    }
-    AsyncFunction("openBatterySettings") {
-      openResolved(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS), "Battery optimization")
-    }
+    AsyncFunction("openAlarmReliabilitySettings") { stepId: String -> openReliabilitySettings(stepId) }
+    AsyncFunction("openExactAlarmSettings") { openReliabilitySettings("exact") }
+    AsyncFunction("openFullScreenIntentSettings") { openReliabilitySettings("fullscreen") }
+    AsyncFunction("openNotificationSettings") { openReliabilitySettings("notifications") }
+    AsyncFunction("openNotificationChannelSettings") { openReliabilitySettings("channel") }
+    AsyncFunction("openAutoStartSettings") { openReliabilitySettings("startup") }
+    AsyncFunction("openOemPermissionSettings") { openReliabilitySettings("popup") }
+    AsyncFunction("openBatterySettings") { openReliabilitySettings("battery") }
 
     AsyncFunction("notifyWakeScreenReady") {
       AlarmLog.event("react_wake_ready")
@@ -223,19 +193,51 @@ class MorningAlarmModule : Module() {
       .onFailure { AlarmLog.event("reschedule_failed", it.javaClass.simpleName) }.getOrDefault(false)
   }
 
+  private fun openReliabilitySettings(stepId: String): Map<String, Any> {
+    require(stepId in setOf("notifications", "exact", "channel", "fullscreen", "startup", "battery", "popup")) { "Unknown alarm setting" }
+    val brand = Build.MANUFACTURER.trim().lowercase()
+    val packageUri = Uri.parse("package:${context.packageName}")
+    val target = when (stepId) {
+      "exact" -> if (Build.VERSION.SDK_INT >= 31) Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, packageUri) else appDetails()
+      "fullscreen" -> if (Build.VERSION.SDK_INT >= 34) Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, packageUri) else appDetails()
+      "notifications" -> if (Build.VERSION.SDK_INT >= 26) Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName) else appDetails()
+      "channel" -> if (Build.VERSION.SDK_INT >= 26) Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName).putExtra(Settings.EXTRA_CHANNEL_ID, AlarmService.CHANNEL_ID) else appDetails()
+      "popup" -> if (brand in listOf("xiaomi", "redmi", "poco")) Intent("miui.intent.action.APP_PERM_EDITOR").addCategory(Intent.CATEGORY_DEFAULT).setPackage("com.miui.securitycenter").putExtra("extra_pkgname", context.packageName) else appDetails()
+      "startup" -> AlarmSettingsPolicy.startupTargets(brand).firstOrNull()?.let { Intent().setClassName(it.first, it.second) } ?: appDetails()
+      // App details exposes this app's battery controls, unlike the global exemption list.
+      else -> appDetails()
+    }
+    val label = when (stepId) {
+      "exact" -> if (Build.VERSION.SDK_INT >= 31) "Alarms & reminders" else "App details"
+      "fullscreen" -> if (Build.VERSION.SDK_INT >= 34) "Full-screen alarms" else "App details"
+      "notifications" -> if (Build.VERSION.SDK_INT >= 26) "App notifications" else "App details"
+      "channel" -> if (Build.VERSION.SDK_INT >= 26) "Alarm notification channel" else "App details"
+      "popup" -> if (target.action == "miui.intent.action.APP_PERM_EDITOR") "Phone app permissions" else "App details"
+      "startup" -> if (target.component != null) "Phone auto-start settings" else "App details"
+      else -> "App details"
+    }
+    val alternatives = if (stepId == "startup") AlarmSettingsPolicy.startupTargets(brand).drop(1).map { Intent().setClassName(it.first, it.second) to "Phone auto-start settings" } else emptyList()
+    return openResolved(target, label, alternatives) + mapOf("requestedStep" to stepId)
+  }
+
   private fun appDetails() = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))
 
-  private fun openResolved(intent: Intent, label: String): Map<String, Any> {
-    val choices = listOf(intent to label, appDetails() to "App details", Intent(Settings.ACTION_SETTINGS) to "Android settings")
-    for ((target, destination) in choices) {
-      try {
-        context.startActivity(target.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        return mapOf("destination" to destination, "fallback" to (target !== intent))
-      } catch (error: android.content.ActivityNotFoundException) {
-        AlarmLog.event("settings_unavailable", destination)
-      } catch (error: SecurityException) {
-        AlarmLog.event("settings_blocked", destination)
+  private fun openResolved(intent: Intent, label: String, alternatives: List<Pair<Intent, String>> = emptyList()): Map<String, Any> {
+    val choices = listOf(intent to label) + alternatives + listOf(appDetails() to "App details", Intent(Settings.ACTION_SETTINGS) to "Android settings")
+    val opened = AlarmSettingsPolicy.firstOpened(choices, { (target, _) ->
+      context.startActivity(target.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }, { error ->
+      when (error) {
+        is android.content.ActivityNotFoundException -> { AlarmLog.event("settings_unavailable", label); true }
+        is SecurityException -> { AlarmLog.event("settings_blocked", label); true }
+        else -> false
       }
+    })
+    if (opened != null) {
+      val destination = opened.first.second
+      val fallback = opened.second > 0
+      AlarmLog.event("settings_opened", "$destination fallback=$fallback")
+      return mapOf("destination" to destination, "fallback" to fallback)
     }
     throw IllegalStateException("Settings could not be opened. Open Settings manually and select this app.")
   }

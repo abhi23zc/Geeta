@@ -11,7 +11,6 @@ import {
   Flame,
   Flower2,
   RefreshCw,
-  Sparkles,
   Sun,
   X,
 } from "lucide-react-native";
@@ -116,7 +115,10 @@ export function DailyGoalCard({
             {t("Today’s goal complete")} · 2 / 2
           </TextR>
           <TextR style={s.todayCompleteSub}>
-            {t("{count} points earned today", { count: formatNumber(earnedToday) })} · {t("Both practices complete. Your tree has grown.")}
+            {t("{count} points earned today", {
+              count: formatNumber(earnedToday),
+            })}{" "}
+            · {t("Both practices complete. Your tree has grown.")}
           </TextR>
         </View>
       </View>
@@ -157,9 +159,9 @@ export function DailyGoalCard({
             </View>
             <TextR style={s.streakSubtitle}>
               {link
-                ? (p.current > 0
-                    ? t("streakDays", { count: p.current })
-                    : t("Begin your streak"))
+                ? p.current > 0
+                  ? t("streakDays", { count: p.current })
+                  : t("Begin your streak")
                 : `${completedCount} / 2 ${t("Complete")}`}
             </TextR>
           </View>
@@ -245,7 +247,16 @@ export function DailyGoalCard({
         )}
       </View>
 
-      {showTree && <GrowthCard compact screen="home" cycle={p.tree.cycle} streak={p.tree.level} completed={isCompletedToday} count={completedCount} />}
+      {showTree && (
+        <GrowthCard
+          compact
+          screen="home"
+          cycle={p.tree.cycle}
+          streak={p.tree.level}
+          completed={isCompletedToday}
+          count={completedCount}
+        />
+      )}
 
       {/* ── 2. Stepped Progress Meter ──────────────────────────────────────── */}
       <View style={s.stepperSection}>
@@ -278,7 +289,7 @@ export function DailyGoalCard({
       {/* ── 3. 3D Tactile Task 1: Awakening Ritual ─────────────────────────── */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${t("Alarm-led ritual")}: ${ritualDone ? t("Completed") : t("Start ritual")}. ${ritualEarned ? t("10 points earned today") : t("Ritual: +10 points once daily")}`}
+        accessibilityLabel={`${t("Alarm ritual")}: ${ritualDone ? t("Completed") : t("Start ritual")}. ${ritualEarned ? t("10 points earned today") : t("Ritual: +10 points once daily")}`}
         onPress={() => {
           if (onStartRitual) {
             onStartRitual();
@@ -304,7 +315,9 @@ export function DailyGoalCard({
             <Sun size={18} color={C.saffron} />
           </View>
           <View style={s.taskTextGroup}>
-            <TextR style={[s.taskTitle, isSmall && { fontSize: 14.5 }]}>{t("Alarm-led ritual")}</TextR>
+            <TextR style={[s.taskTitle, isSmall && { fontSize: 14.5 }]}>
+              {t("Alarm ritual")}
+            </TextR>
             <TextR style={[s.taskSub, ritualDone && s.taskSubComplete]}>
               {ritualDone
                 ? t("10 points earned today")
@@ -354,7 +367,9 @@ export function DailyGoalCard({
             <BookOpen size={18} color={C.saffron} />
           </View>
           <View style={s.taskTextGroup}>
-            <TextR style={[s.taskTitle, isSmall && { fontSize: 14.5 }]}>{t("Quiz round")}</TextR>
+            <TextR style={[s.taskTitle, isSmall && { fontSize: 14.5 }]}>
+              {t("Quiz round")}
+            </TextR>
             <TextR style={[s.taskSub, quizDone && s.taskSubComplete]}>
               {quizDone
                 ? t("10 points earned today")
@@ -371,14 +386,12 @@ export function DailyGoalCard({
             </View>
           ) : (
             <View style={s.actionPillPrimary3D}>
-              <Sparkles size={12} color={C.white} />
+              <Flame size={12} color={C.white} />
               <TextR style={s.actionPillPrimaryText}>{t("Play quiz")} →</TextR>
             </View>
           )}
         </View>
       </Pressable>
-
-
 
       {/* ── 7. System Warnings & Notices ──────────────────────────────────── */}
       {!alarmAvailable && (

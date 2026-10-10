@@ -31,7 +31,10 @@ export function createGitaPlayback(options: Options) {
   let readyWait: { resolve: () => void; reject: () => void } | undefined;
   const now = options.now ?? Date.now;
   let movement = now(), visible = false, observed = '', wasLoaded = false;
-  const diagnostic = (event: string) => options.diagnostic?.(event, generation, view.state);
+  const diagnostic = (event: string) => {
+    try { options.diagnostic?.(event, generation, view.state); }
+    catch { /* Development logging must never interrupt playback or teardown. */ }
+  };
   const publish = (patch: Partial<PlaybackView>) => {
     if (disposed) return;
     const next = { ...view, ...patch };
@@ -47,10 +50,13 @@ export function createGitaPlayback(options: Options) {
     readyWait?.reject(); readyWait = undefined;
     publish({ state: 'unavailable', readingAvailable: true, reason }); safePause();
   };
-  const cancel = () => {
-    if (disposed) return;
+  const invalidate = () => {
     generation++; intent = false; sample = null; seeking = false;
     readyWait?.reject(); readyWait = undefined;
+  };
+  const cancel = () => {
+    if (disposed) return;
+    invalidate();
     diagnostic('cancel'); safePause();
     if (view.state !== 'finished' && view.state !== 'unavailable') publish({ state: 'paused' });
   };
@@ -110,9 +116,9 @@ export function createGitaPlayback(options: Options) {
     } finally { prepared?.release(); preparing = false; publish({ preparing: false }); }
   };
   const observe = (status: PlaybackStatus) => {
+    if (disposed || !narration) return;
     const signature = `${status.isLoaded}:${status.playing}:${status.isBuffering}:${status.didJustFinish}:${!!status.error}`;
     if (signature !== observed) { observed = signature; diagnostic('observe'); }
-    if (disposed || !narration) return;
     if (status.isLoaded && !wasLoaded && options.eligible()) movement = now();
     wasLoaded = status.isLoaded;
     if (status.isLoaded) {
@@ -157,7 +163,16 @@ export function createGitaPlayback(options: Options) {
     }
   };
   return { play, retry, observe, tick, cancel, getView: () => ({ ...view }),
-    dispose: () => { cancel(); disposed = true; release?.(); release = undefined; } };
+    dispose: () => {
+      if (disposed) return;
+      // Latch disposal before native pause can synchronously emit a status event.
+      disposed = true;
+      invalidate();
+      safePause();
+      const ownedRelease = release;
+      release = undefined;
+      ownedRelease?.();
+    } };
 }
 
 /** Cue text must cover the entire frozen block; transliteration also needs one cue per line. */

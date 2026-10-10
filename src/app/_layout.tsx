@@ -18,18 +18,24 @@ import { LanguageProvider } from '@/i18n/provider';
 import { ProgressProvider } from '@/features/progress/provider';
 import { TreeSessionProvider } from '@/features/progress/tree/session';
 import { GrowthCelebrationHost } from '@/features/progress/tree/celebration';
+import { OnboardingProvider, useOnboarding } from '@/features/onboarding/provider';
+import { OnboardingGate } from '@/features/onboarding/gate';
+import { needsIntroduction } from '@/features/onboarding/model';
+import { AnimatedSplashScreen } from '@/components/animated-splash';
 
 const alarmScreenLayout: NonNullable<React.ComponentProps<typeof Stack>['screenLayout']> =
-  ({ children }) => <AlarmNavigationGuard>{children}</AlarmNavigationGuard>;
+  ({ children }) => <AlarmNavigationGuard><OnboardingGate>{children}</OnboardingGate></AlarmNavigationGuard>;
 
 const TAB_ROUTES = new Set(['/', '/index', '/today', '/quiz', '/quiz/index', '/progress']);
 
 function AppChrome() {
   const presentation = useAlarmPresentation();
+  const { record } = useOnboarding();
   const pathname = usePathname();
   const normalizedPath = pathname ? (pathname.startsWith('/') ? pathname : `/${pathname}`) : '/';
   const isExcluded = normalizedPath.startsWith('/alarm') || normalizedPath === '/breathe' || normalizedPath === '/gita' || normalizedPath === '/downloads' || normalizedPath === '/saved';
-  const showTabs = !presentation.active && !isExcluded && TAB_ROUTES.has(normalizedPath);
+  const introduction = !record || needsIntroduction(record);
+  const showTabs = !introduction && !presentation.active && !isExcluded && TAB_ROUTES.has(normalizedPath);
 
   useEffect(() => {
     const refresh = () => configureAlarmNotifications().then(reconcileAlarm).catch(() => undefined);
@@ -43,6 +49,7 @@ function AppChrome() {
       <StatusBar style="dark" hidden={pathname === '/alarm/wake'} />
       <Stack screenLayout={alarmScreenLayout} screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
         <Stack.Screen name="gita" />
         <Stack.Screen name="breathe" />
         <Stack.Screen name="today" />
@@ -50,10 +57,13 @@ function AppChrome() {
         <Stack.Screen name="language" />
         <Stack.Screen name="progress" />
         <Stack.Screen name="alarm/setup" options={{ presentation: 'card' }} />
+        <Stack.Screen name="alarm/help" />
+        <Stack.Screen name="image-credits" />
         <Stack.Screen name="alarm/wake" options={{ presentation: 'fullScreenModal' }} />
       </Stack>
       {showTabs && <TabBar />}
-      <GrowthCelebrationHost />
+      {!introduction && <GrowthCelebrationHost />}
+      <AnimatedSplashScreen />
     </View>
   );
 }
@@ -61,7 +71,7 @@ function AppChrome() {
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <LanguageProvider>
+      <OnboardingProvider><LanguageProvider>
         <ProgressProvider><TreeSessionProvider>
           <DockLayoutProvider>
             <RitualProvider>
@@ -75,7 +85,7 @@ export default function RootLayout() {
             </RitualProvider>
           </DockLayoutProvider>
         </TreeSessionProvider></ProgressProvider>
-      </LanguageProvider>
+      </LanguageProvider></OnboardingProvider>
     </GestureHandlerRootView>
   );
 }

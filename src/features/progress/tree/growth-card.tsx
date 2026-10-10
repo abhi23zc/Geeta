@@ -13,17 +13,19 @@ import { useAlarmPresentation } from '@/navigation/alarm-presentation';
 import { treeAsset } from './assets';
 import { TreeScene } from './scene';
 import { useTreeEnvironment } from './use-motion';
+import { growthStage } from './model';
 
 type GrowthCardProps = {
   streak: number; cycle?: number; screen?: 'home' | 'progress'; completed?: boolean; count?: number; compact?: boolean;
   reducedMotion?: boolean; simulateFailure?: boolean;
 };
 
-export function GrowthCard({ streak, cycle = 1, screen, completed = false, count = 0, compact = false, reducedMotion = false, simulateFailure = false }: GrowthCardProps) {
+export function GrowthCard({ streak: rawLevel, cycle = 1, screen, completed = false, count = 0, compact = false, reducedMotion = false, simulateFailure = false }: GrowthCardProps) {
+  const streak = growthStage(rawLevel);
   const { t, formatNumber } = useLanguage();
   const [replay, setReplay] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const stop = useCallback(() => setPlaying(false), []);
+  const stop = useCallback(() => setPlaying(false), [setPlaying]);
   const focused = useIsFocused();
   const { active, reduced, motionReady } = useTreeEnvironment();
   const session = useTreeSession();
@@ -226,33 +228,33 @@ export function GrowthCard({ streak, cycle = 1, screen, completed = false, count
         )}
       </View>
 
-      {nextLevel !== null && (
-        <View style={s.milestone}>
-          <View style={s.milestoneLabels}>
-            <TextR style={s.milestoneLabel}>{t('Next level')}</TextR>
-            <TextR style={s.milestoneDay}>
-              {t('Level {count} of 30', { count: formatNumber(nextLevel) })}
-            </TextR>
-          </View>
-          <View
-            accessible
-            accessibilityRole="progressbar"
-            accessibilityLabel={t('Next level')}
-            accessibilityValue={{ min: 0, max: nextLevel, now: streak }}
-            style={s.track}
-          >
-            <View
-              style={[
-                s.fill,
-                { width: `${(streak / nextLevel) * 100}%` },
-              ]}
-            />
-          </View>
-          <TextR style={s.remaining}>
-            {t('One more complete day')}
+      <View style={s.milestone}>
+        <View style={s.milestoneLabels}>
+          <TextR style={s.milestoneLabel}>{t('Tree progress')}</TextR>
+          <TextR style={s.milestoneDay}>
+            {t('Level {count} of 30', { count: formatNumber(streak) })}
           </TextR>
         </View>
-      )}
+        <View
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={t('Tree progress')}
+          accessibilityValue={{ min: 0, max: 30, now: streak, text: t('Level {count} of 30', { count: formatNumber(streak) }) }}
+          style={s.track}
+        >
+          <View
+            style={[
+              s.fill,
+              { width: `${(streak / 30) * 100}%` },
+            ]}
+          />
+        </View>
+        <TextR style={s.remaining}>
+          {nextLevel === null
+            ? t('Tree complete')
+            : t('One more complete day to reach Level {count}.', { count: formatNumber(nextLevel) })}
+        </TextR>
+      </View>
     </View>
   );
 }
