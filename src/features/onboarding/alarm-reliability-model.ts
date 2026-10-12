@@ -5,7 +5,7 @@ export const GUIDE_REVISION = 1;
 export type Review = 'confirmed' | 'unavailable';
 export type ReliabilityAccess = {
   manufacturer: string; brand?: string; sdkInt: number; notifications: boolean; exactAlarm: boolean;
-  notificationChannelReady: boolean; fullScreenIntent: boolean; batteryRestricted: boolean;
+  notificationChannelEnabled?: boolean; channelImportance?: number; notificationChannelReady: boolean; fullScreenIntent: boolean; batteryRestricted: boolean;
 };
 export type ReliabilityRecord = {
   version: 1; identity: string; reviews: Record<string, Review>; dismissed: boolean; guide?: string; testRequestedAt?: number;
@@ -41,13 +41,15 @@ export function parseReliability(raw: string | null, identity: string): Reliabil
 }
 export function reliabilitySteps(status: ReliabilityAccess, guide = status.manufacturer, includeGranted = false): ReliabilityStep[] {
   const steps: ReliabilityStep[] = [];
-  if ((includeGranted || !status.notifications)) steps.push({ id: 'notifications', label: 'Allow alarm notifications', guidance: 'In Settings, turn on notifications for geeta.', native: true });
+  if ((includeGranted || !status.notifications)) steps.push({ id: 'notifications', label: 'Allow alarm notifications', guidance: 'In Settings, turn on notifications for Aarambh.', native: true });
   if (status.sdkInt >= 31 && (includeGranted || !status.exactAlarm)) steps.push({ id: 'exact', label: 'Allow precise alarms', guidance: 'Allow precise alarm timing in Alarms & reminders.', native: true });
-  if (status.sdkInt >= 26 && (includeGranted || !status.notificationChannelReady)) steps.push({ id: 'channel', label: 'Enable alarm notifications', guidance: 'Turn on Morning ritual alarms and choose High importance or Alerting.', native: true });
-  if (status.sdkInt >= 34 && (includeGranted || !status.fullScreenIntent)) steps.push({ id: 'fullscreen', label: 'Show alarm on lock screen', guidance: 'Allow full-screen notifications for geeta.', native: true });
+  if (status.sdkInt >= 26 && (includeGranted || !status.notificationChannelReady)) steps.push({ id: 'channel', label: 'Enable alarm notifications', guidance: 'Turn on Morning ritual alarms. High importance or Alerting is recommended for the alarm screen.', native: true });
+  if (status.sdkInt >= 34 && (includeGranted || !status.fullScreenIntent)) steps.push({ id: 'fullscreen', label: 'Show alarm on lock screen', guidance: 'Allow full-screen notifications for Aarambh.', native: true });
   const profile = alarmDeviceProfile(guide);
+  if (profile.id === 'xiaomi') steps.push({ id: 'permanent', label: 'Allow permanent notifications',
+    guidance: 'In Settings → Notifications & Control centre → App notifications → Aarambh, enable Permanent notifications (or Allow permanent notifications). MIUI can cancel the ringing alarm notification when this is off, even with notification permission enabled.', native: false });
   const profileSteps = includeGranted && profile.id === 'xiaomi' ? [
-    { id: 'lockscreen', label: 'Show on lock screen', guidance: 'In Settings → Apps → Manage apps → geeta → Other permissions, enable Show on Lock screen.' },
+    { id: 'lockscreen', label: 'Show on lock screen', guidance: 'In Settings → Apps → Manage apps → Aarambh → Other permissions, enable Show on Lock screen.' },
     { id: 'background-popup', label: 'Background pop-ups', guidance: 'In Other permissions, allow Open new windows while running in the background.' },
     ...profile.steps.filter(step => step.id !== 'popup'),
   ] : profile.steps;

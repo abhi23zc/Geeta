@@ -1,3 +1,4 @@
+import { useDecorativeMotion } from '@/hooks/use-motion-environment';
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
@@ -24,8 +25,10 @@ interface SacredLotusCoinProps {
 
 export function SacredLotusCoin({ size = 64 }: SacredLotusCoinProps) {
   const rotation = useSharedValue(0);
+  const motion = useDecorativeMotion();
 
   useEffect(() => {
+    if (!motion) { cancelAnimation(rotation); return; }
     rotation.value = withRepeat(
       withTiming(360, { duration: 22000, easing: Easing.linear }),
       -1,
@@ -33,7 +36,7 @@ export function SacredLotusCoin({ size = 64 }: SacredLotusCoinProps) {
     );
 
     return () => cancelAnimation(rotation);
-  }, [rotation]);
+  }, [rotation, motion]);
 
   const animatedRotateStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],

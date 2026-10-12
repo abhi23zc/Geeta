@@ -10,6 +10,7 @@ import android.os.PowerManager
 
 object AlarmCapabilities {
   fun status(context: Context): Map<String, Any> {
+    AlarmNotification.createChannel(context)
     val notifications = context.getSystemService(NotificationManager::class.java).areNotificationsEnabled() &&
       (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
         context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)
@@ -20,6 +21,9 @@ object AlarmCapabilities {
     val channelImportance = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       manager.getNotificationChannel(AlarmService.CHANNEL_ID)?.importance ?: NotificationManager.IMPORTANCE_NONE
     } else NotificationManager.IMPORTANCE_HIGH
+    val groupBlocked = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      manager.getNotificationChannel(AlarmService.CHANNEL_ID)?.group?.let { manager.getNotificationChannelGroup(it)?.isBlocked } == true
+    } else false
     val batteryRestricted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
       context.getSystemService(ActivityManager::class.java).isBackgroundRestricted
     } else false
@@ -28,6 +32,7 @@ object AlarmCapabilities {
       "exactAlarm" to AlarmScheduler.canScheduleExact(context),
       "fullScreenIntent" to fullScreen,
       "channelImportance" to channelImportance,
+      "notificationChannelEnabled" to (AlarmDeliveryPolicy.channelEnabled(channelImportance) && !groupBlocked),
       "notificationChannelReady" to (channelImportance >= NotificationManager.IMPORTANCE_HIGH),
       "batteryRestricted" to batteryRestricted,
       "batteryOptimizationExempt" to context.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(context.packageName),
@@ -42,6 +47,6 @@ object AlarmCapabilities {
 
   fun ready(context: Context): Boolean {
     val state = status(context)
-    return state["exactAlarm"] == true && state["notifications"] == true && state["notificationChannelReady"] == true
+    return state["exactAlarm"] == true && state["notifications"] == true && state["notificationChannelEnabled"] == true
   }
 }

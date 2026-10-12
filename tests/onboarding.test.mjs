@@ -3,8 +3,8 @@ import { test } from 'node:test';
 import { readFile } from 'node:fs/promises';
 import { bootstrapOnboarding, createOnboardingWriter, coreAlarmReady, EXISTING_INSTALL_KEYS, introductionRoute, needsIntroduction, nextIntroductionStep, ONBOARDING_KEY, ONBOARDING_STEPS, OnboardingRecordError, parseOnboarding } from '../src/features/onboarding/model.ts';
 import { createOnboardingScheduler } from '../src/features/onboarding/scheduling.ts';
-import { DEVICE_GUIDES, deviceGuideId, GUIDE_EXAMPLES, guideExampleForSetting, screenshotDimensions } from '../src/features/onboarding/guide-data.ts';
-import { permissionPages, permissionPageIds, permissionPageReady, permissionPageCanContinue, resolvePermissionPage, accessDeadline } from '../src/features/onboarding/permission-model.ts';
+import { DEVICE_GUIDES, deviceGuideId, GUIDE_EXAMPLES, directGuideExample, guideExampleForSetting, screenshotDimensions } from '../src/features/onboarding/guide-data.ts';
+import { walkthroughPages, nextPermissionPage, missingRequiredPage, permissionPages, permissionPageIds, permissionPageReady, permissionPageCanContinue, resolvePermissionPage, accessDeadline } from '../src/features/onboarding/permission-model.ts';
 import { catalog, translate } from '../src/i18n/translations.ts';
 import { createRitualRouteRestoration } from '../src/navigation/ritual-route-restoration.ts';
 
@@ -16,10 +16,10 @@ function memory(entries = []) {
 }
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
 
-const access = (sdkInt = 34, manufacturer = 'Xiaomi') => ({ sdkInt, manufacturer, notifications: true, exactAlarm: true, notificationChannelReady: true, fullScreenIntent: true, batteryRestricted: false });
+const access = (sdkInt = 34, manufacturer = 'Xiaomi') => ({ sdkInt, manufacturer, notifications: true, exactAlarm: true, notificationChannelEnabled: true, notificationChannelReady: true, fullScreenIntent: true, batteryRestricted: false });
 test('all applicable granted pages stay present and maintain version-specific order', () => {
   for (const sdk of [25, 26, 30, 31, 33, 34, 37]) {
-    const expected = ['notifications', ...(sdk >= 31 ? ['exact'] : []), ...(sdk >= 26 ? ['channel'] : []), ...(sdk >= 34 ? ['fullscreen'] : []), 'lockscreen', 'background-popup', 'startup', 'battery', 'test'];
+    const expected = ['notifications', ...(sdk >= 31 ? ['exact'] : []), ...(sdk >= 26 ? ['channel'] : []), ...(sdk >= 34 ? ['fullscreen'] : []), 'permanent', 'lockscreen', 'background-popup', 'startup', 'battery', 'vibration'];
     assert.deepEqual(permissionPageIds(access(sdk)), expected);
     assert.deepEqual(permissionPageIds({ ...access(sdk), notifications: false, exactAlarm: false, notificationChannelReady: false, fullScreenIntent: false, batteryRestricted: true }), expected);
   }
@@ -69,15 +69,47 @@ test('access reads time out without publishing a late result and can be retried'
   assert.deepEqual(await accessDeadline(Promise.resolve({ notifications: true }), 5), { notifications: true });
   await assert.rejects(accessDeadline(Promise.reject(new Error('native unavailable')), 5), /native unavailable/);
 });
-test('screenshots never substitute another manufacturer or a simulated dialog', () => {
-  for (const brand of DEVICE_GUIDES.flatMap(guide => guide.aliases).concat(['unknown'])) {
-    const xiaomi = deviceGuideId(brand) === 'xiaomi';
-    for (const setting of ['notifications', 'channel', 'fullscreen']) assert.equal(guideExampleForSetting(brand, setting), xiaomi && setting !== 'fullscreen' ? `xiaomi-miui14-${setting}` : null);
-    assert.equal(guideExampleForSetting(brand, 'exact'), xiaomi ? 'xiaomi-miui14-exact' : brand === 'samsung' ? 'samsung-exact' : null);
+test('screenshots use manufacturer captures when available and fallback screenshots when missing', () => {
+  // Direct captures preserve brand specificity
+  assert.equal(directGuideExample('samsung', 'exact'), 'samsung-exact');
+  assert.equal(directGuideExample('samsung', 'battery'), 'samsung-battery');
+  assert.equal(directGuideExample('samsung', 'notifications'), null);
+  assert.equal(directGuideExample('oppo', 'startup'), 'oppo-autostart');
+  assert.equal(directGuideExample('oppo', 'battery'), 'oppo-battery');
+  assert.equal(directGuideExample('google', 'notifications'), null);
+
+  // Fallback screenshots provide coverage for missing screens
+  for (const brand of ['google', 'pixel', 'honor', 'unknown']) {
+    assert.equal(guideExampleForSetting(brand, 'notifications'), 'xiaomi-miui14-notifications');
+    assert.equal(guideExampleForSetting(brand, 'exact'), 'xiaomi-miui14-exact');
+    assert.equal(guideExampleForSetting(brand, 'channel'), 'xiaomi-miui14-channel');
+    assert.equal(guideExampleForSetting(brand, 'fullscreen'), 'android-fullscreen');
+    assert.equal(guideExampleForSetting(brand, 'startup'), 'xiaomi-miui14-startup');
+    assert.equal(guideExampleForSetting(brand, 'battery'), 'xiaomi-battery');
   }
-  assert.equal(guideExampleForSetting('honor', 'startup'), null);
-  assert.equal(guideExampleForSetting('vivo', 'startup'), null);
-  assert.equal(guideExampleForSetting('oneplus', 'battery'), null);
+
+  // Brand-specific screenshots take precedence over fallbacks
+  assert.equal(guideExampleForSetting('samsung', 'exact'), 'samsung-exact');
+  assert.equal(guideExampleForSetting('samsung', 'battery'), 'samsung-battery');
+  assert.equal(guideExampleForSetting('samsung', 'notifications'), 'xiaomi-miui14-notifications');
+  assert.equal(guideExampleForSetting('samsung', 'channel'), 'xiaomi-miui14-channel');
+  assert.equal(guideExampleForSetting('samsung', 'fullscreen'), 'android-fullscreen');
+
+  assert.equal(guideExampleForSetting('oppo', 'startup'), 'oppo-autostart');
+  assert.equal(guideExampleForSetting('oppo', 'battery'), 'oppo-battery');
+  assert.equal(guideExampleForSetting('oppo', 'notifications'), 'xiaomi-miui14-notifications');
+
+  assert.equal(guideExampleForSetting('realme', 'startup'), 'realme-battery');
+  assert.equal(guideExampleForSetting('realme', 'battery'), 'realme-battery');
+
+  assert.equal(guideExampleForSetting('oneplus', 'startup'), 'oneplus-battery');
+  assert.equal(guideExampleForSetting('oneplus', 'battery'), 'xiaomi-battery');
+
+  assert.equal(guideExampleForSetting('vivo', 'battery'), 'vivo-background');
+  assert.equal(guideExampleForSetting('vivo', 'startup'), 'xiaomi-miui14-startup');
+
+  assert.equal(guideExampleForSetting('huawei', 'startup'), 'huawei-autostart');
+  assert.equal(guideExampleForSetting('huawei', 'battery'), 'xiaomi-battery');
 });
 test('portrait and landscape screenshot sizes remain contained on narrow phones and large displays', () => {
   for (const availableWidth of [160, 240, 280, 320, 600]) for (const maximumHeight of [160, 224, 260]) {
@@ -204,25 +236,30 @@ test('replaying, skipping setup, and completion only write the introduction stor
 function scheduling(overrides = {}) {
   const state = { schedules: 0, eligible: true, generation: 0 };
   const deps = {
-    capabilities: async () => ({ notifications: true, exactAlarm: true, notificationChannelReady: true }),
+    capabilities: async () => ({ notifications: true, exactAlarm: true, notificationChannelEnabled: true, notificationChannelReady: true }),
     snapshot: async () => ({ config: null, scheduled: false }), toneKey: value => value,
     schedule: async () => { state.schedules++; return { scheduled: true }; },
     eligible: () => state.eligible, generation: () => state.generation, ...overrides,
   };
   return { state, run: createOnboardingScheduler(deps) };
 }
-test('notification, exact alarm, and channel access are required separately', async () => {
-  for (const key of ['notifications', 'exactAlarm', 'notificationChannelReady']) {
-    const status = { notifications: true, exactAlarm: true, notificationChannelReady: true, [key]: false };
+test('notification, exact-alarm and enabled channel are required; High importance is advisory', async () => {
+  for (const key of ['notifications', 'exactAlarm', 'notificationChannelEnabled']) {
+    const status = { notifications: true, exactAlarm: true, notificationChannelEnabled: true, notificationChannelReady: true, [key]: false };
     assert.equal(coreAlarmReady(status), false);
     const { state, run } = scheduling({ capabilities: async () => status });
     await assert.rejects(run(draft()), /needs-access/); assert.equal(state.schedules, 0);
   }
+  const status = { notifications: true, exactAlarm: true, notificationChannelEnabled: true, notificationChannelReady: false };
+  assert.equal(coreAlarmReady(status), true);
+  const { state, run } = scheduling({ capabilities: async () => status });
+  await run(draft());
+  assert.equal(state.schedules, 1);
 });
 test('rapid scheduling commands share a flight and stale commands cannot schedule after background-and-return', async () => {
   const gate = deferred(), { state, run } = scheduling({ capabilities: () => gate.promise });
   const first = run(draft()), second = run(draft()); assert.equal(first, second);
-  state.generation++; gate.resolve({ notifications: true, exactAlarm: true, notificationChannelReady: true });
+  state.generation++; gate.resolve({ notifications: true, exactAlarm: true, notificationChannelEnabled: true, notificationChannelReady: true });
   await assert.rejects(first, /cancelled/); assert.equal(state.schedules, 0);
 });
 test('late scheduling success or failure after an alarm interruption cannot advance onboarding', async () => {
@@ -277,7 +314,7 @@ test('coverage checklist lists every page and only manufacturer-matched eligible
     assert.deepEqual(guide.pages.map(page => page.id), permissionPages(access(guide.sdkInt, guide.manufacturer)).map(page => page.id));
     assert.equal(guide.complete, guide.pages.every(page => page.screenshot));
     for (const page of guide.pages) {
-      assert.equal(page.screenshot, guideExampleForSetting(guide.manufacturer, page.id));
+      assert.equal(page.screenshot, directGuideExample(guide.manufacturer, page.id));
       if (!page.screenshot) { assert.equal(page.state, 'capture-required'); continue; }
       const source = sources.find(source => source.name === page.screenshot);
       assert.equal(source.eligible, true);
@@ -286,29 +323,55 @@ test('coverage checklist lists every page and only manufacturer-matched eligible
       assert.ok((await readFile(new URL(`../assets/onboarding/guides/${source.file}`, import.meta.url))).length);
     }
   }
-  for (const name of ['android-notifications', 'android-channel', 'android-fullscreen']) assert.equal(sources.find(source => source.name === name).eligible, false);
+  for (const name of ['android-notifications', 'android-channel']) assert.equal(sources.find(source => source.name === name).eligible, false);
+  assert.equal(sources.find(source => source.name === 'android-fullscreen').eligible, true);
 });
 
-test('onboarding can continue and save without phone-setting confirmations, preserving unverified status', () => {
-  for (const manufacturer of ['Xiaomi', 'Samsung', 'Google', 'OPPO', 'Honor', 'unknown']) {
-    const status = access(34, manufacturer), record = { reviews: {} }, pages = permissionPages(status);
-    for (const page of pages.filter(page => !page.native)) {
-      assert.equal(permissionPageCanContinue(page, status), true);
-      assert.equal(permissionPageReady(page, status, record), false);
-    }
-    assert.equal(pages.find(page => !permissionPageCanContinue(page, status)), undefined);
-    assert.deepEqual(record.reviews, {});
-    for (const key of ['notifications', 'exactAlarm', 'notificationChannelReady', 'fullScreenIntent']) {
-      const revoked = { ...status, [key]: false };
-      assert.ok(permissionPages(revoked).find(page => !permissionPageCanContinue(page, revoked))?.native);
+test('only mandatory alarm access gates Next, across device families', () => {
+  for (const manufacturer of ['Vivo', 'Xiaomi', 'Samsung', 'Google', 'OPPO', 'Honor', 'unknown']) {
+    const status = { ...access(34, manufacturer), notifications: false, exactAlarm: false,
+      notificationChannelReady: false, fullScreenIntent: false, batteryRestricted: true };
+    const pages = walkthroughPages(status);
+    assert.deepEqual(pages.filter(page => page.required).map(page => page.id), ['notifications', 'exact']);
+    for (const page of pages) assert.equal(permissionPageCanContinue(page, status), !page.required, page.id);
+    for (const page of pages.filter(page => page.required)) {
+      const key = { notifications: 'notifications', exact: 'exactAlarm' }[page.id];
+      assert.equal(permissionPageCanContinue(page, { ...status, [key]: true }), true);
     }
   }
 });
+test('forward navigation skips granted requirements and retains every optional screen', () => {
+  const status = access(), pages = walkthroughPages(status);
+  assert.equal(nextPermissionPage(pages, status), 'channel');
+  assert.equal(nextPermissionPage(pages, { ...status, exactAlarm: false }), 'exact');
+  assert.equal(nextPermissionPage(pages, { ...status, notificationChannelReady: false }), 'channel');
+  assert.deepEqual(permissionPageIds(status), pages.map(page => page.id));
+  let after = 1;
+  const visited = [];
+  for (let id; (id = nextPermissionPage(pages, status, after));) {
+    visited.push(id); after = pages.findIndex(page => page.id === id);
+  }
+  assert.deepEqual(visited, pages.filter(page => !page.required).map(page => page.id));
+  assert.equal(missingRequiredPage(pages, status), undefined);
+  assert.equal(missingRequiredPage(pages, { ...status, notifications: false }), 'notifications');
+  assert.equal(missingRequiredPage(pages, { ...status, fullScreenIntent: false, batteryRestricted: true }), undefined);
+  // Back uses the full list instead of forward skipping.
+  assert.equal(resolvePermissionPage(permissionPageIds(status), 'exact'), 'exact');
+});
+test('Set up later persists completion without changing alarm drafts or other app data', async () => {
+  const initial = { ...fresh(), step: 'permissions', permissionPageId: 'notifications', draft: draft() };
+  const storage = memory([['geeta:daily-progress-v1', 'existing-progress']]);
+  const write = createOnboardingWriter(storage, initial, () => {});
+  await write(value => ({ ...value, completed: true, replaying: false, permissionPageId: undefined }));
+  const saved = await bootstrapOnboarding(storage, async () => null);
+  assert.equal(needsIntroduction(saved), false);
+  assert.deepEqual(saved.draft, initial.draft);
+  assert.equal(storage.values.get('geeta:daily-progress-v1'), 'existing-progress');
+});
 
-
-test('permission instructions and credits are translated in every language', () => {
-  const instructions = DEVICE_GUIDES.flatMap(guide => permissionPages(access(34, guide.aliases[0])).map(page => guideExampleForSetting(guide.aliases[0], page.id) ? GUIDE_EXAMPLES[guideExampleForSetting(guide.aliases[0], page.id)].instruction : page.guidance));
-  for (const copy of ['Image credits', ...instructions]) {
+test('permission instructions are translated in every language', () => {
+  const instructions = DEVICE_GUIDES.flatMap(guide => walkthroughPages(access(34, guide.aliases[0])).map(page => guideExampleForSetting(guide.aliases[0], page.id) ? GUIDE_EXAMPLES[guideExampleForSetting(guide.aliases[0], page.id)].instruction : page.guidance));
+  for (const copy of instructions) {
     assert.ok(copy in catalog, copy);
     assert.notEqual(translate(copy, {}, 'hi'), copy);
     assert.ok(translate(copy, {}, 'hinglish').trim());
@@ -355,13 +418,13 @@ test('every applicable Xiaomi Android 13 page bundles a genuine screenshot', asy
 });
 
 
-test('the save summary is removed and legacy drafts resume at the final permission', () => {
+test('the save summary and test screen are removed and legacy drafts resume at the final permission', () => {
   for (const manufacturer of ['Xiaomi', 'Samsung', 'Google', 'OPPO', 'Honor']) {
     const ids = permissionPageIds(access(34, manufacturer));
     assert.equal(ids.includes('save'), false);
-    assert.equal(ids.at(-1), 'test');
-    assert.equal(resolvePermissionPage(ids, 'save'), ids.at(-2));
-    assert.equal(resolvePermissionPage(ids, 'test'), 'test');
+    assert.equal(ids.includes('test'), false);
+    assert.equal(resolvePermissionPage(ids, 'save'), ids.at(-1));
+    assert.equal(resolvePermissionPage(ids, 'test'), ids.at(-1));
   }
 });
 

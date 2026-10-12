@@ -1,3 +1,4 @@
+import { useDecorativeMotion } from '@/hooks/use-motion-environment';
 import { ReactNode } from "react";
 import {
   LayoutChangeEvent,
@@ -8,7 +9,6 @@ import {
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
-  Easing,
   Extrapolation,
   interpolate,
   useAnimatedStyle,
@@ -31,6 +31,7 @@ export function Interactive3DCard({
   maxTiltDeg = 10,
   night = false,
 }: Interactive3DCardProps) {
+  const motion = useDecorativeMotion();
   const rotateX = useSharedValue(0);
   const rotateY = useSharedValue(0);
   const sheenX = useSharedValue(-200);
@@ -47,7 +48,9 @@ export function Interactive3DCard({
   // Pan gesture — only fires when the user DRAGS (not taps).
   // Child Pressable/TouchableOpacity elements still receive their own tap events.
   const panGesture = Gesture.Pan()
-    .minDistance(4) // must move at least 4px before considered a drag
+    .enabled(motion)
+    .activeOffsetX([-12, 12])
+    .failOffsetY([-8, 8]) // Vertical movement belongs to the surrounding scroll view.
     .onUpdate((e) => {
       "worklet";
       const centerX = cardWidth.value / 2;
@@ -55,19 +58,11 @@ export function Interactive3DCard({
       const normX = Math.max(-1, Math.min(1, (e.x - centerX) / centerX));
       const normY = Math.max(-1, Math.min(1, (e.y - centerY) / centerY));
 
-      rotateY.value = withTiming(normX * maxTiltDeg, {
-        duration: 80,
-        easing: Easing.out(Easing.quad),
-      });
-      rotateX.value = withTiming(-normY * maxTiltDeg, {
-        duration: 80,
-        easing: Easing.out(Easing.quad),
-      });
-      sheenX.value = withTiming((normX + 0.5) * cardWidth.value, {
-        duration: 80,
-      });
+      rotateY.value = normX * maxTiltDeg;
+      rotateX.value = -normY * maxTiltDeg;
+      sheenX.value = (normX + 0.5) * cardWidth.value;
     })
-    .onEnd(() => {
+    .onFinalize(() => {
       rotateX.value = withSpring(0, { damping: 14, stiffness: 140 });
       rotateY.value = withSpring(0, { damping: 14, stiffness: 140 });
       sheenX.value = withTiming(-200, { duration: 400 });

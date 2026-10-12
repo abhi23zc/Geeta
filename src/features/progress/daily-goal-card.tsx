@@ -157,13 +157,13 @@ export function DailyGoalCard({
                 {t("Daily goal").toUpperCase()}
               </TextR>
             </View>
-            <TextR style={s.streakSubtitle}>
+            {/* <TextR style={s.streakSubtitle}>
               {link
                 ? p.current > 0
                   ? t("streakDays", { count: p.current })
                   : t("Begin your streak")
                 : `${completedCount} / 2 ${t("Complete")}`}
-            </TextR>
+            </TextR> */}
           </View>
         </View>
 

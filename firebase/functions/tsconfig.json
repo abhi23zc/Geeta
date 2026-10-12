@@ -1,4 +1,20 @@
 {
-  "compilerOptions": { "target": "ES2022", "module": "Node16", "moduleResolution": "Node16", "strict": true, "esModuleInterop": true, "skipLibCheck": true, "outDir": "lib", "rootDir": "../.." },
-  "include": ["index.ts", "../../shared/content.ts"]
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "lib",
+    "rootDir": "../.."
+  },
+  "include": [
+    "index.ts",
+    "../../shared/content.ts",
+    "notifications.ts",
+    "notification-service.ts",
+    "../../shared/notifications.ts",
+    "fcm-provider.ts"
+  ]
 }

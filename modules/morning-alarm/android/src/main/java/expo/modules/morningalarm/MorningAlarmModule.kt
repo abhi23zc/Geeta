@@ -92,7 +92,7 @@ class MorningAlarmModule : Module() {
       )
       require(config.weekdays.isNotEmpty()) { "Choose at least one alarm day" }
       val stored = AlarmStore.put(context, config)
-      val scheduledAt = if (stored.enabled && AlarmCapabilities.ready(context)) {
+      val scheduledAt = if (stored.enabled) {
         AlarmScheduler.scheduleNext(context, stored)
       } else { AlarmScheduler.cancel(context); null }
       mapOf("scheduled" to (scheduledAt != null), "scheduledAt" to scheduledAt?.toDouble()) + AlarmScheduler.status(context)
@@ -130,19 +130,21 @@ class MorningAlarmModule : Module() {
     }
     AsyncFunction("getHomeSnapshot") { synchronized(AlarmScheduler) {
       reconcile()
-      mapOf("config" to AlarmStore.get(context)?.let(::configMap), "capabilities" to capabilityMap(context)) + AlarmScheduler.status(context)
+      mapOf("config" to AlarmStore.get(context)?.let(::configMap), "capabilities" to capabilityMap(context),
+        "deliveryFailureAt" to context.createDeviceProtectedStorageContext().getSharedPreferences("alarm_delivery", Context.MODE_PRIVATE).getLong("failedAt", 0L).toDouble()) + AlarmScheduler.status(context)
     } }
 
     AsyncFunction("reconcile") { reconcile() }
 
     AsyncFunction("scheduleTest") {
       require(!AlarmStore.isRinging(context)) { "Stop the active alarm before testing" }
-      require(capabilityMap(context)["notifications"] == true && capabilityMap(context)["notificationChannelReady"] == true) { "Enable alarm notifications first" }
+      require(AlarmCapabilities.ready(context)) { "Enable notifications, the alarm channel and precise alarms first" }
       AlarmScheduler.scheduleTest(context).toDouble()
     }
 
     AsyncFunction("getLaunchDiagnostics") {
       mapOf(
+        "build" to AlarmLog.buildIdentity(context),
         "manufacturer" to Build.MANUFACTURER,
         "model" to Build.MODEL,
         "sdkInt" to Build.VERSION.SDK_INT,
@@ -184,7 +186,7 @@ class MorningAlarmModule : Module() {
     val config = AlarmStore.get(context) ?: return false
     if (!config.enabled) { AlarmScheduler.cancel(context); return false }
     val status = capabilityMap(context)
-    if (status["exactAlarm"] != true || status["notifications"] != true || status["notificationChannelReady"] != true) {
+    if (status["exactAlarm"] != true || status["notifications"] != true || status["notificationChannelEnabled"] != true) {
       AlarmScheduler.cancel(context, "needs-access")
       AlarmLog.event("schedule_paused", "required access missing; config retained")
       return false

@@ -1,17 +1,21 @@
 {
   "expo": {
-    "name": "geeta",
+    "name": "Aarambh",
     "slug": "geeta",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/aarambh-icon-v3.png",
     "scheme": "geeta",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/aarambh-icon-v3.png"
     },
     "android": {
-      "blockedPermissions": ["android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE", "android.permission.SYSTEM_ALERT_WINDOW"],
+      "blockedPermissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ],
       "permissions": [
         "POST_NOTIFICATIONS",
         "VIBRATE",
@@ -23,17 +27,16 @@
         "USE_FULL_SCREEN_INTENT"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#EFDFC3",
+        "foregroundImage": "./assets/images/aarambh-adaptive-v3.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.geeta"
+      "package": "com.zrf.aarambh",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/aarambh-favicon-v3.png"
     },
     "plugins": [
       "expo-sqlite",
@@ -56,7 +59,7 @@
         "expo-notifications",
         {
           "color": "#E56B27",
-          "defaultChannel": "morning-ritual-native-alarm-v3"
+          "defaultChannel": "owner-announcements-v1"
         }
       ],
       [

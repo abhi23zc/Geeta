@@ -8,6 +8,7 @@ import { useLanguage } from '@/i18n/provider';
 import { useProgress } from '@/features/progress/provider';
 import { progressTransaction } from '@/features/progress/transactions';
 import { withQuizReward } from '@/features/progress/quiz-receipts';
+import { notificationScheduleChanged } from '@/services/engagement-notifications';
 
 type ContextValue = { bank: QuizBank | null; progress: QuizProgress | null; busy: boolean; error: string | null; retry: () => void; commit: (update: (p: QuizProgress) => QuizProgress) => Promise<boolean>; reset: () => Promise<void> };
 const Context = createContext<ContextValue | null>(null);
@@ -56,6 +57,7 @@ export function QuizProvider({ children }: React.PropsWithChildren) {
         try { await storage.current.commit(acknowledged); current.current = acknowledged; } catch { /* retry on next load/commit */ }
       }
       if (mounted.current) { setProgress(current.current); setError(null); }
+      notificationScheduleChanged();
       return true;
     } catch (e) { if (mounted.current) setError(e instanceof Error ? e.message : 'Could not save. Please try again.'); return false; }
     finally { locked.current = false; if (mounted.current) setBusy(false); }

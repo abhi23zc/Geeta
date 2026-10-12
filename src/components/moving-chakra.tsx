@@ -1,3 +1,4 @@
+import { useDecorativeMotion } from '@/hooks/use-motion-environment';
 import React, { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
@@ -24,15 +25,17 @@ export function MovingChakra({
   duration = 8000,
 }: MovingChakraProps) {
   const rotation = useSharedValue(0);
+  const motion = useDecorativeMotion();
 
   useEffect(() => {
+    if (!motion) { cancelAnimation(rotation); return; }
     rotation.value = withRepeat(
       withTiming(360, { duration, easing: Easing.linear }),
       -1,
       false
     );
     return () => cancelAnimation(rotation);
-  }, [duration, rotation]);
+  }, [duration, rotation, motion]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],

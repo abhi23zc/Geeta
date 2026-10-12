@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import {
   ChevronDown,
@@ -20,8 +20,7 @@ export function LedgerList({ entries }: LedgerListProps) {
   const { t, formatNumber } = useLanguage();
   const [limit, setLimit] = useState(15);
 
-  const reversed = [...entries].reverse();
-  const visible = reversed.slice(0, limit);
+  const visible = useMemo(() => entries.slice(-limit).reverse(), [entries, limit]);
 
   return (
     <View style={s.container}>
@@ -34,7 +33,7 @@ export function LedgerList({ entries }: LedgerListProps) {
         </TextR>
       </View>
 
-      {!reversed.length ? (
+      {!entries.length ? (
         <View style={s.emptyCard3D}>
           <TextR style={s.emptyText}>{t('No points transactions yet.')}</TextR>
         </View>
@@ -94,7 +93,7 @@ export function LedgerList({ entries }: LedgerListProps) {
             );
           })}
 
-          {reversed.length > limit && (
+          {entries.length > limit && (
             <Pressable
               accessibilityRole="button"
               style={({ pressed }) => [

@@ -103,14 +103,18 @@ object AlarmPresentation {
       check(prefs(context).edit().remove("wakeTransition").commit()) { "Could not finish ritual transition" }
     }
   }
+  const val EXTRA_SESSION_ID = "alarm_session_id"
   fun intent(context: Context): Intent {
     val launch = if (!userUnlocked(context)) Intent(context, AlarmActivity::class.java) else context.packageManager.getLaunchIntentForPackage(context.packageName) ?: Intent(context, AlarmActivity::class.java)
     launch.action = Intent.ACTION_VIEW
     launch.data = Uri.parse("geeta:///${routes[stage(context)] ?: "alarm/wake"}?entry=alarm")
     launch.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+    launch.putExtra(EXTRA_SESSION_ID, prefs(context).getString("sessionId", null))
+    launch.data = launch.data?.buildUpon()?.appendQueryParameter("occurrence", prefs(context).getString("sessionId", null))?.build()
     return launch
   }
   private fun validIntent(context: Context, intent: Intent): Boolean = stage(context) != null &&
+    (intent.getStringExtra(EXTRA_SESSION_ID)?.let { it == prefs(context).getString("sessionId", null) } ?: true) &&
     intent.data?.scheme == "geeta" && intent.data?.path?.trim('/') in routes.values
   fun isRitualIntent(context: Context, intent: Intent) = validIntent(context, intent)
 
@@ -120,6 +124,11 @@ object AlarmPresentation {
     AlarmLog.initialize(activity)
     if (stage(activity) != null && !prefs(activity).contains("sessionId")) {
       check(prefs(activity).edit().putString("sessionId", "legacy:${UUID.randomUUID()}").commit()) { "Could not migrate ritual session" }
+    }
+    if (incoming.hasExtra(EXTRA_SESSION_ID) && !validIntent(activity, incoming)) {
+      AlarmLog.event("stale_activity_intent_rejected", "session=${incoming.getStringExtra(EXTRA_SESSION_ID)}")
+      incoming.data = Uri.parse("geeta:///")
+      incoming.removeExtra(EXTRA_SESSION_ID)
     }
     val enabled = validIntent(activity, incoming)
     val changed = presentation.prepare(created || host?.get() !== activity, prefs(activity).getString("sessionId", null), stage(activity), SystemClock.elapsedRealtime())
@@ -164,6 +173,11 @@ object AlarmPresentation {
         (drawable as? AnimatedImageDrawable)?.start()
       } else activity.assets.open("aru_start_my_day_wake.webp").use { image.setImageBitmap(BitmapFactory.decodeStream(it)) }
     }.onFailure { image.setImageResource(activity.applicationInfo.icon) }
+    val stopAt = AlarmStore.scheduledAt(activity)
+    view.findViewById<Button>(R.id.alarm_stop).apply {
+      visibility = if (AlarmStore.isRinging(activity)) View.VISIBLE else View.GONE
+      setOnClickListener { AlarmController.dismiss(activity, expectedAt = stopAt) }
+    }
     val button = view.findViewById<Button>(R.id.alarm_dismiss)
     button.text = AlarmStrings.text(activity, if (AlarmStore.isRinging(activity)) "☀  Hold to start my day" else "Continue my morning")
     button.setOnClickListener {
@@ -316,6 +330,7 @@ object AlarmPresentation {
   }
   fun onResume(activity: Activity) { if (presentation.status == "recovery") updateRecovery(activity); AlarmEvents.emit("alarmPresentationChanged", state(activity)) }
   fun onWindowFocus(activity: Activity, focused: Boolean) {
+    if (focused && validIntent(activity, activity.intent)) AlarmLog.event("activity_display_observed", "session=${prefs(activity).getString("sessionId", null)} host=${presentation.hostGeneration}")
     if (!focused) cancelHold()
     onResume(activity)
   }

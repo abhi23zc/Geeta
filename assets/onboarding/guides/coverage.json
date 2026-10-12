@@ -92,6 +92,11 @@
         "state": "capture-required"
       },
       {
+        "id": "permanent",
+        "screenshot": "xiaomi-miui14-notifications",
+        "state": "captured-example"
+      },
+      {
         "id": "lockscreen",
         "screenshot": "xiaomi-miui14-lockscreen",
         "state": "captured-example"
@@ -393,6 +398,11 @@
       {
         "id": "channel",
         "screenshot": "xiaomi-miui14-channel",
+        "state": "captured-example"
+      },
+      {
+        "id": "permanent",
+        "screenshot": "xiaomi-miui14-notifications",
         "state": "captured-example"
       },
       {

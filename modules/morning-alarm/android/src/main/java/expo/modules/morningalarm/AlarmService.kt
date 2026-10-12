@@ -1,13 +1,10 @@
 package expo.modules.morningalarm
 
 import android.app.Notification
-import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
@@ -73,7 +70,7 @@ class AlarmService : Service() {
       }
     }
 
-    if (player != null) {
+    if (occurrenceAt > 0L && AlarmStore.isRinging(this)) {
       if (AlarmStore.isTest(this) && intent != null && !intent.getBooleanExtra("test", false)) {
         stopAlarm("test-preempted", finishService = false)
       } else return START_STICKY
@@ -90,7 +87,8 @@ class AlarmService : Service() {
     }
     val scheduledAt = intent?.getLongExtra(AlarmScheduler.EXTRA_SCHEDULED_AT, System.currentTimeMillis())
       ?: AlarmStore.scheduledAt(this).takeIf { it > 0L } ?: System.currentTimeMillis()
-    startedAt = System.currentTimeMillis()
+    val recoveringOccurrence = AlarmStore.isRinging(this) && AlarmStore.scheduledAt(this) == scheduledAt
+    startedAt = if (recoveringOccurrence) AlarmStore.triggeredAt(this) else System.currentTimeMillis()
     occurrenceAt = scheduledAt
     gradual = config.gradualVolume
     AlarmStore.setTest(this, test)
@@ -102,11 +100,14 @@ class AlarmService : Service() {
       .onFailure { AlarmLog.event("session_save_failed", it.javaClass.simpleName) }
     sessionId = AlarmPresentation.state(this)["sessionId"] as? String
     AlarmLog.event("service_start", "scheduledAt=$scheduledAt")
+    deliveryGeneration++
+    minimalNotification = deliveryPrefs().getLong("retriedAt", -1L) == scheduledAt
     acquireWakeLock()
     // Access may change between receiver delivery and foreground promotion.
     val promoted = runCatching {
       createChannel()
-      startForeground(NOTIFICATION_ID, notification(initialDelivery = true))
+      check(AlarmCapabilities.ready(this)) { "Required alarm access missing" }
+      startForeground(NOTIFICATION_ID, notification(initialDelivery = intent != null && !recoveringOccurrence && !minimalNotification))
     }.onFailure {
       AlarmLog.event("foreground_promotion_failed", it.javaClass.simpleName)
     }.isSuccess
@@ -117,7 +118,10 @@ class AlarmService : Service() {
     }
     // Notification is intentionally posted first: if Android rejects this
     // direct background launch, its full-screen PendingIntent remains the safe path.
-    launchWakeScreenIfInteractive()
+    monitorNotification(scheduledAt, deliveryGeneration, 500L)
+    monitorNotification(scheduledAt, deliveryGeneration, 1_500L)
+    monitorNotification(scheduledAt, deliveryGeneration, 5_000L, repeat = true)
+    if (intent != null && !recoveringOccurrence) launchWakeScreenIfInteractive()
     runCatching { startSound(config) }
       .onSuccess { AlarmLog.event("playback_started") }
       .onFailure {
@@ -207,71 +211,57 @@ class AlarmService : Service() {
     vibrator.cancel()
   }
 
-  private fun createChannel() {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-    val channel = NotificationChannel(CHANNEL_ID, AlarmStrings.text(this, "Morning ritual alarms"), NotificationManager.IMPORTANCE_HIGH).apply {
-      description = AlarmStrings.text(this@AlarmService, "Shows the active Morning Ritual alarm")
-      setSound(null, null)
-      enableVibration(false)
-      lockscreenVisibility = Notification.VISIBILITY_PUBLIC
-    }
-    getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
-    // Channels are immutable; v2 lets existing installs receive the alarm policy.
-    getSystemService(NotificationManager::class.java).apply {
-      deleteNotificationChannel(LEGACY_CHANNEL_V1)
-      deleteNotificationChannel(LEGACY_CHANNEL_V2)
-    }
-  }
+  private fun createChannel() = AlarmNotification.createChannel(this)
 
   private fun launchWakeScreenIfInteractive() {
-    val power = getSystemService(PowerManager::class.java)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && !getSystemService(NotificationManager::class.java).canUseFullScreenIntent()) return
-    if (!power.isInteractive) return
+    val allowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE || getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
+    if (!allowed || !getSystemService(PowerManager::class.java).isInteractive) {
+      AlarmLog.event("direct_activity_launch_skipped", "occurrence=$occurrenceAt allowed=$allowed")
+      return
+    }
+    AlarmLog.event("direct_activity_launch_attempted", "occurrence=$occurrenceAt")
     runCatching { startActivity(AlarmActivity.intent(this)) }
-      .onSuccess { AlarmLog.event("direct_activity_launch") }
-      .onFailure { AlarmLog.event("direct_activity_launch_failed", it.javaClass.simpleName) }
+      .onSuccess { AlarmLog.event("direct_activity_launch_requested", "occurrence=$occurrenceAt") }
+      .onFailure { AlarmLog.event("direct_activity_launch_failed", "occurrence=$occurrenceAt ${it.javaClass.simpleName}") }
   }
 
-  private fun notification(initialDelivery: Boolean): Notification {
-    val open = PendingIntent.getActivity(
-      this,
-      6201,
-      AlarmActivity.intent(this),
-      PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-    )
-    val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      Notification.Builder(this, CHANNEL_ID)
-    } else {
-      @Suppress("DEPRECATION") Notification.Builder(this)
-    }
-    return builder
-      .setSmallIcon(applicationInfo.icon)
-      .setColor(Color.rgb(229, 107, 39))
-      .setContentTitle(AlarmStrings.text(this, "Your Morning Ritual is ready"))
-      .setContentText(AlarmStrings.text(this, "Alarm is ringing · tap to wake gently"))
-      .setPriority(Notification.PRIORITY_HIGH)
-      .setCategory(Notification.CATEGORY_ALARM)
-      .setVisibility(Notification.VISIBILITY_PUBLIC)
-      .setOngoing(true)
-      .setAutoCancel(false)
-      .setOnlyAlertOnce(true)
-      .setContentIntent(open)
-      .addAction(Notification.Action.Builder(null, AlarmStrings.text(this, "Stop"), PendingIntent.getBroadcast(this, 6202, Intent(this, AlarmStopReceiver::class.java).putExtra(AlarmScheduler.EXTRA_SCHEDULED_AT, occurrenceAt), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)).build())
-      .apply {
-        val allowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE || getSystemService(NotificationManager::class.java).canUseFullScreenIntent()
-        if (AlarmDeliveryPolicy.fullScreen(initialDelivery, allowed)) setFullScreenIntent(open, true)
-        AlarmLog.event("notification_presented", "purpose=${if (initialDelivery) "delivery" else "refresh"} fullScreen=${initialDelivery && allowed}")
+  private fun notification(initialDelivery: Boolean): Notification =
+    AlarmNotification.build(this, occurrenceAt, initialDelivery, minimalNotification)
+
+  private var minimalNotification = false
+  private var deliveryGeneration = 0L
+  private fun deliveryPrefs() = createDeviceProtectedStorageContext().getSharedPreferences("alarm_delivery", Context.MODE_PRIVATE)
+  private fun monitorNotification(at: Long, generation: Long, delay: Long, repeat: Boolean = false) {
+    handler.postDelayed({
+      if (!AlarmDeliveryPolicy.callbackActive(at, occurrenceAt, generation, deliveryGeneration, AlarmStore.isRinging(this))) return@postDelayed
+      val present = runCatching { getSystemService(NotificationManager::class.java).activeNotifications.any { it.id == NOTIFICATION_ID && it.notification.extras.getLong(AlarmScheduler.EXTRA_SCHEDULED_AT, -1L) == at } }
+        .onFailure { AlarmLog.event("notification_presence_unknown", "occurrence=$at ${it.javaClass.simpleName}") }.getOrNull()
+      AlarmLog.event("notification_presence", "occurrence=$at present=$present minimal=$minimalNotification")
+      if (present == true && AlarmStore.isTest(this) && deliveryPrefs().getLong("failedAt", 0L) < at) deliveryPrefs().edit().remove("failedAt").apply()
+      val action = AlarmDeliveryPolicy.presenceAction(present, minimalNotification)
+      if (action != "monitor") {
+        if (action == "retry") {
+          minimalNotification = true
+          deliveryPrefs().edit().putLong("retriedAt", at).apply()
+          val posted = runCatching { getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(initialDelivery = false)) }
+            .onFailure { AlarmLog.event("notification_retry_failed", "occurrence=$at ${it.javaClass.simpleName}") }.isSuccess
+          if (!posted) { deliveryFailed(at); return@postDelayed }
+          monitorNotification(at, generation, 500L)
+          monitorNotification(at, generation, 1_500L)
+        } else { deliveryFailed(at); return@postDelayed }
       }
-      .apply {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-          setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
-        }
-      }
-      .build()
+      if (repeat) monitorNotification(at, generation, 5_000L, repeat = true)
+    }, delay)
+  }
+  private fun deliveryFailed(at: Long) {
+    AlarmLog.event("notification_delivery_failed", "occurrence=$at")
+    deliveryPrefs().edit().putLong("failedAt", at).apply()
+    stopAlarm("notification-delivery-failed")
   }
 
   private fun stopAlarm(reason: String, finishService: Boolean = true) {
-    AlarmLog.event("alarm_stop", reason)
+    AlarmLog.event("alarm_stop", "occurrence=$occurrenceAt reason=$reason")
+    deliveryGeneration++
     handler.removeCallbacksAndMessages(null)
     languageRefresh.complete()
     player?.runCatching { stop() }
@@ -282,7 +272,7 @@ class AlarmService : Service() {
     wakeLock = null
     AlarmStore.setRinging(this, false)
     AlarmStore.setTest(this, false)
-    if (reason == "timeout" || reason == "foreground-promotion-failed" || reason == "service-destroyed") {
+    if (reason == "notification-delivery-failed" || reason == "timeout" || reason == "foreground-promotion-failed" || reason == "service-destroyed") {
       AlarmPresentation.end(this, reason, sessionId)
       AlarmActivity.finishVisible()
     }
@@ -311,7 +301,8 @@ class AlarmService : Service() {
         service.languageRefresh.complete()
         if (activeService === service && AlarmStore.isRinging(service)) {
           service.createChannel()
-          service.getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, service.notification(initialDelivery = false))
+          runCatching { service.getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, service.notification(initialDelivery = false)) }
+            .onFailure { AlarmLog.event("notification_refresh_failed", "occurrence=${service.occurrenceAt} ${it.javaClass.simpleName}") }
         }
       }
     }

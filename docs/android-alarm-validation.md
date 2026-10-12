@@ -1,10 +1,11 @@
 # Android alarm compatibility
 
+Current delivery repair and pending acceptance: [2026-10-12 validation](alarm-delivery-repair-validation.md).
 See [alarm reliability and recovery](alarm-reliability.md) for the current implementation and pending release acceptance matrix. Historical results below apply to the explicitly identified older APK.
 
 Android is the supported alarm platform. Expo SDK 57 targets API 36 and supports API 24+ (Android 7). The alarm module and app enable core library desugaring so `java.time` works on API 24–25. `plugins/with-alarm-desugaring.js` preserves this configuration on prebuild.
 
-Required: notifications, a High importance alarm channel, and exact alarm access. Full-screen access is optional; Android decides whether to display a full-screen intent. Background restriction and battery exemption are separate inspectable values. Manufacturer settings are advisory and only marked User confirmed after individual confirmation. Opening Settings never changes readiness by itself.
+Required: notifications, an enabled alarm channel, and exact alarm access. High importance is recommended for presentation. Full-screen access is optional; Android decides whether to display a full-screen intent. Background restriction and battery exemption are separate inspectable values. Manufacturer settings are advisory and only marked User confirmed after individual confirmation. Opening Settings never changes readiness by itself.
 
 Enabled configurations remain saved when required access is missing. Capability checks and foreground return reconcile scheduling; boot, update, time changes, and exact-access grant use the recovery receiver. A test is scheduled 30 seconds ahead with request IDs 6111/6112, distinct from recurring IDs 6101/6102. It uses local system alarm audio, stops after 30 seconds, and does not alter the saved configuration. Regular alarms continue until stopped, as before; the partial wake lock is bounded to 10 minutes. The foreground service runs only while an alarm is active. Diagnostics keep the latest 100 local entries and are available through `getLaunchDiagnostics()`.
 

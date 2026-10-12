@@ -213,6 +213,14 @@
       android:layout_weight="1" />
 
   <Button
+      android:id="@+id/alarm_stop"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:minHeight="48dp"
+      android:text="Stop"
+      android:textAllCaps="false" />
+
+  <Button
       android:id="@+id/alarm_retry"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"

@@ -418,21 +418,37 @@
     "retrieved": "2026-10-09",
     "manufacturer": "android",
     "brand": "android",
-    "setting": "notifications",
-    "softwareVersion": "Not supplied by source",
-    "uiVariant": "Captured layout only; newer software may differ",
-    "attribution": "Unverified",
-    "redistributionRights": "Not approved for onboarding",
-    "eligible": false,
-    "highlight": null,
-    "audit": "Quarantined: simulated notification dialog or missing manufacturer/setting provenance",
+    "setting": "fullscreen",
+    "softwareVersion": "Android 14",
+    "uiVariant": "AOSP Android 14 Settings",
+    "attribution": "Android Open Source Project · CC-BY-4.0",
+    "redistributionRights": "CC-BY-4.0; retain attribution and indicate WebP conversion",
+    "eligible": true,
+    "highlight": [
+      0.04,
+      0.48,
+      0.92,
+      0.09
+    ],
+    "audit": "AOSP Android 14 full-screen intent documentation capture",
     "supportedBrands": [
-      "android"
+      "android",
+      "google",
+      "pixel",
+      "samsung",
+      "xiaomi",
+      "oppo",
+      "realme",
+      "oneplus",
+      "vivo",
+      "huawei",
+      "honor",
+      "unknown"
     ],
     "supportedSettings": [
-      "notifications"
+      "fullscreen"
     ],
-    "licenseSource": null
+    "licenseSource": "https://source.android.com"
   },
   {
     "name": "xiaomi-miui14-notifications",
@@ -464,7 +480,8 @@
       "poco"
     ],
     "supportedSettings": [
-      "notifications"
+      "notifications",
+      "permanent"
     ],
     "licenseSource": ""
   },

@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "941217912619",
+    "project_id": "geeta-56cdb",
+    "storage_bucket": "geeta-56cdb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:941217912619:android:2bc44ead136dd6891b576e",
+        "android_client_info": {
+          "package_name": "com.anonymous.geeta"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "941217912619-2o7k4psgg3hsbfhqr0t88qk8lu7lg27i.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyATQ-GO294QlI_Hrp62J_fknVeUFSeWXwY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "941217912619-2o7k4psgg3hsbfhqr0t88qk8lu7lg27i.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:941217912619:android:4f9671474970c71f1b576e",
+        "android_client_info": {
+          "package_name": "com.zrf.aarambh"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "941217912619-2o7k4psgg3hsbfhqr0t88qk8lu7lg27i.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyATQ-GO294QlI_Hrp62J_fknVeUFSeWXwY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "941217912619-2o7k4psgg3hsbfhqr0t88qk8lu7lg27i.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

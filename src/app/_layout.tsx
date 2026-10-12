@@ -12,6 +12,7 @@ import { RitualProvider } from '@/state/ritual-store';
 import { GitaProvider } from '@/state/gita-store';
 import { TasksProvider } from '@/state/tasks-store';
 import { ContentProvider } from '@/state/content-store';
+import { NotificationProvider } from '@/state/notification-provider';
 import { AlarmNavigationGuard } from '@/navigation/alarm-navigation-guard';
 import { useAlarmPresentation } from '@/navigation/alarm-presentation';
 import { LanguageProvider } from '@/i18n/provider';
@@ -22,6 +23,7 @@ import { OnboardingProvider, useOnboarding } from '@/features/onboarding/provide
 import { OnboardingGate } from '@/features/onboarding/gate';
 import { needsIntroduction } from '@/features/onboarding/model';
 import { AnimatedSplashScreen } from '@/components/animated-splash';
+import { SubscriptionProvider } from '@/features/subscriptions/provider';
 
 const alarmScreenLayout: NonNullable<React.ComponentProps<typeof Stack>['screenLayout']> =
   ({ children }) => <AlarmNavigationGuard><OnboardingGate>{children}</OnboardingGate></AlarmNavigationGuard>;
@@ -56,9 +58,9 @@ function AppChrome() {
         <Stack.Screen name="quiz" />
         <Stack.Screen name="language" />
         <Stack.Screen name="progress" />
+        <Stack.Screen name="pro" />
         <Stack.Screen name="alarm/setup" options={{ presentation: 'card' }} />
         <Stack.Screen name="alarm/help" />
-        <Stack.Screen name="image-credits" />
         <Stack.Screen name="alarm/wake" options={{ presentation: 'fullScreenModal' }} />
       </Stack>
       {showTabs && <TabBar />}
@@ -77,9 +79,9 @@ export default function RootLayout() {
             <RitualProvider>
               <TasksProvider>
                 <GitaProvider>
-                  <ContentProvider>
-                    <AppChrome />
-                  </ContentProvider>
+                  <ContentProvider><NotificationProvider>
+                    {__DEV__ ? <SubscriptionProvider><AppChrome /></SubscriptionProvider> : <AppChrome />}
+                  </NotificationProvider></ContentProvider>
                 </GitaProvider>
               </TasksProvider>
             </RitualProvider>

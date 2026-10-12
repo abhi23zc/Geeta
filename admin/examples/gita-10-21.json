@@ -1,0 +1,38 @@
+{
+  "id": "10-21",
+  "revision": "10-21-v1",
+  "kind": "gita",
+  "referenceLabel": "CHAPTER 10 · SHLOKA 21",
+  "chapter": 10,
+  "verse": "21",
+  "theme": "The Divine presence in light, nature and the cosmos",
+  "sanskrit": "आदित्यानामहं विष्णुर्ज्योतिषां रविरंशुमान्।\nमरीचिर्मरुतामस्मि नक्षत्राणामहं शशी॥",
+  "transliteration": "Aadityaanaam aham Vishnur jyotishaam ravir anshumaan |\nMareechir marutaam asmi nakshatraanaam aham shashee",
+  "meaning": "हे अर्जुन, मैं आदित्यों में विष्णु हूँ, ज्योतियों में प्रकाशमान सूर्य हूँ। मैं मरुतों में मरीचि हूँ और नक्षत्रों में चन्द्रमा हूँ।",
+  "takeaway": "See the Divine not only within yourself, but also in the light, beauty and presence of the world around you.",
+  "reflectionPrompt": "Where can you pause today and recognize something sacred in the world around you?",
+  "context": "Krishna describes His divine manifestations in the natural and cosmic world, reminding Arjuna that the Divine can be experienced through the most radiant and powerful expressions of creation.",
+  "words": [
+    { "sanskrit": "आदित्य", "meaning": "the Adityas / solar deities" },
+    { "sanskrit": "विष्णु", "meaning": "Vishnu" },
+    { "sanskrit": "ज्योतिषाम्", "meaning": "among lights / luminous bodies" },
+    { "sanskrit": "रविः", "meaning": "the radiant Sun" },
+    { "sanskrit": "मरीचि", "meaning": "Marichi" },
+    { "sanskrit": "मरुताम्", "meaning": "among the Maruts" },
+    { "sanskrit": "नक्षत्राणाम्", "meaning": "among the stars / constellations" },
+    { "sanskrit": "शशी", "meaning": "the Moon" }
+  ],
+  "narration": {
+    "asset": { "clipId": "fc9bf929-4b0c-4e2f-964e-fc8245b90c6e", "title": "Gita Ch 10 Verse 21 Shlok" },
+    "completionMs": 54730,
+    "segments": [
+      { "kind": "intro", "text": "श्रीमद्भगवद्गीता · अध्याय दस · श्लोक इक्कीस", "startMs": 80, "endMs": 10580 },
+      { "kind": "sanskrit", "text": "आदित्यानामहं विष्णुर्ज्योतिषां रविरंशुमान्।", "startMs": 12880, "endMs": 18450 },
+      { "kind": "sanskrit", "text": "मरीचिर्मरुतामस्मि नक्षत्राणामहं शशी॥", "startMs": 18850, "endMs": 23800 },
+      { "kind": "intro", "text": "इसका मतलब है।", "startMs": 24380, "endMs": 25550 },
+      { "kind": "meaning", "text": "हे अर्जुन, मैं आदित्यों में विष्णु हूँ, ज्योतियों में प्रकाशमान सूर्य हूँ।", "startMs": 26400, "endMs": 34400 },
+      { "kind": "meaning", "text": "मैं मरुतों में मरीचि हूँ और नक्षत्रों में चन्द्रमा हूँ।", "startMs": 34850, "endMs": 39200 },
+      { "kind": "outro", "text": "और नक्षत्रों में चन्द्रमा हूँ।", "startMs": 44350, "endMs": 49100 }
+    ]
+  }
+}

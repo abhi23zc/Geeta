@@ -329,6 +329,7 @@ function TaskEditor({
     task?.recurrence ?? "once",
   );
   const [anytime, setAnytime] = useState(task?.timeMinutes === undefined);
+  const [reminderEnabled, setReminderEnabled] = useState(Boolean(task?.reminderEnabled));
 
   // Time picker state (hours, minutes, AM/PM)
   const initialMins = task?.timeMinutes ?? 540; // 9:00 AM
@@ -366,6 +367,7 @@ function TaskEditor({
       category,
       recurrence,
       timeMinutes,
+      reminderEnabled: !anytime && reminderEnabled,
     };
     if (task ? updateTask(task.id, input) : createTask(input)) onClose();
     else setError("This intention could not be saved. Please try again.");
@@ -479,8 +481,8 @@ function TaskEditor({
               />
             ) : null}
 
-            <TextR style={s.help}>
-               {translate("Times help organize your day. They do not create reminders.")} </TextR>
+            {!anytime ? <><TextR style={s.label}>Reminder</TextR><View style={s.choices}><Choice label="Reminder on" selected={reminderEnabled} onPress={() => setReminderEnabled(true)} /><Choice label="Reminder off" selected={!reminderEnabled} onPress={() => setReminderEnabled(false)} /></View></> : null}
+            <TextR style={s.help}>{reminderEnabled && !anytime ? 'A reminder will appear at this time.' : translate('Times help organize your day. They do not create reminders.')}</TextR>
             {error ? (
               <TextR accessibilityLiveRegion="polite" style={s.error}>
                 {translateText(error)}

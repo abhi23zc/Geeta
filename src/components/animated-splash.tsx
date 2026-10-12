@@ -1,4 +1,12 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { AruMascot } from "@/components/aru-mascot";
+import { TextR } from "@/components/ritual-ui";
+import { C } from "@/constants/ritual-theme";
+import { releaseStartupSplash } from "@/features/onboarding/startup-splash";
+import { useLanguage } from "@/i18n/provider";
+import { useAlarmPresentation } from "@/navigation/alarm-presentation";
+import { getAlarmStartupState } from "@/services/alarm";
+import { Sun } from "lucide-react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   AppState,
@@ -9,16 +17,11 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { AruMascot } from "@/components/aru-mascot";
-import { TextR } from "@/components/ritual-ui";
-import { C } from "@/constants/ritual-theme";
-import { releaseStartupSplash } from "@/features/onboarding/startup-splash";
-import { useAlarmPresentation } from "@/navigation/alarm-presentation";
-import { getAlarmStartupState } from "@/services/alarm";
-import { useLanguage } from "@/i18n/provider";
-import { Sparkles, Sun } from "lucide-react-native";
 
-import { shouldSkipSplash, type SplashPolicyParams } from './animated-splash-policy';
+import {
+  shouldSkipSplash,
+  type SplashPolicyParams,
+} from "./animated-splash-policy";
 export { shouldSkipSplash, type SplashPolicyParams };
 
 let splashSessionShown = false;
@@ -188,10 +191,8 @@ export function AnimatedSplashScreen({
           >
             <View style={styles.kickerPill}>
               <Sun size={12} color={C.saffron} />
-              <TextR style={styles.kickerText}>
-                {t("Wake with purpose")}
-              </TextR>
-              <Sparkles size={11} color={C.goldDark} />
+              <TextR style={styles.kickerText}>{t("Wake with purpose")}</TextR>
+              {/* <Sparkles size={11} color={C.goldDark} /> */}
             </View>
 
             <TextR serif accessibilityRole="header" style={styles.appName}>
@@ -216,9 +217,7 @@ export function AnimatedSplashScreen({
             },
           ]}
         >
-          <TextR style={styles.hintText}>
-            {t("Tap anywhere to begin")}
-          </TextR>
+          <TextR style={styles.hintText}>{t("Tap anywhere to begin")}</TextR>
         </Animated.View>
       </Pressable>
     </Animated.View>

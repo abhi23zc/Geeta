@@ -11,6 +11,11 @@ test('Firebase rules isolate drafts and deny client publication', async () => {
     await assertFails(getDoc(doc(ordinary.firestore(),'drafts/editor')));
     await assertSucceeds(setDoc(doc(admin.firestore(),'drafts/editor'),{text:'test'}));
     await assertFails(setDoc(doc(admin.firestore(),'delivery/current'),{releaseId:'unsafe'}));
+    for (const path of ['notificationInstallations/reader','notificationCampaigns/campaign','notificationCampaigns/campaign/recipients/reader','notificationCodes/G-0123456789ABCDEF','notificationControl/current','notificationAudit/event']) {
+      await assertFails(setDoc(doc(ordinary.firestore(),path),{unsafe:true}));
+      await assertFails(getDoc(doc(ordinary.firestore(),path)));
+      await assertFails(setDoc(doc(admin.firestore(),path),{unsafe:true}));
+    }
     const bytes=new Uint8Array([1,2,3]);
     await assertFails(uploadBytes(ref(ordinary.storage(),'drafts/reader/a.mp3'),bytes,{contentType:'audio/mpeg'}));
     await assertSucceeds(uploadBytes(ref(admin.storage(),'drafts/editor/a.mp3'),bytes,{contentType:'audio/mpeg'}));

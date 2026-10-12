@@ -46,11 +46,7 @@ export function TactileTile({
         { translateY: withSpring(pressed.value ? 3 : 0, { damping: 14, stiffness: 220 }) },
         { scale: withSpring(pressed.value ? 0.95 : 1, { damping: 14, stiffness: 220 }) },
       ],
-      shadowOffset: {
-        width: 0,
-        height: withSpring(pressed.value ? 2 : 6, { damping: 14, stiffness: 220 }),
-      },
-      shadowOpacity: withSpring(pressed.value ? 0.08 : 0.16, { damping: 14, stiffness: 220 }),
+
     };
   });
 

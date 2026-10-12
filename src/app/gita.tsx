@@ -1,3 +1,4 @@
+import { useDecorativeMotion } from '@/hooks/use-motion-environment';
 import { StorageRecoveryNotice } from "@/components/storage-recovery-notice";
 import { useLanguage } from "@/i18n/provider";
 import { setAudioModeAsync, useAudioPlayer } from "expo-audio";
@@ -29,6 +30,7 @@ import {
   View,
 } from "react-native";
 import Animated, {
+  cancelAnimation,
   Easing,
   FadeIn,
   FadeInDown,
@@ -376,10 +378,11 @@ function MascotStage({
   animated?: boolean;
 }) {
   const { t: translate } = useLanguage();
+  const motion = useDecorativeMotion() && animated;
   const auraGlow = useSharedValue(0.55);
 
   useEffect(() => {
-    if (!animated) {
+    if (!motion) {
       auraGlow.value = 0.55;
       return;
     }
@@ -391,7 +394,8 @@ function MascotStage({
       -1,
       true,
     );
-  }, [animated, auraGlow]);
+    return () => cancelAnimation(auraGlow);
+  }, [motion, auraGlow]);
 
   const auraAnimStyle = useAnimatedStyle(() => ({
     opacity: auraGlow.value,

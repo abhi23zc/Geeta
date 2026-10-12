@@ -8,13 +8,13 @@ import { GUIDE_EXAMPLES, guideExampleForSetting, screenshotDimensions } from './
 import { guideImage } from './guide-images';
 import { screenshotMetadata } from './screenshot-metadata';
 
-function GuideScreenshot({ name }: { name: keyof typeof GUIDE_EXAMPLES }) {
+function GuideScreenshot({ name, highlight }: { name: keyof typeof GUIDE_EXAMPLES; highlight?: number[] }) {
   const { text } = useLanguage();
   const { height: viewportHeight } = useWindowDimensions();
   const [availableWidth, setAvailableWidth] = useState(0);
   const [failed, setFailed] = useState(false);
   const asset = guideImage(name);
-  const target = screenshotMetadata.find(item => item.name === name)?.highlight;
+  const target = highlight ?? screenshotMetadata.find(item => item.name === name)?.highlight;
   const size = screenshotDimensions(availableWidth, Math.min(420, viewportHeight / 2), asset);
 
   return <View style={s.imageContainer} onLayout={event => setAvailableWidth(event.nativeEvent.layout.width)}>
@@ -39,11 +39,18 @@ export function PermissionGuide({ manufacturer, setting, instruction }: {
   setting: string;
   instruction: string;
 }) {
-  const { text } = useLanguage();
-  const key = guideExampleForSetting(manufacturer, setting);
+  const { text, t } = useLanguage();
+  const isVibration = setting === 'vibration';
+  const effectiveSetting = setting;
+  const key = isVibration ? null : guideExampleForSetting(manufacturer, effectiveSetting);
+  const customHighlight = setting === 'permanent' && key === 'xiaomi-miui14-notifications'
+    ? [0.05, 0.67, 0.91, 0.06]
+    : isVibration && key === 'xiaomi-miui14-notifications'
+    ? [0.06, 0.59, 0.88, 0.048]
+    : undefined;
   return <View style={{ gap: 14 }}>
-    <TextR>{text(key ? GUIDE_EXAMPLES[key].instruction : instruction)}</TextR>
-    {key && <GuideScreenshot key={key} name={key} />}
+    <TextR>{text(isVibration || setting === 'permanent' ? instruction : (key ? GUIDE_EXAMPLES[key].instruction : instruction))}</TextR>
+    {key && <><TextR>{t('Example screenshot. It may show the old app name; choose Aarambh in Settings.')}</TextR><GuideScreenshot key={`${key}:${setting}`} name={key} highlight={customHighlight} /></>}
   </View>;
 }
 

@@ -8,6 +8,7 @@
     "expo": "~57.0.22",
     "expo-audio": "~57.0.5",
     "expo-background-task": "~57.0.21",
+    "expo-clipboard": "~57.0.0",
     "expo-constants": "~57.0.18",
     "expo-device": "~57.0.2",
     "expo-file-system": "~57.0.7",
@@ -27,11 +28,14 @@
     "expo-task-manager": "~57.0.21",
     "expo-video": "~57.0.4",
     "expo-web-browser": "~57.0.3",
+    "firebase": "^12.19.0",
     "lucide-react-native": "^1.45.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
     "react-native-gesture-handler": "~2.32.0",
+    "react-native-purchases": "^10.12.2",
+    "react-native-purchases-ui": "^10.12.2",
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
@@ -58,9 +62,10 @@
     "test:progress": "node --test tests/progress.test.mjs tests/tree-growth.test.mjs tests/tree-cycles.test.mjs",
     "test:tasks": "node --test tests/tasks-model.test.mjs tests/snapshot-writer.test.mjs",
     "test:alarm-navigation": "node --test tests/alarm-navigation.test.mjs tests/alarm-presentation.test.mjs tests/alarm-recovery.test.mjs tests/alarm-device.test.mjs tests/ritual-readiness.test.mjs tests/route-removal-protection.test.mjs tests/ritual-route-restoration.test.mjs",
-    "test:content": "node --test tests/content-contract.test.mjs tests/content-cache.test.mjs",
+    "test:content": "node --test tests/content-contract.test.mjs tests/content-cache.test.mjs tests/admin-import.test.mjs tests/admin-editor.test.mjs tests/content-publish-day.test.mjs",
     "content:emulators": "firebase/functions/node_modules/.bin/firebase emulators:start --project demo-geeta",
-    "test:firebase": "npm --prefix firebase/functions run build && firebase/functions/node_modules/.bin/firebase emulators:exec --project demo-geeta --only auth,firestore,storage,functions 'npm --prefix firebase/functions test'"
+    "test:firebase": "npm --prefix firebase/functions run build && firebase/functions/node_modules/.bin/firebase emulators:exec --project demo-geeta --only auth,firestore,storage,functions 'npm --prefix firebase/functions test'",
+    "test:notifications": "node --test tests/notifications.test.mjs tests/task-notifications.test.mjs"
   },
   "private": true
 }

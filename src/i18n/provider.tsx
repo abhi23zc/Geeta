@@ -1,5 +1,6 @@
+import { createLocaleFormatters } from './formatters';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, Pressable, Text, View } from 'react-native';
 import { getAlarmStartupState, setNativeAppLanguage } from '@/services/alarm';
 import { createLanguageWriter, hydrateLanguagePreference, LANGUAGE_STORAGE_KEY, type AppLanguage } from './model';
@@ -67,8 +68,7 @@ export function LanguageProvider({ children }: React.PropsWithChildren) {
   }, []);
   const t = useCallback((key: TranslationKey, params?: Record<string, string | number>) => translate(key, params, language), [language]);
   const text = useCallback((value: string | undefined) => translateText(value, language), [language]);
-  const formatDate = useCallback((date: Date, options?: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(language === 'hi' ? 'hi-IN-u-nu-latn' : 'en-IN', options).format(date), [language]);
-  const formatNumber = useCallback((value: number) => new Intl.NumberFormat(language === 'hi' ? 'hi-IN-u-nu-latn' : 'en-IN').format(value), [language]);
+  const { formatDate, formatNumber } = useMemo(() => createLocaleFormatters(language === 'hi' ? 'hi-IN-u-nu-latn' : 'en-IN'), [language]);
   if (!ready && !bootstrap.immediate) return <View onLayout={releaseStartupSplash} style={{ flex: 1, backgroundColor: '#FFF9F5', alignItems: 'center', justifyContent: 'center', padding: 24, gap: 20 }}>
     {error ? <><Text accessibilityRole="alert">{error}</Text><Pressable accessibilityRole="button" onPress={() => { setError(null); void hydrate(); }} style={{ minHeight: 48, padding: 16 }}><Text>Retry / फिर प्रयास करें / Phir try karein</Text></Pressable></> : <ActivityIndicator accessibilityLabel="Loading language / भाषा लोड हो रही है" />}
   </View>;

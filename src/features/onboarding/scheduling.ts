@@ -2,7 +2,7 @@ import { coreAlarmReady, type AlarmDraft } from './model.ts';
 
 type Snapshot = { scheduled: boolean; config: { enabled: boolean; hour: number; minute: number; weekdays: string[]; tone: { key?: string } } | null };
 export function createOnboardingScheduler(deps: {
-  capabilities: () => Promise<{ notifications: boolean; exactAlarm: boolean; notificationChannelReady: boolean }>;
+  capabilities: () => Promise<{ notifications: boolean; exactAlarm: boolean; notificationChannelEnabled?: boolean; channelImportance?: number; notificationChannelReady: boolean }>;
   snapshot: () => Promise<Snapshot>;
   toneKey: (tone: string) => string;
   schedule: (draft: AlarmDraft) => Promise<{ scheduled: boolean }>;

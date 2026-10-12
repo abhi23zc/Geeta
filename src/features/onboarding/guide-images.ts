@@ -1,6 +1,7 @@
 import type { GUIDE_EXAMPLES } from './guide-data';
 export function guideImage(name: keyof typeof GUIDE_EXAMPLES) {
   switch (name) {
+    case 'android-fullscreen': return { source: require('@/assets/onboarding/guides/android-fullscreen.webp'), width: 204, height: 400 };
     case 'xiaomi-miui14-startup': return { source: require('@/assets/onboarding/guides/xiaomi-miui14-startup.png'), width: 1080, height: 2400 };
     case 'xiaomi-miui14-background-popup': return { source: require('@/assets/onboarding/guides/xiaomi-miui14-background-popup.png'), width: 1080, height: 2400 };
     case 'xiaomi-miui14-lockscreen': return { source: require('@/assets/onboarding/guides/xiaomi-miui14-lockscreen.png'), width: 1080, height: 2400 };

@@ -1,15 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Vibration, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { Vibrate } from 'lucide-react-native';
 import { TextR } from '@/components/ritual-ui';
+import { C } from '@/constants/ritual-theme';
 import { useLanguage } from '@/i18n/provider';
-import { useRitual } from '@/state/ritual-store';
 import { alarmGuideManufacturer } from '@/services/alarm-device';
 import { isNativeAlarmAvailable } from '@/services/alarm';
 import { useOnboarding } from './provider';
 import { useAlarmReliability } from './alarm-reliability';
 import { OnboardingButton } from './button';
 import { PermissionGuide } from './permission-guide';
-import { permissionPages, permissionPageIds, permissionPageReady, permissionPageCanContinue, resolvePermissionPage } from './permission-model';
+import { walkthroughPages, nativePageReady, nextPermissionPage, missingRequiredPage, permissionPageCanContinue, resolvePermissionPage } from './permission-model';
 
 export function OnboardingPermissions({ onProgress, registerBack, onFinish }: {
   onProgress: (position: number, total: number) => void;
@@ -19,19 +21,29 @@ export function OnboardingPermissions({ onProgress, registerBack, onFinish }: {
 }) {
   const { record, update, busy } = useOnboarding();
   const { t, text } = useLanguage();
-  const ritual = useRitual();
   const controller = useAlarmReliability(undefined, true);
   const { status, record: reviews } = controller;
-  const [rang, setRang] = useState<boolean | null>(null);
-  const [lockScreen, setLockScreen] = useState<boolean | null>(null);
   const [helpPageId, setHelpPageId] = useState<string>();
-  const ids = useMemo(() => status ? permissionPageIds(status) : [], [status]);
+  const [reviewedPages, setReviewedPages] = useState<Record<string, boolean>>({});
+  const [vibrated, setVibrated] = useState(false);
+  const pages = useMemo(() => status ? walkthroughPages(status) : [], [status]);
+  const ids = useMemo(() => pages.map(page => page.id), [pages]);
   const id = resolvePermissionPage(ids, onFinish ? helpPageId : record?.permissionPageId);
   const index = ids.indexOf(id);
-  const pages = status ? permissionPages(status) : [];
+  const [autoAdvance, setAutoAdvance] = useState(true);
+  const lastAutomaticId = useRef<string | undefined>(undefined);
   const page = pages.find(item => item.id === id);
   const blocked = (!onFinish && busy) || controller.busy;
-  const ready = !!page && !!status && !!reviews && permissionPageReady(page, status, reviews);
+  const ready = !!page?.required && !!status && !controller.error && nativePageReady(page.id, status);
+  const isLastPage = index === ids.length - 1;
+  const hasReviewed = !!reviewedPages[id];
+  const triggerTestVibration = async () => {
+    setVibrated(true);
+    try {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {}
+    Vibration.vibrate(300);
+  };
   const move = useCallback(async (destination: string | undefined) => {
     if ((!onFinish && busy) || controller.busy || !controller.eligible()) return;
     if (onFinish) {
@@ -45,48 +57,104 @@ export function OnboardingPermissions({ onProgress, registerBack, onFinish }: {
     if (ids.length) onProgress(index + 1, ids.length);
   }, [index, ids.length, onProgress]);
   useEffect(() => {
-    registerBack(() => { void move(ids[index - 1]); });
+    registerBack(() => { setAutoAdvance(false); lastAutomaticId.current = undefined; void move(ids[index - 1]); });
     return () => registerBack(null);
   }, [registerBack, move, index, ids]);
   const finish = () => {
     if (blocked || !controller.eligible()) return;
     if (onFinish) onFinish();
-    else void update(value => ({ ...value, completed: true, replaying: false }));
+    else void update(value => ({ ...value, completed: true, replaying: false, permissionPageId: undefined }));
   };
+  useEffect(() => {
+    if (!autoAdvance || blocked || !ready || !status || !controller.eligible() || lastAutomaticId.current === id) return;
+    const destination = nextPermissionPage(pages, status, index);
+    if (destination) {
+      lastAutomaticId.current = id;
+      const timer = setTimeout(() => { void move(destination); }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [autoAdvance, blocked, ready, status, controller, id, pages, index, move]);
+  const next = () => {
+    if (!page || !status || blocked || (page.required && controller.error) || !permissionPageCanContinue(page, status)) return;
+    setAutoAdvance(true); lastAutomaticId.current = undefined;
+    const destination = nextPermissionPage(pages, status, index);
+    if (destination) void move(destination);
+    else if (controller.error) void controller.refresh();
+    else {
+      const missing = missingRequiredPage(pages, status);
+      if (missing) void move(missing); else finish();
+    }
+  };
+  const actionLabel = page?.required && !ready
+    ? ({ notifications: 'Enable notifications', exact: 'Allow precise alarms', channel: 'Open alarm settings' } as const)[page.id as 'notifications' | 'exact' | 'channel']
+    : 'Review settings';
   return <View style={{ width: '100%', gap: 14 }}>
     {!isNativeAlarmAvailable ? <TextR>{t('Alarm setup is available in the Android app. You can continue with reading and quizzes here.')}</TextR> : <>
-      {!status || !reviews ? <><ActivityIndicator /><TextR accessibilityLiveRegion="polite">{t('Checking access…')}</TextR></> : <>
+      {!status || !reviews ? <>{!controller.error && <><ActivityIndicator /><TextR accessibilityLiveRegion="polite">{t('Checking access…')}</TextR></>}</> : <>
         {page && <View key={id} style={{ gap: 14 }}>
           <TextR serif accessibilityRole="header" accessibilityLiveRegion="polite" style={{ fontSize: 24, fontWeight: '800' }}>{text(page.label)}</TextR>
+          <TextR accessibilityLiveRegion="polite">{t(page.required ? ready ? 'Verified' : 'Required for alarms' : 'Optional')}</TextR>
+          <TextR>{t(page.required ? 'Enable this setting for morning alarms, or set up your alarm later.' : 'You can continue without changing this setting.')}</TextR>
           <PermissionGuide key={`${status.manufacturer}:${id}`} manufacturer={alarmGuideManufacturer(status)} setting={id} instruction={page.guidance} />
-          {page.native && <TextR accessibilityLiveRegion="polite">{t(ready ? 'Verified' : 'Needs action')}</TextR>}
-          <OnboardingButton secondary={ready || !page.native} label={t('Review settings')} disabled={blocked} onPress={() => { void controller.open(id, ready); }} />
-          <OnboardingButton label={t('Next')} disabled={blocked || !permissionPageCanContinue(page, status)} onPress={() => { void move(ids[index + 1]); }} />
+          {id === 'vibration' && (
+            <Pressable
+              accessibilityRole="button"
+              disabled={blocked}
+              accessibilityState={{ disabled: blocked }}
+              onPress={triggerTestVibration}
+              style={({ pressed }) => [
+                s.testVibrateButton,
+                pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] },
+                vibrated && s.testVibrateButtonDone,
+              ]}
+            >
+              <Vibrate size={18} color={vibrated ? '#2E7D32' : C.primary} />
+              <TextR style={[s.testVibrateText, vibrated && { color: '#2E7D32' }]}>
+                {t(vibrated ? 'Vibration tested!' : 'Tap to test vibration')}
+              </TextR>
+            </Pressable>
+          )}
+          {id !== 'vibration' && <OnboardingButton
+            secondary={hasReviewed || ready || !page.required}
+            label={t(actionLabel)}
+            disabled={blocked}
+            onPress={() => {
+              setReviewedPages(prev => ({ ...prev, [id]: true }));
+              setAutoAdvance(true); lastAutomaticId.current = undefined;
+              void controller.open(id, !page.required || ready);
+            }}
+          />}
+          <OnboardingButton label={t(isLastPage ? 'Continue' : 'Next')} disabled={blocked || (page.required && !!controller.error) || !permissionPageCanContinue(page, status)} onPress={next} />
         </View>}
-        {id === 'test' && <>
-          <TextR serif accessibilityRole="header" style={{ fontSize: 24 }}>{t('Recommended alarm test')}</TextR>
-          <TextR>{t('Schedule a test, then lock your screen. The test stops after 30 seconds and keeps your saved alarm.')}</TextR>
-          <OnboardingButton label={t('Test alarm in 30 seconds')} disabled={blocked} onPress={() => { void controller.requestTest().then(saved => { if (saved && controller.eligible()) { setRang(null); setLockScreen(null); } }); }} />
-          {!!reviews.testRequestedAt && <>
-            <TextR>{t('After the test: did the alarm ring?')}</TextR>
-            <OnboardingButton secondary label={t('Yes')} disabled={blocked} onPress={() => { setRang(true); }} />
-            <OnboardingButton secondary label={t('No')} disabled={blocked} onPress={() => { setRang(false); }} />
-            <TextR>{t('Did the alarm screen appear while locked?')}</TextR>
-            <OnboardingButton secondary label={t('Yes')} disabled={blocked} onPress={() => { setLockScreen(true); }} />
-            <OnboardingButton secondary label={t('No')} disabled={blocked} onPress={() => { setLockScreen(false); }} />
-            {rang !== null && <TextR>{t(rang ? 'Yes' : 'No')}</TextR>}
-            {lockScreen !== null && <TextR>{t(lockScreen ? 'Yes' : 'No')}</TextR>}
-            <OnboardingButton label={t('Save test result')} disabled={blocked || rang === null || lockScreen === null} onPress={() => { if (rang !== null && lockScreen !== null) void controller.saveTest(rang, lockScreen); }} />
-            {reviews.test && <TextR>{t(reviews.test.rang && reviews.test.lockScreen ? 'Test confirmed' : 'Check full-screen alarm access and your phone’s lock-screen settings.')}</TextR>}
-          </>}
-          <OnboardingButton label={t('Continue')} disabled={blocked} onPress={finish} />
-        </>}
       </>}
       {controller.error && <TextR accessibilityRole="alert">{text(controller.error)}</TextR>}
       {controller.settingsHint && <TextR accessibilityLiveRegion="polite">{text(controller.settingsHint)}</TextR>}
       {controller.error && <OnboardingButton secondary label={t('Retry')} disabled={blocked} onPress={() => { void controller.refresh(); }} />}
     </>}
-    {!onFinish && <TextR>{t('You can set up your alarm later. Reading and quizzes will still work.')}</TextR>}
-    <OnboardingButton secondary label={t(onFinish ? 'Close' : ritual.alarmEnabled ? 'Keep saved alarm and continue' : 'Set up later')} disabled={blocked} onPress={finish} />
+    <OnboardingButton secondary label={t(onFinish ? 'Close' : 'Set up later')} disabled={blocked} onPress={finish} />
   </View>;
 }
+
+const s = StyleSheet.create({
+  testVibrateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(224, 86, 36, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(224, 86, 36, 0.25)',
+  },
+  testVibrateButtonDone: {
+    backgroundColor: 'rgba(46, 125, 50, 0.08)',
+    borderColor: 'rgba(46, 125, 50, 0.25)',
+  },
+  testVibrateText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.primary,
+  },
+});

@@ -11,7 +11,7 @@ import { PermissionGuide } from './permission-guide';
 import { DEVICE_GUIDES } from './guide-data';
 import { accessDeadline, permissionPageCanContinue } from './permission-model';
 import { coreAlarmReady } from './model';
-import { createReliabilityWriter, loadReliability, RELIABILITY_KEY, reliabilityComplete, reliabilitySteps, type ReliabilityRecord, type Review } from './alarm-reliability-model';
+import { createReliabilityWriter, loadReliability, RELIABILITY_KEY, reliabilitySteps, type ReliabilityRecord, type Review } from './alarm-reliability-model';
 
 /** Shared lifecycle-bound setup controller; review state never controls native alarm playback. */
 export function useAlarmReliability(guide?: string, actualGuide = false) {
@@ -59,7 +59,7 @@ export function useAlarmReliability(guide?: string, actualGuide = false) {
     finally { flight.current = false; if (alive.current) setBusy(false); if (generation !== epoch.current && eligible()) void refresh(); }
   };
   const steps = status ? reliabilitySteps(status, record?.guide ?? guide) : [];
-  return { status, record, busy, error, settingsHint, steps, complete: focused && !busy && !!record && !!status && reliabilityComplete(steps, record), refresh, eligible,
+  return { status, record, busy, error, settingsHint, steps, complete: focused && !busy && !!record && !!status && coreAlarmReady(status), refresh, eligible,
     review: (id: string, result: Review) => perform(async () => { await writer.current!(value => ({ ...value, reviews: { ...value.reviews, [id]: result, ...(id === 'popup' ? { lockscreen: result, 'background-popup': result } : {}) } })); }),
     dismiss: () => perform(async () => { await writer.current!(value => ({ ...value, dismissed: true })); }),
     requestTest: () => perform(async () => { await scheduleTestAlarm(); await writer.current!(value => ({ ...value, testRequestedAt: Date.now(), test: undefined })); }, 'Test setup could not be confirmed. Check the alarm notification before retrying.'),
@@ -73,9 +73,9 @@ export function useAlarmReliability(guide?: string, actualGuide = false) {
           await requestAlarmPermission();
           return;
         }
-        const result = await openAlarmReliabilitySettings((id === 'lockscreen' || id === 'background-popup' ? 'popup' : id) as AlarmReliabilitySetting);
+        const result = await openAlarmReliabilitySettings((id === 'permanent' ? 'notifications' : id === 'lockscreen' || id === 'background-popup' ? 'popup' : id) as AlarmReliabilitySetting);
         if (!result) throw new Error('Unavailable');
-        if (alive.current) pendingHint.current = result.destination === 'Android settings' ? 'Open Settings → Apps → geeta, then follow the instructions above.' : result.destination === 'App details' ? 'In app settings, follow the instructions above. Menu names may differ.' : null;
+        if (alive.current) pendingHint.current = result.destination === 'Android settings' ? 'Open Settings → Apps → Aarambh, then follow the instructions above.' : result.destination === 'App details' ? 'In app settings, follow the instructions above. Menu names may differ.' : null;
       } catch { if (alive.current) pendingHint.current = 'We could not open Android settings. Please open the app settings manually.'; }
       });
       if (started === epoch.current && eligible()) await refresh();
@@ -102,7 +102,7 @@ export function AlarmReliabilitySetup({ onReady, allowTest = false }: { onReady?
     const invalidate = () => { listener.remove(); generation.current++; };
     return invalidate;
   }, [focused]);
-  const step = (selected ? steps.find(item => item.id === selected) : undefined) ?? (record ? steps.find(item => item.native || !visited.includes(item.id)) : undefined);
+  const step = (selected ? steps.find(item => item.id === selected) : undefined) ?? (record ? steps.find(item => !visited.includes(item.id)) : undefined);
   if (!isNativeAlarmAvailable) return null;
   return <View style={{ gap: 14, padding: 16 }}>
     <TextR accessibilityRole="header" style={{ fontSize: 22, fontWeight: '700' }}>{t('Review alarm setup')}</TextR>
@@ -114,11 +114,11 @@ export function AlarmReliabilitySetup({ onReady, allowTest = false }: { onReady?
         <OnboardingButton secondary label={t('Review settings')} disabled={busy} onPress={() => { void controller.open(step.id); }} />
         <OnboardingButton label={t('Next')} disabled={busy || !status || !permissionPageCanContinue(step, status)} onPress={() => { setVisited(value => [...value, step.id]); setSelected(null); }} />
       </> : <>
-        <TextR>{t('Android access verified; phone settings are user reported.')}</TextR>
-        <TextR>{t('Alarm notifications')} · {t('Verified')}</TextR>
-        <TextR>{t('Alarms & reminders')} · {t(status && status.sdkInt >= 31 ? 'Verified' : 'Not applicable')}</TextR>
-        <TextR>{t('High-priority alarm channel')} · {t(status && status.sdkInt >= 26 ? 'Verified' : 'Not applicable')}</TextR>
-        {status && status.sdkInt >= 34 && <TextR>{t('Show alarm on lock screen')} · {t('Verified')}</TextR>}
+        <TextR>{t('Review alarm setup')}</TextR>
+        <TextR>{t('Alarm notifications')} · {t(status?.notifications ? 'Verified' : 'Needs action')}</TextR>
+        <TextR>{t('Alarms & reminders')} · {t(status && status.sdkInt >= 31 ? status.exactAlarm ? 'Verified' : 'Needs action' : 'Not applicable')}</TextR>
+        <TextR>{t('High-priority alarm channel')} · {t(status && status.sdkInt >= 26 ? status.notificationChannelReady ? 'Verified' : 'Needs action' : 'Not applicable')}</TextR>
+        {status && status.sdkInt >= 34 && <TextR>{t('Show alarm on lock screen')} · {t(status.fullScreenIntent ? 'Verified' : 'Needs action')}</TextR>}
         {Object.values(record.reviews).includes('unavailable') && <TextR>{t('Some phone settings are unavailable. Lock-screen presentation is unverified; try the test alarm.')}</TextR>}
         {steps.filter(item => !item.native).map(item => <OnboardingButton key={item.id} secondary label={text(item.label)} disabled={busy} onPress={() => setSelected(item.id)} />)}
       </>}

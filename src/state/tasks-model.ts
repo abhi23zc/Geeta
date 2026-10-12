@@ -5,6 +5,7 @@ export type TaskInput = {
   category: TaskCategory;
   timeMinutes?: number;
   recurrence: "daily" | "once";
+  reminderEnabled?: boolean;
 };
 export type TaskRecord = TaskInput & {
   id: string;
@@ -40,7 +41,9 @@ export function validTaskInput(value: TaskInput) {
     (value.timeMinutes === undefined ||
       (Number.isInteger(value.timeMinutes) &&
         value.timeMinutes >= 0 &&
-        value.timeMinutes < 1440))
+        value.timeMinutes < 1440)) &&
+    (value.reminderEnabled === undefined || typeof value.reminderEnabled === 'boolean') &&
+    (!value.reminderEnabled || value.timeMinutes !== undefined)
   );
 }
 

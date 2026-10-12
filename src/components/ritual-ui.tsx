@@ -1,3 +1,4 @@
+import { useDecorativeMotion } from '@/hooks/use-motion-environment';
 import { C, R } from "@/constants/ritual-theme";
 import { useLanguage } from "@/i18n/provider";
 import { Link, usePathname, useRouter } from "expo-router";
@@ -37,6 +38,7 @@ import Svg, {
 } from "react-native-svg";
 
 import Animated, {
+  cancelAnimation,
   Easing,
   useAnimatedStyle,
   useSharedValue,
@@ -151,6 +153,7 @@ export function DiyaGraphic({
   animated?: boolean;
   showAura?: boolean;
 }) {
+  const motion = useDecorativeMotion() && animated;
   const flameScaleY = useSharedValue(1);
   const flameTranslateY = useSharedValue(0);
   const flameRotate = useSharedValue(0);
@@ -159,7 +162,7 @@ export function DiyaGraphic({
   const glowOpacity = useSharedValue(0.4);
 
   React.useEffect(() => {
-    if (!animated) return;
+    if (!motion) return;
 
     flameScaleY.value = withRepeat(
       withSequence(
@@ -198,25 +201,33 @@ export function DiyaGraphic({
       true,
     );
 
-    glowScale.value = withRepeat(
-      withSequence(
-        withTiming(1.25, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.95, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      true,
-    );
+    if (showAura) {
+      glowScale.value = withRepeat(
+        withSequence(
+          withTiming(1.25, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0.95, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
+        ),
+        -1,
+        true,
+      );
 
-    glowOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0.65, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0.35, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      true,
-    );
+      glowOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.65, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0.35, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
+        ),
+        -1,
+        true,
+      );
+    }
+    return () => {
+      cancelAnimation(flameScaleY); cancelAnimation(flameTranslateY);
+      cancelAnimation(flameRotate); cancelAnimation(flameOpacity);
+      cancelAnimation(glowScale); cancelAnimation(glowOpacity);
+    };
   }, [
-    animated,
+    motion,
+    showAura,
     flameOpacity,
     flameRotate,
     flameScaleY,

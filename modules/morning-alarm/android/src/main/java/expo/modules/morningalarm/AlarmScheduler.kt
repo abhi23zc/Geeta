@@ -86,6 +86,7 @@ object AlarmScheduler {
   }
 
   @Synchronized fun scheduleTest(context: Context): Long {
+    require(AlarmCapabilities.ready(context)) { "Required alarm access missing" }
     val at = System.currentTimeMillis() + 30_000L
     scheduleAt(context, AlarmConfig(hour = 0, minute = 0, weekdays = emptySet(), enabled = true, gradualVolume = false, vibration = true, revision = 0), at, test = true)
     return at

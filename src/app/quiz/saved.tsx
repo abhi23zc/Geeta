@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { Bookmark, Trash2 } from 'lucide-react-native';
 
@@ -12,8 +12,10 @@ export default function Saved() {
   const t = useCopy();
   const lang = progress?.settings.language ?? 'hi';
 
-  const questions =
-    bank?.questions.filter(q => progress?.saved.includes(q.id)) ?? [];
+  const questions = useMemo(() => {
+    const savedIds = new Set(progress?.saved ?? []);
+    return bank?.questions.filter(q => savedIds.has(q.id)) ?? [];
+  }, [bank?.questions, progress?.saved]);
 
   return (
     <QuizScreen

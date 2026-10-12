@@ -22,6 +22,7 @@ import {
   type TaskInput,
   type TasksData,
 } from "./tasks-model";
+import { notificationScheduleChanged } from '@/services/engagement-notifications';
 
 export type { Task } from "./tasks-model";
 const STORAGE_KEY = "morning-ritual:tasks-v1";
@@ -131,6 +132,7 @@ export function TasksProvider({ children }: React.PropsWithChildren) {
           },
         ],
       });
+      notificationScheduleChanged();
       return true;
     },
     [commit],
@@ -152,6 +154,7 @@ export function TasksProvider({ children }: React.PropsWithChildren) {
             : task,
         ),
       });
+      notificationScheduleChanged();
       return true;
     },
     [commit],
@@ -166,13 +169,14 @@ export function TasksProvider({ children }: React.PropsWithChildren) {
           task.id === id ? { ...task, archivedDate: localDateKey() } : task,
         ),
       });
+      notificationScheduleChanged();
     },
     [commit],
   );
   const toggleCompletion = useCallback(
     (id: string) => {
       const current = latest.current;
-      if (current) commit(toggleTaskCompletion(current, id, localDateKey()));
+      if (current) { commit(toggleTaskCompletion(current, id, localDateKey())); notificationScheduleChanged(); }
     },
     [commit],
   );

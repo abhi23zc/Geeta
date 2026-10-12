@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import {
   Flower2,
@@ -15,6 +15,16 @@ export default function Collection() {
   const t = useCopy();
   const lang = progress?.settings.language ?? 'hi';
 
+  const topicSummaries = useMemo(() => {
+    const summaries = new Map<string, { name: string; completed: number }>();
+    for (const topic of bank?.topics ?? []) summaries.set(topic.id, { name: topic.title[lang], completed: 0 });
+    for (const lesson of bank?.lessons ?? []) {
+      const topic = summaries.get(lesson.topic);
+      if (topic && progress?.lessons[lesson.id]?.complete) topic.completed++;
+    }
+    return summaries;
+  }, [bank, progress?.lessons, lang]);
+  const unlockedCards = useMemo(() => new Set(progress?.cards ?? []), [progress?.cards]);
   const cards = bank?.cards ?? [];
   const unlockedCount = progress?.cards.length ?? 0;
   const totalCards = cards.length;
@@ -50,12 +60,9 @@ export default function Collection() {
         contentContainerStyle={s.cardsList}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => {
-          const unlocked = progress?.cards.includes(item.id);
-          const completed = bank!.lessons.filter(
-            l => l.topic === item.topic && progress?.lessons[l.id]?.complete
-          ).length;
-          const topicData = bank?.topics.find(tp => tp.id === item.topic);
-          const topicName = topicData?.title[lang] ?? item.topic;
+          const unlocked = unlockedCards.has(item.id);
+          const completed = topicSummaries.get(item.topic)?.completed ?? 0;
+          const topicName = topicSummaries.get(item.topic)?.name ?? item.topic;
 
           return (
             <Panel

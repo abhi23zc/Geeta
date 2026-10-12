@@ -13,7 +13,15 @@ The Android app keeps today's practice and the following six dates in private de
 
 ## Publish content
 
-Choose the first calendar date, upload each day's MP3 or AAC/M4A narration, and fill all practice fields in the editor. Asset validation computes the actual duration, size, and SHA-256 on the server. Select each date to edit its practice. Include Sanskrit and meaning timing segments, in chronological order, without overlaps. Preview the recording and use its millisecond cursor to review timings. Click **Validate and apply** after text edits.
+For a single teaching, choose its date in the studio, paste your existing JSON (or import a `.json` file), and choose its matching MP3/M4A. The studio automatically uses server-verified audio metadata instead of placeholder `clipId`/`title` fields. Text edits and timing boundaries survive uploads and date switching. A supplied `completionMs` is preserved and must fit within the actual recording; closing `outro` cues retain their text/timings and are represented as non-highlighted intro cues for compatibility with existing installed apps. You do not need to edit hashes, URLs or audio sizes, or click a separate Apply button.
+
+Review the teaching and click **Publish teaching for [date]**. This updates only that date, preserving other published dates and current alarm music. A first single-date release may have no custom alarm music; the native alarm uses its normal fallback until tones are published. Single-date publication requires deploying the updated content function and studio; it does not require a new APK. Draft saving accepts incomplete editor content, including placeholders, and remains separate from publication. Save before closing the browser. Old saved drafts are still loadable. The **Edit published teaching for this date** button loads the current teaching for corrections.
+
+The provided chapter 10, verse 21 teaching is available in `admin/examples/gita-10-21.json`. Its accompanying WhatsApp recording was measured at 54.768 seconds, which accommodates the reviewed completion boundary at 54.730 seconds. This checks duration, not the accuracy of spoken content or every timing cue.
+
+The original seven-day workflow is available under **Alarm music and seven-day batch publication**. The following batch requirements still apply there:
+
+Choose the first calendar date, upload each day's MP3 or AAC/M4A narration, and fill all practice fields in the editor. Asset validation computes the actual duration, size, and SHA-256 on the server. Select each date to edit its practice. Include Sanskrit and meaning timing segments, in chronological order, without overlaps. Preview the recording and use its millisecond cursor to review timings. The review panel validates text automatically.
 
 Upload and describe all three alarm modes. These are looping musical alarm recordings, separate from Gita narration. Save drafts to resume editing later. Publication requires seven complete practices and three validated alarm assets. The publisher writes an immutable release and transactionally switches the current pointer. A conflicting publication is rejected; reload publication state before retrying. Restore selects an earlier release and creates a new publication. A failed publication leaves the previous release active.
 

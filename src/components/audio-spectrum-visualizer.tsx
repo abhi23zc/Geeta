@@ -1,3 +1,4 @@
+import { useDecorativeMotion } from '@/hooks/use-motion-environment';
 import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, {
@@ -59,11 +60,11 @@ function SpectrumBar({
   }, [heightVal, index, isPlaying, maxHeight, opacityVal]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    height: heightVal.value,
+    transform: [{ scaleY: heightVal.value / Math.max(1, maxHeight) }],
     opacity: opacityVal.value,
   }));
 
-  return <Animated.View style={[styles.bar, animatedStyle]} />;
+  return <Animated.View style={[styles.bar, { height: maxHeight }, animatedStyle]} />;
 }
 
 export function AudioSpectrumVisualizer({
@@ -71,13 +72,14 @@ export function AudioSpectrumVisualizer({
   barCount = 14,
   height = 24,
 }: AudioSpectrumVisualizerProps) {
+  const motion = useDecorativeMotion();
   return (
     <View style={[styles.container, { height }]}>
       {Array.from({ length: barCount }).map((_, i) => (
         <SpectrumBar
           key={i}
           index={i}
-          isPlaying={isPlaying}
+          isPlaying={isPlaying && motion}
           maxHeight={height}
         />
       ))}

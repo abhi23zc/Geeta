@@ -35,6 +35,7 @@ import { MORNING_RITUAL_LOGO, Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
 import { pushAppRoute, replaceAppRoute } from "@/navigation/route-actions";
 import {
+  openNotificationChannelSettings,
   ALARM_DAYS,
   AlarmDayId,
   getAlarmPresentationState,
@@ -337,15 +338,13 @@ function SetupContent() {
       setAlarmDays(selectedDayIds);
       setAlarmEnabled(true);
       void refreshContent().catch(() => undefined);
-      const resultCoreReady = result.scheduled && result.capabilities.notifications &&
-        result.capabilities.exactAlarm &&
-        result.capabilities.notificationChannelReady;
+      const resultCoreReady = result.scheduled && result.capabilities.notifications && result.capabilities.exactAlarm && result.capabilities.notificationChannelEnabled;
       if (!resultCoreReady) {
         if (result.scheduleStatus === 'failed' || result.scheduleStatus === 'unknown') {
           setSaveError(translate('Alarm scheduling could not be confirmed. Open alarm setup and retry.'));
           return;
         }
-        setReadinessMessage("Alarm saved. Open Alarm help to review the required Android settings.");
+        setReadinessMessage(!result.capabilities.notificationChannelEnabled ? "Alarm notifications are blocked. Enable Morning ritual alarms in Settings." : "Saved—needs setup");
         return;
       }
       setReadinessMessage("");
@@ -501,6 +500,7 @@ function SetupContent() {
       {!onboardingMode && <View style={{ paddingHorizontal: 24, marginBottom: 24, gap: 12 }}>
         {readinessMessage ? <TextR accessibilityLiveRegion="polite" style={s.readinessWarning}>{translateText(readinessMessage)}</TextR> : null}
         {saveError ? <TextR accessibilityRole="alert" style={s.saveError}>{translateText(saveError)}</TextR> : null}
+        {readinessMessage === "Alarm notifications are blocked. Enable Morning ritual alarms in Settings." && <OnboardingButton secondary label={translate("Open alarm settings")} onPress={() => { void openNotificationChannelSettings(); }} />}
         <OnboardingButton secondary label={translate('Alarm help')} disabled={saving} onPress={() => {
           if (focused && AppState.currentState === 'active' && !getAlarmPresentationState().active) pushAppRoute(navigation, '/alarm/help');
         }} />

@@ -1,3 +1,4 @@
+import { alarmChannelEnabled, alarmSchedulingReady } from "./alarm-readiness";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { NativeModule, requireOptionalNativeModule } from "expo-modules-core";
@@ -39,6 +40,7 @@ export type AlarmCapabilityStatus = {
   fullScreenIntent: boolean;
   channelImportance: number;
   notificationChannelReady: boolean;
+  notificationChannelEnabled: boolean;
   batteryRestricted: boolean;
   batteryOptimizationExempt: boolean;
   sdkInt: number;
@@ -50,6 +52,7 @@ export type AlarmCapabilityStatus = {
 };
 
 export type AlarmLaunchDiagnostics = {
+  build?: { package: string; version: string; versionCode: number; updatedAt: number; debug: boolean };
   manufacturer: string;
   model: string;
   sdkInt: number;
@@ -82,6 +85,7 @@ export type AlarmHomeSnapshot = {
   scheduleStatus?: 'scheduled' | 'disabled' | 'needs-access' | 'failed' | 'unknown';
   scheduledAt?: number;
   scheduleError?: string | null;
+  deliveryFailureAt?: number;
 };
 
 export type SettingsDestination = { destination: string; fallback: boolean; requestedStep?: string };
@@ -308,16 +312,18 @@ export async function reconcileAlarm() { return NativeAlarm?.reconcile() ?? fals
 export async function scheduleTestAlarm() {
   if (!NativeAlarm) throw new Error("Test alarms require an Android native build.");
   await requestAlarmPermission();
+  if (!alarmSchedulingReady(await getAlarmCapabilityStatus())) throw new Error(translateText("Enable notifications, the alarm channel and precise alarms before testing."));
   return NativeAlarm.scheduleTest();
 }
 
 export async function getAlarmCapabilityStatus() {
   await configureAlarmNotifications();
-  return NativeAlarm?.getCapabilityStatus() ?? {
+  const status = await NativeAlarm?.getCapabilityStatus() ?? {
     notifications: false, exactAlarm: false, fullScreenIntent: false,
-    channelImportance: 0, notificationChannelReady: false, batteryRestricted: false, batteryOptimizationExempt: false,
+    channelImportance: 0, notificationChannelEnabled: false, notificationChannelReady: false, batteryRestricted: false, batteryOptimizationExempt: false,
     sdkInt: 0, manufacturer: "", oemGuidance: false,
   };
+  return { ...status, notificationChannelEnabled: alarmChannelEnabled(status) };
 }
 
 export async function getAlarmHomeSnapshot(): Promise<AlarmHomeSnapshot> {
@@ -332,7 +338,8 @@ export async function getAlarmHomeSnapshot(): Promise<AlarmHomeSnapshot> {
 
   if (NativeAlarm.getHomeSnapshot) {
     const snapshot = await NativeAlarm.getHomeSnapshot();
-    return { ...snapshot, available: true, scheduled: snapshot.scheduleStatus === 'scheduled' && !!snapshot.config?.enabled && snapshot.capabilities.exactAlarm && snapshot.capabilities.notifications && snapshot.capabilities.notificationChannelReady };
+    const capabilities = { ...snapshot.capabilities, notificationChannelEnabled: alarmChannelEnabled(snapshot.capabilities) };
+    return { ...snapshot, capabilities, available: true, scheduled: snapshot.scheduleStatus === 'scheduled' && !!snapshot.config?.enabled && alarmSchedulingReady(capabilities) };
   }
 
   const [config, capabilities] = await Promise.all([
@@ -342,7 +349,7 @@ export async function getAlarmHomeSnapshot(): Promise<AlarmHomeSnapshot> {
   return {
     available: true,
     config,
-    capabilities,
+    capabilities: { ...capabilities, notificationChannelEnabled: alarmChannelEnabled(capabilities) },
     scheduleStatus: 'unknown',
     scheduled: false,
   };
@@ -375,7 +382,10 @@ export async function migrateLegacyAlarm(legacy: LegacyAlarm) {
   const existing = await NativeAlarm.getConfig();
   const migrated = await AsyncStorage.getItem(MIGRATION_KEY);
   if (!migrated) {
-    await Notifications.cancelAllScheduledNotificationsAsync().catch(() => undefined);
+    const rawIds = await AsyncStorage.getItem(LEGACY_SCHEDULED_IDS_KEY);
+    const legacyIds: unknown = rawIds ? JSON.parse(rawIds) : [];
+    if (!Array.isArray(legacyIds) || !legacyIds.every(id => typeof id === 'string')) throw new Error('Invalid legacy alarm notification IDs');
+    await Promise.all(legacyIds.map(id => Notifications.cancelScheduledNotificationAsync(id)));
     await AsyncStorage.removeItem(LEGACY_SCHEDULED_IDS_KEY);
     if (!existing) {
       const { hour, minute } = parseTime(legacy.alarmTime ?? "06:30");

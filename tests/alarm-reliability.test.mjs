@@ -122,3 +122,14 @@ test('legacy combined Xiaomi review restores both pages and split reviews remain
   const mixed = loadReliability(status, JSON.stringify({ ...initial, reviews: { lockscreen: 'confirmed', 'background-popup': 'unavailable' } }));
   assert.equal(mixed.reviews.popup, 'unavailable');
 });
+
+
+test('Xiaomi permanent-notification guidance stays separate from verified Android access', () => {
+  for (const manufacturer of ['Xiaomi', 'Redmi', 'POCO']) {
+    const step = reliabilitySteps(access(manufacturer)).find(step => step.id === 'permanent');
+    assert.equal(step.native, false);
+    assert.match(step.guidance, /even with notification permission enabled/);
+    for (const key of [step.label, step.guidance]) for (const language of ['hi', 'hinglish']) assert.notEqual(translate(key, undefined, language), key);
+  }
+  assert.equal(reliabilitySteps(access('Google')).some(step => step.id === 'permanent'), false);
+});

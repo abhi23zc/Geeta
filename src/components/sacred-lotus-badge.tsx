@@ -1,3 +1,4 @@
+import { useDecorativeMotion } from '@/hooks/use-motion-environment';
 import React, { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Animated, {
@@ -17,11 +18,13 @@ interface SacredLotusBadgeProps {
 }
 
 export function SacredLotusBadge({ size = 56 }: SacredLotusBadgeProps) {
+  const motion = useDecorativeMotion();
   const rotation = useSharedValue(0);
   const pulseScale = useSharedValue(1);
   const auraOpacity = useSharedValue(0.4);
 
   useEffect(() => {
+    if (!motion) return;
     rotation.value = withRepeat(
       withTiming(360, { duration: 20000, easing: Easing.linear }),
       -1,
@@ -46,7 +49,7 @@ export function SacredLotusBadge({ size = 56 }: SacredLotusBadgeProps) {
       true
     );
     return () => { cancelAnimation(rotation); cancelAnimation(pulseScale); cancelAnimation(auraOpacity); };
-  }, [auraOpacity, pulseScale, rotation]);
+  }, [auraOpacity, pulseScale, rotation, motion]);
 
   const animatedRotateStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],

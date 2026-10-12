@@ -1,5 +1,6 @@
 # Alarm reliability and ritual recovery
 
+Current delivery repair and pending acceptance: [2026-10-12 validation](alarm-delivery-repair-validation.md).
 ## October 2026 storage, transition, playback, and picker fixes
 
 Gita progress and the JS alarm mirror now distinguish a missing record from a failed read or invalid record. No defaults are persisted after failed hydration. Retry preserves the original; explicit recovery rereads the source, writes and verifies a uniquely named backup, salvages valid fields, then replaces the primary record. Failed saves retain the newest queued snapshot for retry. Native alarm configuration loads independently of JS mirror failures and remains authoritative during recovery. Home keeps alarm command errors separate from snapshot errors, so polling cannot erase a failed scheduling/cancellation message.
@@ -20,7 +21,7 @@ This implementation keeps the existing single React host, Android alarm module, 
 
 Native configuration and reconciliation are serialized with the scheduler. Device-protected scheduling metadata records the configuration revision and next occurrence only after Android accepts `setAlarmClock`. Home reads one native snapshot and distinguishes disabled, missing access, failed, unknown, and successfully scheduled states. A successful record is evidence of scheduling, not certification of future delivery on every ROM.
 
-An unchanged future occurrence is reused. Boot, update, timezone/time changes, and exact-access grant force re-registration. Required access remains notifications, a High importance channel, and exact alarms. Full-screen access and manufacturer settings remain separate. The system's upcoming-alarm affordance opens setup, not a fabricated wake session.
+An unchanged future occurrence is reused. Boot, update, timezone/time changes, and exact-access grant force re-registration. Required access remains notifications, an enabled alarm channel, and exact alarms. High importance is recommended for presentation. Full-screen access and manufacturer settings remain separate. The system's upcoming-alarm affordance opens setup, not a fabricated wake session.
 
 Test alarms keep separate identifiers, use system audio, expire after 30 seconds, and never award ritual points or change recurring configuration. Regular downloaded sound falls back to system audio. Stop requests, service-start revisions, hold timers, and test timeouts are occurrence-bound; stale work cannot dismiss a newer alarm. Notification Stop and test timeout end the wake session and clear lock-screen window flags. Home remains behind the normal keyguard if the phone is locked.
 

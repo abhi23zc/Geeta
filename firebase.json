@@ -1,7 +1,67 @@
 {
-  "functions": [{ "source": "firebase/functions", "codebase": "content", "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"] }],
-  "firestore": { "rules": "firebase/firestore.rules" },
-  "storage": { "rules": "firebase/storage.rules" },
-  "hosting": { "public": "admin/dist", "ignore": ["firebase.json", "**/.*", "**/node_modules/**"], "rewrites": [{ "source": "/api/**", "function": { "functionId": "contentApi", "region": "asia-south1" } }, { "source": "**", "destination": "/index.html" }] },
-  "emulators": { "auth": { "port": 9099 }, "firestore": { "port": 8080 }, "storage": { "port": 9199 }, "functions": { "port": 5001 }, "hosting": { "port": 5000 }, "ui": { "enabled": true } }
+  "functions": [
+    {
+      "source": "firebase/functions",
+      "codebase": "content",
+      "disallowLegacyRuntimeConfig": true,
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ],
+  "firestore": {
+    "rules": "firebase/firestore.rules",
+    "indexes": "firebase/firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "firebase/storage.rules"
+  },
+  "hosting": {
+    "public": "admin/dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/notifications/**",
+        "function": {
+          "functionId": "notificationApi",
+          "region": "asia-south1"
+        }
+      },
+      {
+        "source": "/api/**",
+        "function": {
+          "functionId": "contentApi",
+          "region": "asia-south1"
+        }
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "emulators": {
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "storage": {
+      "port": 9199
+    },
+    "functions": {
+      "port": 5001
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "ui": {
+      "enabled": true
+    }
+  }
 }

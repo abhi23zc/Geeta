@@ -45,9 +45,7 @@ export function nextIntroductionStep(step: OnboardingStep): OnboardingStep {
   if (step === 'practice' || step === 'alarm') return 'permissions';
   return ONBOARDING_STEPS[Math.min(ONBOARDING_STEPS.length - 1, ONBOARDING_STEPS.indexOf(step) + 1)];
 }
-export function coreAlarmReady(status: { notifications: boolean; exactAlarm: boolean; notificationChannelReady: boolean }) {
-  return status.notifications && status.exactAlarm && status.notificationChannelReady;
-}
+export { alarmSchedulingReady as coreAlarmReady } from "../../services/alarm-readiness.ts";
 /** Only app-owned routes can be deferred; alarm restoration is owned by the ritual guard. */
 export function introductionRoute(record: OnboardingRecord, route: string, alarmActive: boolean, _alarmSetupEntry?: unknown): string | null {
   if (alarmActive) return null;

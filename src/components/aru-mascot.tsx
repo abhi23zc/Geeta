@@ -1,3 +1,4 @@
+import { useDecorativeMotion } from '@/hooks/use-motion-environment';
 /**
  * AruMascot — reusable mascot video player, zero background.
  *
@@ -7,7 +8,7 @@
  */
 
 import { Image as ExpoImage } from "expo-image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, StyleSheet, View } from "react-native";
 import Svg, { Defs, Ellipse, RadialGradient, Stop } from "react-native-svg";
 
@@ -60,13 +61,21 @@ export function AruMascot({
   animated = true,
 }: AruMascotProps) {
   const animationAsset = CLIP_ASSETS[clip];
+  const motion = useDecorativeMotion() && animated;
+  const imageRef = useRef<ExpoImage>(null);
+  useEffect(() => {
+    const image = imageRef.current;
+    if (!image) return;
+    void (motion ? image.startAnimating() : image.stopAnimating()).catch(() => undefined);
+    return () => { void image.stopAnimating().catch(() => undefined); };
+  }, [motion, animationAsset]);
 
   const [floatAnim] = useState(() => new Animated.Value(0));
   const [glowAnim] = useState(() => new Animated.Value(0.6));
   const [scaleAnim] = useState(() => new Animated.Value(1));
 
   useEffect(() => {
-    if (!animated) {
+    if (!motion) {
       floatAnim.setValue(0);
       glowAnim.setValue(0.6);
       return;
@@ -79,12 +88,14 @@ export function AruMascot({
           duration: 2600,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
+          isInteraction: false,
         }),
         Animated.timing(floatAnim, {
           toValue: 0,
           duration: 2600,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
+          isInteraction: false,
         }),
       ]),
     );
@@ -99,12 +110,14 @@ export function AruMascot({
             duration: 2800,
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
+            isInteraction: false,
           }),
           Animated.timing(glowAnim, {
             toValue: 0.6,
             duration: 2800,
             easing: Easing.inOut(Easing.ease),
             useNativeDriver: true,
+            isInteraction: false,
           }),
         ]),
       );
@@ -115,10 +128,10 @@ export function AruMascot({
       floatLoop.stop();
       glowLoop?.stop();
     };
-  }, [animated, floatAnim, glowAnim, glow]);
+  }, [motion, floatAnim, glowAnim, glow]);
 
   const handlePress = () => {
-    Animated.sequence([
+    if (motion) Animated.sequence([
       Animated.spring(scaleAnim, {
         toValue: 1.08,
         friction: 3,
@@ -236,7 +249,8 @@ export function AruMascot({
                 source={animationAsset}
                 style={{ width: size, height: size }}
                 contentFit="contain"
-                autoplay={animated}
+                ref={imageRef}
+              autoplay={motion}
               />
             </Pressable>
           ) : (
@@ -244,7 +258,8 @@ export function AruMascot({
               source={animationAsset}
               style={{ width: size, height: size }}
               contentFit="contain"
-              autoplay={animated}
+              ref={imageRef}
+              autoplay={motion}
             />
           )
         ) : (

@@ -1,4 +1,3 @@
-import { AlarmReliabilityPrompt } from "@/features/onboarding/alarm-reliability";
 import { StorageRecoveryNotice } from '@/components/storage-recovery-notice';
 import { useGrowthFocusTarget } from '@/features/progress/tree/focus-target';
 import { useLanguage } from '@/i18n/provider';
@@ -15,7 +14,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { Link, useRouter } from 'expo-router';
+import { Link, useRouter, useFocusEffect } from 'expo-router';
 import {
   Bell,
   BookOpen,
@@ -36,9 +35,9 @@ import { saveTeaching } from '@/services/content-cache';
 import {
   cancelScheduledAlarm,
   getAlarmHomeSnapshot,
+  openNotificationChannelSettings,
   openExactAlarmSettings,
   openFullScreenIntentSettings,
-  openNotificationChannelSettings,
   scheduleRecurringAlarm,
   type AlarmHomeSnapshot,
 } from '@/services/alarm';
@@ -56,9 +55,9 @@ type AlarmHomeStatus =
 
 type AlarmIssue =
   | 'exact-alarm'
+  | 'channel'
   | 'notifications'
   | 'full-screen'
-  | 'channel'
   | null;
 
 function formatAlarm(value: string) {
@@ -83,7 +82,8 @@ function getAlarmStatus(
   if (
     !snapshot.scheduled ||
     !capabilities.notifications ||
-    !capabilities.notificationChannelReady
+    !capabilities.exactAlarm ||
+    !capabilities.notificationChannelEnabled
   ) {
     return 'action-required';
   }
@@ -95,7 +95,7 @@ function getAlarmIssue(snapshot: AlarmHomeSnapshot | null): AlarmIssue {
   const { capabilities } = snapshot;
   if (!capabilities.exactAlarm) return 'exact-alarm';
   if (!capabilities.notifications) return 'notifications';
-  if (!capabilities.notificationChannelReady) return 'channel';
+  if (!capabilities.notificationChannelEnabled) return 'channel';
   if (!capabilities.fullScreenIntent) return 'full-screen';
   return null;
 }
@@ -106,10 +106,10 @@ function issueCopy(issue: AlarmIssue, language: AppLanguage) {
       return translate("Allow Alarms & reminders so Android can schedule this wake-up.", undefined, language);
     case 'notifications':
       return translate("Allow notifications so your alarm can appear over the lock screen.", undefined, language);
+    case 'channel':
+      return translate('Alarm notifications are blocked. Enable Morning ritual alarms in Settings.', undefined, language);
     case 'full-screen':
       return translate("Full-screen access is off. Use the alarm notification to open or stop it.", undefined, language);
-    case 'channel':
-      return translate("Set the Morning Ritual alarm channel to High importance.", undefined, language);
     default:
       return translate("This alarm needs attention before it can wake you reliably.", undefined, language);
   }
@@ -118,7 +118,9 @@ function issueCopy(issue: AlarmIssue, language: AppLanguage) {
 function formatDays(days: readonly string[], language: AppLanguage) {
   const labels = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' } as const;
   if (days.length === 7) return translate('Every day', undefined, language);
-  return days.map(day => day in labels ? translate(labels[day as keyof typeof labels], undefined, language) : day).join(', ');
+  const ordered = Object.keys(labels).filter(day => days.includes(day));
+  const unknown = days.filter(day => !(day in labels));
+  return [...ordered, ...unknown].map(day => day in labels ? translate(labels[day as keyof typeof labels], undefined, language) : day).join(', ');
 }
 
 function getGreetingInfo(): { greeting: TranslationKey; subtitle: TranslationKey } {
@@ -188,20 +190,14 @@ export default function Home() {
     }
   }, []);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (!alarmReady) return;
-    const timer = setTimeout(() => {
-      void refreshAlarm();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [alarmReady, refreshAlarm]);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active' && alarmReady) refreshAlarm();
+    const timer = setTimeout(() => { void refreshAlarm(); }, 0);
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') void refreshAlarm();
     });
-    return () => subscription.remove();
-  }, [alarmReady, refreshAlarm]);
+    return () => { clearTimeout(timer); subscription.remove(); };
+  }, [alarmReady, refreshAlarm]));
 
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled()
@@ -262,11 +258,11 @@ export default function Home() {
         case 'notifications':
           await Linking.openSettings();
           break;
-        case 'full-screen':
-          await openFullScreenIntentSettings();
-          break;
         case 'channel':
           await openNotificationChannelSettings();
+          break;
+        case 'full-screen':
+          await openFullScreenIntentSettings();
           break;
         default:
           break;
@@ -321,10 +317,6 @@ export default function Home() {
       />
 
       {/* 🪷 Enhanced Daily Goal & Streak Stepper Card */}
-      <Pressable accessibilityRole="button" accessibilityState={{ disabled: introduction.busy }} disabled={introduction.busy} onPress={() => { void introduction.replay(); }} style={{ minHeight: 48, marginHorizontal: 24, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-        <BookOpen size={18} color={C.primary} /><TextR style={{ color: C.primary, fontWeight: '700', flexShrink: 1 }}>{translate('App introduction')}</TextR>
-      </Pressable>
-      {introduction.error && <TextR accessibilityRole="alert" style={{ paddingHorizontal: 24, color: '#9D2525' }}>{translate('Introduction could not be saved. Please retry.')}</TextR>}
       <DailyGoalCard link={true} />
 
       {/* Devotional Hero Alarm Card */}
@@ -403,7 +395,7 @@ export default function Home() {
           <View style={s.gentleWakeBadge}>
             <View style={s.greenDot} />
             <TextR style={s.gentleWakeText}>
-              {status === 'updating' ? translate("UPDATING") : status === 'scheduled' ? translate("SCHEDULED") : status === 'action-required' ? translate("ACTION REQUIRED") : status === 'unavailable' ? translate("ANDROID ONLY") : translate("OFF")}
+              {status === 'updating' ? translate("UPDATING") : status === 'scheduled' ? translate("SCHEDULED") : status === 'action-required' ? translate("Saved—needs setup") : status === 'unavailable' ? translate("ANDROID ONLY") : translate("OFF")}
             </TextR>
           </View>
         </View>
@@ -424,6 +416,10 @@ export default function Home() {
             </Pressable>
           </View>
         )}
+        {status === 'scheduled' && snapshot?.capabilities.notificationChannelReady && snapshot.capabilities.fullScreenIntent && (
+          <TextR style={s.alarmStatusText}>{translate('Automatic alarm screen available. Android may still require you to tap the notification.')}</TextR>
+        )}
+        {!!snapshot?.deliveryFailureAt && <TextR style={s.alarmErrorText}>{translate('The last alarm stopped because Android removed its notification. Review alarm settings and try a test.')}</TextR>}
         {status === 'scheduled' && !snapshot?.capabilities.fullScreenIntent && (
           <TextR style={s.alarmStatusText}>{translate("Full-screen access is off. Use the alarm notification to open or stop it.")}</TextR>
         )}
@@ -433,8 +429,6 @@ export default function Home() {
         {alarmRequested && (snapshot?.scheduleStatus === 'failed' || snapshot?.scheduleStatus === 'unknown') ? <TextR style={s.alarmErrorText}>{translate('Alarm scheduling could not be confirmed. Open alarm setup and retry.')}</TextR> : null}
         {displayedAlarmError && <TextR style={s.alarmErrorText}>{translateText(displayedAlarmError)}</TextR>}
       </Pressable>
-
-      <AlarmReliabilityPrompt onPress={() => router.navigate('/alarm/help')} />
 
       {/* Awakening Vibe Banner */}
       <View style={s.vibeCard}>
@@ -544,11 +538,50 @@ export default function Home() {
         </View>
       </View>
 
-      <Link href="/image-credits" asChild>
-        <Pressable accessibilityRole="link" style={{ alignSelf: 'center', minHeight: 48, justifyContent: 'center', paddingHorizontal: 16 }}>
-          <TextR style={{ fontSize: 12, color: C.muted }}>{translate("Image credits")}</TextR>
-        </Pressable>
-      </Link>
+      {__DEV__ && <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push('/pro')}
+        style={({ pressed }) => [{ marginHorizontal: 20, marginTop: 24, padding: 18, borderRadius: 16, backgroundColor: C.surfaceContainer }, pressed && { opacity: 0.7 }]}
+      >
+        <TextR style={{ color: C.primary, fontSize: 16, fontWeight: '700' }}>Aarambh Pro</TextR>
+        <TextR style={{ color: C.muted, marginTop: 4 }}>View plans, restore, and manage purchases</TextR>
+      </Pressable>}
+
+      {__DEV__ && (
+        <View style={{ marginTop: 24, marginHorizontal: 20, padding: 16, backgroundColor: 'rgba(229, 107, 39, 0.05)', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(229, 107, 39, 0.2)', gap: 12 }}>
+          <TextR style={{ fontSize: 11, fontWeight: '700', color: C.primary, letterSpacing: 0.8, textTransform: 'uppercase' }}>
+            🛠️ Dev Tools · Only visible in development
+          </TextR>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/notifications')}
+              style={({ pressed }) => [{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }, pressed && { opacity: 0.7 }]}
+            >
+              <TextR style={{ fontSize: 13, color: C.primary, fontWeight: '600' }}>
+                Notification settings
+              </TextR>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: introduction.busy }}
+              disabled={introduction.busy}
+              onPress={() => { void introduction.replay(); }}
+              style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }, pressed && { opacity: 0.7 }]}
+            >
+              <BookOpen size={14} color={C.primary} />
+              <TextR style={{ fontSize: 13, color: C.primary, fontWeight: '600' }}>
+                App introduction
+              </TextR>
+            </Pressable>
+          </View>
+          {introduction.error && (
+            <TextR accessibilityRole="alert" style={{ fontSize: 12, color: '#9D2525' }}>
+              {translate('Introduction could not be saved. Please retry.')}
+            </TextR>
+          )}
+        </View>
+      )}
     </Screen>
   );
 }
