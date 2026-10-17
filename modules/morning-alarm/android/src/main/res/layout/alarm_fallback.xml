@@ -202,7 +202,7 @@
         android:layout_marginTop="10dp"
         android:gravity="center"
         android:includeFontPadding="false"
-        android:text="Volume rises gently over five minutes while the alarm continues"
+        android:text="Volume rises gently over two minutes while the alarm continues"
         android:textColor="#756054"
         android:textSize="10sp" />
   </LinearLayout>
@@ -227,6 +227,15 @@
       android:minHeight="48dp"
       android:visibility="gone"
       android:text="Try again"
+      android:textAllCaps="false" />
+
+  <Button
+      android:id="@+id/alarm_snooze"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:minHeight="48dp"
+      android:visibility="gone"
+      android:text="Snooze · 5 min"
       android:textAllCaps="false" />
 
   <FrameLayout

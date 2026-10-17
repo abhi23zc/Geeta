@@ -15,7 +15,7 @@ function GuideScreenshot({ name, highlight }: { name: keyof typeof GUIDE_EXAMPLE
   const [failed, setFailed] = useState(false);
   const asset = guideImage(name);
   const target = highlight ?? screenshotMetadata.find(item => item.name === name)?.highlight;
-  const size = screenshotDimensions(availableWidth, Math.min(420, viewportHeight / 2), asset);
+  const size = screenshotDimensions(availableWidth, Math.min(300, viewportHeight / 2.5), asset);
 
   return <View style={s.imageContainer} onLayout={event => setAvailableWidth(event.nativeEvent.layout.width)}>
     {!failed && availableWidth > 0 && <View style={size}>
@@ -39,7 +39,7 @@ export function PermissionGuide({ manufacturer, setting, instruction }: {
   setting: string;
   instruction: string;
 }) {
-  const { text, t } = useLanguage();
+  const { text } = useLanguage();
   const isVibration = setting === 'vibration';
   const effectiveSetting = setting;
   const key = isVibration ? null : guideExampleForSetting(manufacturer, effectiveSetting);
@@ -48,9 +48,9 @@ export function PermissionGuide({ manufacturer, setting, instruction }: {
     : isVibration && key === 'xiaomi-miui14-notifications'
     ? [0.06, 0.59, 0.88, 0.048]
     : undefined;
-  return <View style={{ gap: 14 }}>
+  return <View style={{ gap: 8 }}>
     <TextR>{text(isVibration || setting === 'permanent' ? instruction : (key ? GUIDE_EXAMPLES[key].instruction : instruction))}</TextR>
-    {key && <><TextR>{t('Example screenshot. It may show the old app name; choose Aarambh in Settings.')}</TextR><GuideScreenshot key={`${key}:${setting}`} name={key} highlight={customHighlight} /></>}
+    {key && <GuideScreenshot key={`${key}:${setting}`} name={key} highlight={customHighlight} />}
   </View>;
 }
 

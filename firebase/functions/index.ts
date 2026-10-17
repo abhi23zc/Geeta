@@ -110,3 +110,4 @@ export const coverageMonitor = onSchedule({ schedule: '0 9 * * *', timeZone: 'As
 });
 
 export { notificationApi, notificationDispatch, notificationScheduler, notificationCleanup } from './notifications';
+export { privacyPolicy } from './privacy';

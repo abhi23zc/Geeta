@@ -1,4 +1,7 @@
 export const onboardingCopy = {
+  'Snooze · 5 min': ['स्नूज़ · 5 मिनट', 'Snooze · 5 min'],
+  'Could not snooze. Please retry.': ['स्नूज़ नहीं हुआ। फिर प्रयास करें।', 'Snooze nahi hua. Phir try karein.'],
+  'Snoozed until {time}': ['{time} तक स्नूज़ किया गया', '{time} tak snooze kiya gaya'],
   "Allow permanent notifications": ["स्थायी सूचनाएं चालू करें", "Permanent notifications on karein"],
   "In Settings → Notifications & Control centre → App notifications → Aarambh, enable Permanent notifications (or Allow permanent notifications). MIUI can cancel the ringing alarm notification when this is off, even with notification permission enabled.": ["Settings → Notifications & Control centre → App notifications → Aarambh में Permanent notifications (या Allow permanent notifications) चालू करें। यह बंद होने पर MIUI बजते अलार्म की सूचना हटा सकता है, भले ही सूचना की अनुमति चालू हो।", "Settings → Notifications & Control centre → App notifications → Aarambh mein Permanent notifications (ya Allow permanent notifications) on karein. Yeh off hone par MIUI bajte alarm ki notification hata sakta hai, chahe notification permission on ho."],
   "Turn on Morning ritual alarms. High importance or Alerting is recommended for the alarm screen.": ["Morning ritual alarms चालू करें। अलार्म स्क्रीन के लिए High importance या Alerting की सलाह दी जाती है।", "Morning ritual alarms on karein. Alarm screen ke liye High importance ya Alerting ki salah di jaati hai."],

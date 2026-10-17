@@ -61,6 +61,17 @@ test('an unavailable navigator can retry without poisoning subsequent focus', ()
   h.retry(); clock.flush(); assert.equal(attempts, 3);
 });
 
+test('snooze returns a focused wake screen home and a newer alarm cancels a pending exit', () => {
+  const h = harness('wake'); h.route('alarm/wake'); h.focus(true);
+  h.state({ active: false, stage: null, loading: false });
+  h.controller.refresh(); h.flush(); assert.deepEqual(h.replacements, ['index']);
+
+  const newer = harness('wake'); newer.route('alarm/wake'); newer.focus(true);
+  newer.state({ active: false, stage: null, loading: false }); newer.controller.refresh();
+  newer.state({ active: true, stage: 'wake', loading: true });
+  newer.flush(); assert.deepEqual(newer.replacements, []);
+});
+
 test('initial restoration waits until parent navigator effects can handle the action', () => {
   const clock = frames(); let registered = false, replaced = false;
   const h = createRitualRouteRestoration({ frame: clock.frame, cancelFrame: clock.cancelFrame, target: () => 'breathe', canNavigate: () => true, replace: () => { replaced = registered; return true; } });

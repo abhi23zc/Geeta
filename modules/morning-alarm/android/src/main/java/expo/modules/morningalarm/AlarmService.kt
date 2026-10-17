@@ -63,7 +63,8 @@ class AlarmService : Service() {
       val stale = !test && (config?.enabled != true || intent.getLongExtra(AlarmScheduler.EXTRA_REVISION, -1L) != config.revision)
       val ended = state["sessionId"] == "$at:$test" && state["terminationReason"] != null
       val alreadyDismissed = state["sessionId"] == "$at:$test" && (state["stage"] != "wake" || !AlarmStore.isRinging(this))
-      if (stale || ended || alreadyDismissed) {
+      val snooze = intent.getBooleanExtra("snooze", false) && AlarmSnooze.accepts(this, at, config?.revision ?: -1)
+      if (stale || (!snooze && (ended || alreadyDismissed))) {
         AlarmLog.event("service_start_rejected", "stale=$stale ended=$ended dismissed=$alreadyDismissed")
         if (occurrenceAt == 0L) stopSelf()
         return if (occurrenceAt == 0L) START_NOT_STICKY else START_STICKY
@@ -93,6 +94,7 @@ class AlarmService : Service() {
     gradual = config.gradualVolume
     AlarmStore.setTest(this, test)
     AlarmStore.setRinging(this, true, startedAt, scheduledAt)
+    if (intent?.getBooleanExtra("snooze", false) == true) AlarmSnooze.delivered(this)
     // Reward storage must never prevent alarm delivery.
     runCatching { RitualRewards.begin(this, scheduledAt, test) }
       .onFailure { AlarmLog.event("reward_receipt_failed", it.javaClass.simpleName) }
@@ -313,7 +315,7 @@ class AlarmService : Service() {
     private const val ACTION_STOP = "expo.modules.morningalarm.STOP"
     private const val EXTRA_REASON = "reason"
     private const val NOTIFICATION_ID = 6420
-    private const val GRADUAL_MS = 5 * 60_000L
+    private const val GRADUAL_MS = 2 * 60_000L
 
     fun startIntent(context: Context, scheduledAt: Long) =
       Intent(context, AlarmService::class.java)
@@ -331,6 +333,7 @@ class AlarmService : Service() {
       val progress = if (!AlarmStore.isRinging(context)) 0.0 else if (AlarmStore.isTest(context) || AlarmStore.get(context)?.gradualVolume == false) 1.0 else
         ((System.currentTimeMillis() - triggeredAt).toDouble() / GRADUAL_MS).coerceIn(0.0, 1.0)
       return mapOf(
+        "snoozeAvailable" to AlarmSnooze.available(context),
         "ringing" to AlarmStore.isRinging(context),
         "triggeredAt" to triggeredAt.toDouble(),
         "scheduledAt" to AlarmStore.scheduledAt(context).toDouble(),
@@ -340,5 +343,11 @@ class AlarmService : Service() {
         "toneRevision" to ContentFiles.playback(context)["toneRevision"],
       )
     }
+    fun pauseForSnooze(context: Context, occurrence: Long) {
+      val service = activeService
+      check(service != null && service.occurrenceAt == occurrence) { "Alarm service unavailable" }
+      service.stopAlarm("snoozed")
+    }
+    fun canPauseForSnooze(occurrence: Long) = activeService?.let { it.occurrenceAt == occurrence && it.player != null } == true
   }
 }

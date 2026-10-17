@@ -63,6 +63,7 @@ export type AlarmLaunchDiagnostics = {
 };
 
 export type AlarmPlaybackState = {
+  snoozeAvailable?: boolean;
   actualTone?: string;
   fallbackReason?: string;
   toneRevision?: string;
@@ -78,6 +79,7 @@ export type AlarmPlaybackState = {
  * Full-screen access and manufacturer confirmations are advisory.
  */
 export type AlarmHomeSnapshot = {
+  snoozedUntil?: number;
   available: boolean;
   config: NativeAlarmConfig | null;
   capabilities: AlarmCapabilityStatus;
@@ -92,6 +94,7 @@ export type SettingsDestination = { destination: string; fallback: boolean; requ
 export type AlarmReliabilitySetting = "notifications" | "exact" | "channel" | "fullscreen" | "startup" | "battery" | "popup";
 
 type AlarmEvents = {
+  alarmSnoozeRequested(event: { sessionId: string }): void;
   alarmPresentationChanged(state: AlarmPresentationState): void;
   alarmTriggered(state: AlarmPlaybackState): void;
   alarmStopped(event: { reason: string; sessionId?: string }): void;
@@ -120,6 +123,7 @@ declare class MorningAlarmNativeModule extends NativeModule<AlarmEvents> {
   schedule(config: NativeAlarmConfig): Promise<{ scheduled: boolean; scheduledAt?: number }>;
   cancel(): Promise<void>;
   startMyDay?(id: string): Promise<{ stage: 'breathe' | 'gita'; scheduledAt: number | null }>;
+  snoozeAlarm?(id: string): Promise<number>;
   dismissAndScheduleNext(): Promise<number | null>;
   reconcile(): Promise<boolean>;
   scheduleTest(): Promise<number>;
@@ -147,6 +151,14 @@ const NativeAlarm = Platform.OS === "android"
   : null;
 
 export const isNativeAlarmAvailable = NativeAlarm != null;
+export function addAlarmSnoozeRequestedListener(listener: (event: { sessionId: string }) => void) {
+  return NativeAlarm?.addListener('alarmSnoozeRequested', listener);
+}
+
+export async function snoozeAlarm(id: string) {
+  if (!NativeAlarm?.snoozeAlarm) throw new Error('Snooze unavailable');
+  return NativeAlarm.snoozeAlarm(id);
+}
 export const isRewardAlarmAvailable = !!NativeAlarm?.completeRewardStage;
 export function getRewardOccurrence() { return NativeAlarm?.getRewardOccurrence?.() ?? null; }
 export async function completeRewardStage(id: string, stage: 'breathe' | 'gita') { return await NativeAlarm?.completeRewardStage?.(id, stage) ?? false; }

@@ -416,13 +416,8 @@ export default function Home() {
             </Pressable>
           </View>
         )}
-        {status === 'scheduled' && snapshot?.capabilities.notificationChannelReady && snapshot.capabilities.fullScreenIntent && (
-          <TextR style={s.alarmStatusText}>{translate('Automatic alarm screen available. Android may still require you to tap the notification.')}</TextR>
-        )}
         {!!snapshot?.deliveryFailureAt && <TextR style={s.alarmErrorText}>{translate('The last alarm stopped because Android removed its notification. Review alarm settings and try a test.')}</TextR>}
-        {status === 'scheduled' && !snapshot?.capabilities.fullScreenIntent && (
-          <TextR style={s.alarmStatusText}>{translate("Full-screen access is off. Use the alarm notification to open or stop it.")}</TextR>
-        )}
+        {!!snapshot?.snoozedUntil && <TextR style={s.alarmStatusText}>{translate('Snoozed until {time}', { time: new Date(snapshot.snoozedUntil).toLocaleTimeString(language === 'hi' ? 'hi-IN' : 'en-IN', { hour: 'numeric', minute: '2-digit' }) })}</TextR>}
         {status === 'unavailable' && (
           <TextR style={s.alarmStatusText}>{translate("Alarms are available in the Android development or release app.")}</TextR>
         )}

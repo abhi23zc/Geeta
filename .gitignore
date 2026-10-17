@@ -13,6 +13,10 @@ expo-env.d.ts
 .kotlin/
 *.orig.*
 *.jks
+*.keystore
+credentials.json
+/builds/signing/
+*.aab
 *.p8
 *.p12
 *.key
@@ -32,6 +36,10 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env.*
+
+# build artifacts
+/builds/
 
 # typescript
 *.tsbuildinfo

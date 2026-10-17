@@ -39,6 +39,7 @@
       "favicon": "./assets/images/aarambh-favicon-v3.png"
     },
     "plugins": [
+      "expo-asset",
       "expo-sqlite",
       "expo-router",
       [
@@ -76,6 +77,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "27cf64c0-bfba-4f41-827f-f45402a217f3"
+      }
+    },
+    "owner": "zrf"
   }
 }

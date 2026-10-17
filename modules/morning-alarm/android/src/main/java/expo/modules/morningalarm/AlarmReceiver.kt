@@ -24,7 +24,10 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 
     val scheduledAt = intent.getLongExtra(AlarmScheduler.EXTRA_SCHEDULED_AT, System.currentTimeMillis())
-    val service = AlarmService.startIntent(context, scheduledAt).putExtra("test", test).putExtra(AlarmScheduler.EXTRA_REVISION, config.revision)
+    val snooze = intent.getBooleanExtra("snooze", false)
+    if (snooze && (!AlarmSnooze.accepts(context, scheduledAt, revision) || AlarmStore.isRinging(context))) return
+    if (!test && !snooze && AlarmSnooze.pendingAt(context) > 0) AlarmSnooze.cancel(context)
+    val service = AlarmService.startIntent(context, scheduledAt).putExtra("test", test).putExtra("snooze", snooze).putExtra(AlarmScheduler.EXTRA_REVISION, config.revision)
     runCatching {
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) context.startForegroundService(service)
       else context.startService(service)

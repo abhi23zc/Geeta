@@ -9,8 +9,7 @@ export function permissionPages(status: ReliabilityAccess): PermissionPage[] {
   return reliabilitySteps(status, alarmGuideManufacturer(status), true).map(page => ({ ...page, required: isRequiredPermission(page.id) }));
 }
 export function walkthroughPages(status: ReliabilityAccess): PermissionPage[] {
-  return [...permissionPages(status), { id: 'vibration', label: 'Try vibration',
-    guidance: 'Vibration is optional. Try it now or continue without it.', native: false, required: false }];
+  return permissionPages(status);
 }
 /** Forward navigation skips verified requirements; Back can still revisit every page. */
 export function nextPermissionPage(pages: PermissionPage[], status: ReliabilityAccess, after = -1) {

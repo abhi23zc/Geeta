@@ -30,6 +30,7 @@ object AlarmStore {
   }
 
   fun put(context: Context, config: AlarmConfig): AlarmConfig {
+    AlarmSnooze.cancel(context)
     val next = config.copy(revision = (get(context)?.revision ?: 0L) + 1L)
     prefs(context).edit()
       .putBoolean(KEY_CONFIGURED, true)

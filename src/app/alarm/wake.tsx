@@ -33,9 +33,11 @@ import { Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
 import { replaceAppRoute } from "@/navigation/route-actions";
 import {
+  addAlarmSnoozeRequestedListener,
   addAlarmStoppedListener,
   addAlarmTriggeredListener,
   startMyDay,
+  snoozeAlarm,
   getAlarmPlaybackState,
   getAlarmPresentationState,
   notifyWakeScreenReady,
@@ -114,9 +116,12 @@ export default function Wake() {
       if (event.sessionId && event.sessionId !== session.current) return;
       cancelHold();
       setPlayback(state => ({ ...state, ringing: false }));
-      if (event.reason === 'notification-stop' || event.reason === 'timeout') {
+      if (event.reason === 'notification-stop' || event.reason === 'timeout' || event.reason === 'snoozed') {
         if (navigation.isFocused()) replaceAppRoute(navigation, '/');
       }
+    });
+    const snoozeRequested = addAlarmSnoozeRequestedListener(event => {
+      if (event.sessionId === session.current) cancelHold();
     });
     const foreground = AppState.addEventListener('change', state => { if (state !== 'active') cancelHold(); });
     const blur = navigation.addListener('blur', cancelHold);
@@ -127,6 +132,7 @@ export default function Wake() {
       cancelHold();
       triggered?.remove();
       stopped?.remove();
+      snoozeRequested?.remove();
       back.remove();
       foreground.remove();
       blur();
@@ -347,6 +353,19 @@ export default function Wake() {
 
         {/* ─── 4. Tactile 1.5s Hold to Start Action with Live Progress ──────── */}
         <View style={s.actions}>
+          {playback.snoozeAvailable && <Pressable accessibilityRole="button" accessibilityState={{ disabled: started }} disabled={started} style={{ minHeight: 48, alignItems: 'center', justifyContent: 'center' }} onPress={async () => {
+            const id = session.current;
+            if (!id || dismissing.current || !navigation.isFocused() || AppState.currentState !== 'active') return;
+            dismissing.current = true; cancelHold(); setStarted(true);
+            try { await snoozeAlarm(id); if (mounted.current && navigation.isFocused() && !getAlarmPresentationState().active) replaceAppRoute(navigation, '/'); }
+            catch {
+              const latest = getAlarmPresentationState();
+              if (mounted.current && navigation.isFocused() && latest.active && latest.sessionId === id) {
+                setStarted(false); Alert.alert(translate('Could not snooze. Please retry.'));
+              }
+            }
+            finally { dismissing.current = false; }
+          }}><TextR style={{ color: C.saffron, fontWeight: '700' }}>{translate('Snooze · 5 min')}</TextR></Pressable>}
           <Animated.View style={animatedScaleStyle}>
             <Pressable
               accessibilityRole="button"

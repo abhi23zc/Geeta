@@ -18,7 +18,7 @@ class MorningAlarmModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("MorningAlarm")
-    Events("alarmTriggered", "alarmStopped", "alarmPresentationChanged")
+    Events("alarmTriggered", "alarmStopped", "alarmPresentationChanged", "alarmSnoozeRequested")
     AsyncFunction("setAppLanguage") { language: String -> AlarmStrings.setLanguage(context, language) }.runOnQueue(Queues.MAIN)
     Function("getAlarmStartupState") { AlarmPresentation.startupState(context) }
     AsyncFunction("acknowledgeRitualScreen") { input: ReadableArguments ->
@@ -109,6 +109,7 @@ class MorningAlarmModule : Module() {
       val activity = appContext.currentActivity ?: throw IllegalStateException("Ritual screen unavailable")
       AlarmController.startMyDay(activity, id)
     }.runOnQueue(Queues.MAIN)
+    AsyncFunction("snoozeAlarm") { id: String -> AlarmSnooze.request(context, id).toDouble() }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("dismissAndScheduleNext") { AlarmController.dismiss(context, finishActivity = false)?.toDouble() }.runOnQueue(Queues.MAIN)
     AsyncFunction("dismissRitualOccurrence") { id: String ->
@@ -130,7 +131,7 @@ class MorningAlarmModule : Module() {
     }
     AsyncFunction("getHomeSnapshot") { synchronized(AlarmScheduler) {
       reconcile()
-      mapOf("config" to AlarmStore.get(context)?.let(::configMap), "capabilities" to capabilityMap(context),
+      mapOf("config" to AlarmStore.get(context)?.let(::configMap), "capabilities" to capabilityMap(context), "snoozedUntil" to AlarmSnooze.pendingAt(context).toDouble(),
         "deliveryFailureAt" to context.createDeviceProtectedStorageContext().getSharedPreferences("alarm_delivery", Context.MODE_PRIVATE).getLong("failedAt", 0L).toDouble()) + AlarmScheduler.status(context)
     } }
 
@@ -183,6 +184,7 @@ class MorningAlarmModule : Module() {
   private fun capabilityMap(context: Context) = AlarmCapabilities.status(context)
 
   private fun reconcile(): Boolean = synchronized(AlarmScheduler) {
+    runCatching { AlarmSnooze.restore(context) }.onFailure { AlarmLog.event("snooze_restore_failed", it.javaClass.simpleName) }
     val config = AlarmStore.get(context) ?: return false
     if (!config.enabled) { AlarmScheduler.cancel(context); return false }
     val status = capabilityMap(context)

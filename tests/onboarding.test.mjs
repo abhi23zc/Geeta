@@ -19,7 +19,7 @@ const deferred = () => { let resolve; const promise = new Promise(r => { resolve
 const access = (sdkInt = 34, manufacturer = 'Xiaomi') => ({ sdkInt, manufacturer, notifications: true, exactAlarm: true, notificationChannelEnabled: true, notificationChannelReady: true, fullScreenIntent: true, batteryRestricted: false });
 test('all applicable granted pages stay present and maintain version-specific order', () => {
   for (const sdk of [25, 26, 30, 31, 33, 34, 37]) {
-    const expected = ['notifications', ...(sdk >= 31 ? ['exact'] : []), ...(sdk >= 26 ? ['channel'] : []), ...(sdk >= 34 ? ['fullscreen'] : []), 'permanent', 'lockscreen', 'background-popup', 'startup', 'battery', 'vibration'];
+    const expected = ['notifications', ...(sdk >= 31 ? ['exact'] : []), ...(sdk >= 26 ? ['channel'] : []), ...(sdk >= 34 ? ['fullscreen'] : []), 'permanent', 'lockscreen', 'background-popup', 'startup', 'battery'];
     assert.deepEqual(permissionPageIds(access(sdk)), expected);
     assert.deepEqual(permissionPageIds({ ...access(sdk), notifications: false, exactAlarm: false, notificationChannelReady: false, fullScreenIntent: false, batteryRestricted: true }), expected);
   }

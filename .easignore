@@ -1,0 +1,35 @@
+# Upload sources and assets; regenerate native hosts using config plugins.
+node_modules
+**/node_modules
+/.git
+/.expo
+/android
+/ios
+**/.gradle
+**/.kotlin
+/modules/*/android/build
+/builds
+/dist
+/web-build
+/admin
+/firebase
+/docs
+/tests
+/design
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+credentials.json
+**/*debug.log
+**/*-debug.log
+*.tsbuildinfo
+# Keep npm and package-lock.json as the build's package manager.
+/bun.lock
+/bun.lockb

@@ -37,6 +37,8 @@ object AlarmPresentation {
   private var host: WeakReference<Activity>? = null
   private var cover: View? = null
   private var hold: Runnable? = null
+  // Physical keys can remain down as the fallback hands off to the React host.
+  private val volumePresses = VolumeKeyPress()
   private var unlock: Promise? = null
   private val presentation = PresentationSession()
   private var deadline: Runnable? = null
@@ -179,6 +181,19 @@ object AlarmPresentation {
       setOnClickListener { AlarmController.dismiss(activity, expectedAt = stopAt) }
     }
     val button = view.findViewById<Button>(R.id.alarm_dismiss)
+    view.findViewById<Button>(R.id.alarm_snooze).apply {
+      visibility = if (AlarmSnooze.available(activity)) View.VISIBLE else View.GONE
+      text = AlarmStrings.text(activity, "Snooze · 5 min")
+      val heldSession = prefs(activity).getString("sessionId", null)
+      setOnClickListener {
+        if (!activity.hasWindowFocus() || heldSession == null) return@setOnClickListener
+        isEnabled = false
+        cancelHold()
+        runCatching { AlarmSnooze.request(activity, heldSession) }.onSuccess {
+          openHome(activity)
+        }.onFailure { isEnabled = true; Toast.makeText(activity, AlarmStrings.text(activity, "Could not snooze. Please retry."), Toast.LENGTH_LONG).show() }
+      }
+    }
     button.text = AlarmStrings.text(activity, if (AlarmStore.isRinging(activity)) "☀  Hold to start my day" else "Continue my morning")
     button.setOnClickListener {
       val id = prefs(activity).getString("sessionId", null) ?: return@setOnClickListener
@@ -335,9 +350,39 @@ object AlarmPresentation {
     onResume(activity)
   }
   fun blockVolume(activity: Activity, event: KeyEvent): Boolean {
-    if (!AlarmStore.isRinging(activity) || event.keyCode !in listOf(KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_MUTE)) return false
-    if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) Toast.makeText(activity, AlarmStrings.text(activity, "Hold Start my day to finish the alarm"), Toast.LENGTH_SHORT).show()
+    main()
+    if (event.keyCode !in listOf(KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_MUTE)) return false
+    val result = volumePresses.handle(
+      event.keyCode, event.action == KeyEvent.ACTION_DOWN, event.action == KeyEvent.ACTION_UP,
+      event.repeatCount, AlarmStore.isRinging(activity), event.downTime)
+    if (result == VolumeKeyPress.Result.PASS) return false
+    if (result != VolumeKeyPress.Result.PRESS) return true
+    if (AlarmStore.isTest(activity) || event.keyCode == KeyEvent.KEYCODE_VOLUME_MUTE) {
+      Toast.makeText(activity, AlarmStrings.text(activity, "Hold Start my day to finish the alarm"), Toast.LENGTH_SHORT).show()
+      return true
+    }
+    // A retained/stale activity must never act on a newer alarm's session.
+    if (host?.get() !== activity || !activity.hasWindowFocus() || !validIntent(activity, activity.intent) || stage(activity) != "wake") return true
+    val id = prefs(activity).getString("sessionId", null) ?: return true
+    cancelHold()
+    AlarmEvents.emit("alarmSnoozeRequested", mapOf("sessionId" to id))
+    if (!AlarmSnooze.available(activity)) {
+      Toast.makeText(activity, AlarmStrings.text(activity, "Snooze already used"), Toast.LENGTH_SHORT).show()
+      return true
+    }
+    val nativeCover = cover != null || activity is AlarmActivity
+    runCatching { AlarmSnooze.request(activity, id) }.onSuccess {
+      if (nativeCover) openHome(activity)
+    }.onFailure {
+      AlarmLog.event("volume_snooze_failed", it.javaClass.simpleName)
+      Toast.makeText(activity, AlarmStrings.text(activity, "Could not snooze. Please retry."), Toast.LENGTH_LONG).show()
+    }
     return true
+  }
+  private fun openHome(activity: Activity) {
+    runCatching { activity.startActivity((activity.packageManager.getLaunchIntentForPackage(activity.packageName) ?: Intent(activity, AlarmActivity::class.java))
+      .setAction(Intent.ACTION_VIEW).setData(Uri.parse("geeta:///"))) }
+      .onFailure { AlarmLog.event("snooze_home_launch_failed", it.javaClass.simpleName) }
   }
   fun detach(activity: Activity) {
     main()

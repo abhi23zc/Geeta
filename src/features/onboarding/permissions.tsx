@@ -93,8 +93,7 @@ export function OnboardingPermissions({ onProgress, registerBack, onFinish }: {
       {!status || !reviews ? <>{!controller.error && <><ActivityIndicator /><TextR accessibilityLiveRegion="polite">{t('Checking access…')}</TextR></>}</> : <>
         {page && <View key={id} style={{ gap: 14 }}>
           <TextR serif accessibilityRole="header" accessibilityLiveRegion="polite" style={{ fontSize: 24, fontWeight: '800' }}>{text(page.label)}</TextR>
-          <TextR accessibilityLiveRegion="polite">{t(page.required ? ready ? 'Verified' : 'Required for alarms' : 'Optional')}</TextR>
-          <TextR>{t(page.required ? 'Enable this setting for morning alarms, or set up your alarm later.' : 'You can continue without changing this setting.')}</TextR>
+          <TextR accessibilityLiveRegion="polite" style={{ color: ready ? C.greenDark : C.muted }}>{text(page.required ? ready ? 'Ready' : 'Needed for alarms' : 'Optional')}</TextR>
           <PermissionGuide key={`${status.manufacturer}:${id}`} manufacturer={alarmGuideManufacturer(status)} setting={id} instruction={page.guidance} />
           {id === 'vibration' && (
             <Pressable

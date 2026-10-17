@@ -24,6 +24,9 @@ object AlarmStrings {
     AlarmService.refreshLanguage()
   }
   private val strings = mapOf(
+    "Snooze · 5 min" to Pair("स्नूज़ · 5 मिनट", "Snooze · 5 min"),
+    "Snooze already used" to Pair("स्नूज़ पहले ही इस्तेमाल हो चुका है", "Snooze pehle hi istemal ho chuka hai"),
+    "Could not snooze. Please retry." to Pair("स्नूज़ नहीं हुआ। फिर प्रयास करें।", "Snooze nahi hua. Phir try karein."),
     "Could not continue the ritual. Please retry." to Pair("साधना जारी नहीं हो सकी। फिर प्रयास करें।", "Sadhana jaari nahi ho saki. Phir try karein."),
     "The app screen could not finish loading. Try again." to Pair("ऐप की स्क्रीन लोड नहीं हो सकी। फिर प्रयास करें।", "App ki screen load nahi ho saki. Phir try karein."),
     "Try again" to Pair("फिर प्रयास करें", "Phir try karein"),
@@ -48,7 +51,7 @@ object AlarmStrings {
     "Morning ritual alarm" to Pair("प्रातः साधना अलार्म", "Morning sadhana alarm"),
     "Gentle Tanpura & Bansuri Flute" to Pair("मधुर तानपुरा और बांसुरी", "Madhur tanpura aur bansuri"),
     "Harmonic crescendo (0%)" to Pair("धीरे बढ़ती ध्वनि (0%)", "Dheere badhti dhun (0%)"),
-    "Volume rises gently over five minutes while the alarm continues" to Pair("अलार्म बजते समय ध्वनि पांच मिनट में धीरे बढ़ती है", "Alarm bajte samay volume paanch minute mein dheere badhta hai"),
+    "Volume rises gently over two minutes while the alarm continues" to Pair("अलार्म बजते समय ध्वनि दो मिनट में धीरे बढ़ती है", "Alarm bajte samay volume do minute mein dheere badhta hai"),
     "Keep holding for 1.5 seconds. Releasing early resets the action." to Pair("1.5 सेकंड दबाए रखें। पहले छोड़ने पर फिर शुरू करना होगा।", "1.5 seconds hold karein. Pehle chhodne par phir shuru karna hoga."),
     "Your Surya Namaskar routine is prepared for 06:45 AM" to Pair("आपका सूर्य नमस्कार अभ्यास 06:45 AM के लिए तैयार है", "Aapka Surya Namaskar abhyas 06:45 AM ke liye taiyar hai")
   )

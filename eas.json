@@ -1,0 +1,26 @@
+{
+  "cli": {
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "production-apk": {
+      "extends": "production",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "distribution": "store",
+      "environment": "production",
+      "credentialsSource": "remote",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_REVENUECAT_USE_TEST_STORE": "false",
+        "EXPO_PUBLIC_ALARM_STARTUP_DELAY_MS": "0"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  }
+}

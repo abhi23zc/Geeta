@@ -43,6 +43,7 @@ test('prebuild adds the single-host lifecycle hooks without replacing the React 
   assert.ok(result.indexOf('AlarmPresentation.prepare(this, intent, created = true)', result.indexOf('override fun onCreate')) < result.indexOf('super.onCreate(null)'));
   assert.match(result, /AlarmPresentation.attach\(this\)/);
   assert.match(result, /AlarmPresentation.detach\(this\)/);
+  assert.match(result, /AlarmPresentation.blockVolume\(this, event\)/);
   assert.match(result, /createReactActivityDelegate\(\) = ReactActivityDelegateWrapper\(\)/);
   assert.equal(transformMainActivity(result, 'kt'), result);
   assert.throws(() => transformMainActivity(original.replace('override fun onCreate', 'override fun onResume() {}\n override fun onCreate'), 'kt'), /Review existing/);
