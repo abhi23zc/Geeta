@@ -87,8 +87,12 @@ export function MusicWorkspace({ user, storage }: { user: User; storage: Firebas
     if (!metadata.hi?.title.trim()) delete metadata.hi;
     if (kind === 'track') patchTrack({ metadata, unavailableTranslations }); else patchPlaylist({ metadata });
   }
-  async function previewAudio(path: string) { const blob = await getBlob(ref(storage, path)); setAudioPreview(URL.createObjectURL(blob)); }
+  async function previewAudio(path: string) {
+    try { const blob = await getBlob(ref(storage, path), MUSIC_MAX_BYTES); setAudioPreview(URL.createObjectURL(blob)); setStatus('Recording preview ready.'); }
+    catch { setStatus('Your recording is saved. The preview could not be loaded; try Preview again or play it after publishing. You do not need to upload it again.'); }
+  }
   useEffect(() => () => { if (audioPreview) URL.revokeObjectURL(audioPreview); }, [audioPreview]);
+  useEffect(() => { storage.maxOperationRetryTime = 15000; }, [storage]);
   async function uploadAudio(file: File) {
     const targetId = track?.id;
     if (!track || !file.size || file.size > MUSIC_MAX_BYTES || !/\.(mp3|m4a)$/i.test(file.name)) throw Error('Choose an MP3 or M4A up to 200 MB');
@@ -96,7 +100,7 @@ export function MusicWorkspace({ user, storage }: { user: User; storage: Firebas
     task.current = uploadBytesResumable(ref(storage, path), file, { contentType: file.name.toLowerCase().endsWith('.mp3') ? 'audio/mpeg' : 'audio/mp4' });
     await new Promise<void>((resolve, reject) => task.current!.on('state_changed', snapshot => setStatus(`Uploading recording: ${Math.round(snapshot.bytesTransferred / snapshot.totalBytes * 100)}%`), reject, resolve));
     setStatus('Checking recording duration and audio…'); const asset = await api('validate-asset', { path });
-    edit(p => ({ ...p, tracks: p.tracks.map(t => t.id === targetId ? { ...t, asset, bundledId: undefined, availability: 'available', revision: uid() } : t) })); await previewAudio(`music/validated/${asset.id}.audio`); setStatus('Recording verified. Review your draft before publishing.');
+    edit(p => ({ ...p, tracks: p.tracks.map(t => t.id === targetId ? { ...t, asset, bundledId: undefined, availability: 'available', revision: uid() } : t) })); setAudioPreview(URL.createObjectURL(file)); setStatus('Recording uploaded and verified. Preview is ready. Review your draft before publishing.');
   }
   async function uploadImage() {
     if (!upload || (!reframeId && upload.size > 10 * 1024 * 1024) || !['image/jpeg', 'image/png', 'image/webp'].includes(upload.type)) throw Error('Choose a JPEG, PNG or WebP image up to 10 MB');

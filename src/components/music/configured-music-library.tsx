@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { Activity, BookOpen, Heart, Music, RotateCw, Search, Sparkles, Sun, Wind, Clock, Compass, Flame, Play, Pause, X } from 'lucide-react-native';
+import { Activity, BookOpen, Heart, Music, RotateCw, Search, Flame, Sun, Wind, Clock, Compass, Play, Pause, X } from 'lucide-react-native';
 import { Header, Screen, TextR, useDockHeight, DawnMeshBackdrop } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
 import { useLanguage } from '@/i18n/provider';
@@ -15,7 +15,7 @@ import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { AudioSpectrumVisualizer } from '@/components/audio-spectrum-visualizer';
 import { libraryStyles as S } from './library-styles';
 import type { MusicTrack } from '@/types/music';
-const icons = { gita: BookOpen, mantra: Sparkles, raga: Music, flute: Wind, pranayama: Activity, soundscape: Sun };
+const icons = { gita: BookOpen, mantra: Flame, raga: Music, flute: Wind, pranayama: Activity, soundscape: Sun };
 const colors: Record<MusicTheme, string> = { gita: '#FFF6EC', mantra: '#FFF0E5', raga: '#FBEFF5', flute: '#EAF7EE', pranayama: '#EBF7FA', soundscape: '#FCF3DF' };
 const time = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`;
 type Row = { key: string; type: 'section'; section: MusicSection } | { key: string; type: 'heading'; title: string; subtitle?: string } | { key: string; type: 'track'; track: MusicTrack; queue: MusicTrack[]; theme?: MusicTheme };
@@ -90,8 +90,8 @@ export function ConfiguredMusicLibrary() {
     const items = ids.map(id => {
       if (section.type === 'tracks') { const track = trackMap.get(id); return track ? <View key={id}>{trackCard(track, queue, true, section.theme)}</View> : null; }
       if (section.type === 'categories') {
-        const cat = categoryMap.get(id); if (!cat) return null; const Icon = icons[cat.icon], image = images.get(cat.imageId ?? '');
-        return <Pressable key={id} accessibilityRole="tab" accessibilityState={{ selected: selected === id }} style={[section.layout === 'chips' ? S.categoryPill : S.playlistCard, tint(section.theme), selected === id && S.categoryPillActive]} onPress={() => setCategory(id)}>{section.layout === 'cards' && <View style={S.playlistImageWrap}><MusicArtwork uri={image?.thumbnail} alt={image ? copy(image.alt) : undefined} category={cat.theme} style={S.playlistImg} /></View>}<View style={section.layout === 'cards' ? [S.playlistTextCol, styles.line] : styles.line}><Icon size={14} color={selected === id ? 'white' : C.primary} /><TextR style={[S.categoryPillText, selected === id && S.categoryPillTextActive]}>{copy(cat.name)}</TextR></View></Pressable>;
+        const cat = categoryMap.get(id); if (!cat) return null; const image = images.get(cat.imageId ?? '');
+        return <Pressable key={id} accessibilityRole="tab" accessibilityState={{ selected: selected === id }} style={[section.layout === 'chips' ? S.categoryPill : S.playlistCard, tint(section.theme), selected === id && S.categoryPillActive]} onPress={() => setCategory(id)}>{section.layout === 'cards' && <View style={S.playlistImageWrap}><MusicArtwork uri={image?.thumbnail} alt={image ? copy(image.alt) : undefined} category={cat.theme} style={S.playlistImg} /></View>}<View style={section.layout === 'cards' ? [S.playlistTextCol, styles.line] : styles.line}>{selected === id && <View style={styles.activeDot} />}<TextR style={[S.categoryPillText, selected === id && S.categoryPillTextActive]}>{copy(cat.name)}</TextR></View></Pressable>;
       }
       const playlist = playlistMap.get(id); if (!playlist) return null;
       const artworkTheme = playlist.trackIds.map(key => trackMap.get(key)?.categoryTheme).find(Boolean) ?? section.theme;
@@ -101,14 +101,14 @@ export function ConfiguredMusicLibrary() {
       </Pressable>;
     });
     const chips = section.type === 'categories' && section.layout === 'chips';
-    return <View style={section.type === 'categories' ? S.categoriesSection : S.playlistsSection}>{heading(copy(section.title), copy(section.subtitle))}{section.layout === 'list' ? items : <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={chips ? S.categoryScroll : S.playlistScroll}>{chips && <Pressable accessibilityRole="tab" accessibilityState={{ selected: selected === 'all' }} onPress={() => setCategory('all')} style={[S.categoryPill, selected === 'all' && S.categoryPillActive]}><Sparkles size={14} color={selected === 'all' ? 'white' : C.primary} /><TextR style={[S.categoryPillText, selected === 'all' && S.categoryPillTextActive]}>{t('All Sacred')}</TextR></Pressable>}{items}</ScrollView>}</View>;
+    return <View style={section.type === 'categories' ? S.categoriesSection : S.playlistsSection}>{heading(copy(section.title), copy(section.subtitle))}{section.layout === 'list' ? items : <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={chips ? S.categoryScroll : S.playlistScroll}>{chips && <Pressable accessibilityRole="tab" accessibilityState={{ selected: selected === 'all' }} onPress={() => setCategory('all')} style={[S.categoryPill, selected === 'all' && S.categoryPillActive]}>{selected === 'all' && <View style={styles.activeDot} />}<TextR style={[S.categoryPillText, selected === 'all' && S.categoryPillTextActive]}>{t('All Sacred')}</TextR></Pressable>}{items}</ScrollView>}</View>;
   };
   const HeaderIcon = icons[config.header.icon];
   const tabIcons = { explore: Compass, favorites: Heart, recent: Clock };
   return <Screen scroll={false} contentStyle={S.screenContent}><DawnMeshBackdrop />{config.header.visible && <Header logo={config.header.icon === 'gita' ? undefined : <HeaderIcon size={28} color={C.saffron} />} title={copy(config.header.title)} eyebrow={copy(config.header.subtitle)} showActions={false} rightAction={<Pressable style={S.headerRefreshBtn} accessibilityRole="button" accessibilityLabel={t('Refresh music catalog')} onPress={() => { void refresh(); }} hitSlop={8}><RotateCw size={17} color={C.primary} strokeWidth={2.4} /></Pressable>} />}
     <FlatList data={rows} keyExtractor={row => row.key} showsVerticalScrollIndicator={false} contentContainerStyle={[S.listContent, { paddingBottom: Math.max(dock + insets.bottom + (player.currentTrack ? 88 : 20) + 24, 180) }]} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { void refresh(); }} tintColor={C.saffron} colors={[C.saffron, C.gold]} />} ListHeaderComponent={<View style={S.headerArea}>
-      {!!(catalog.error || player.error) && <View style={S.alertBanner} accessibilityRole="alert"><Sparkles size={14} color={C.primary} /><TextR style={S.alertText}>{catalog.error ? `${t('Music catalog unavailable')} · ${catalog.error}` : t(player.error ?? '')}</TextR></View>}
-      {config.search.visible && <View style={S.searchBarWrap}><View style={S.searchIconCircle}><Search size={18} color={C.saffron} strokeWidth={2.4} /></View><TextInput accessibilityLabel={copy(config.search.placeholder)} placeholder={copy(config.search.placeholder)} placeholderTextColor={C.mutedSoft} value={query} onChangeText={setQuery} style={S.searchInput} clearButtonMode="while-editing" />{!!query && <Pressable accessibilityRole="button" accessibilityLabel={t('Clear search')} onPress={() => setQuery('')} hitSlop={10} style={S.clearBtn}><X size={15} color={C.muted} /></Pressable>}</View>}
+      {!!(catalog.error || player.error) && <View style={S.alertBanner} accessibilityRole="alert"><Flame size={14} color={C.primary} /><TextR style={S.alertText}>{catalog.error ? `${t('Music catalog unavailable')} · ${catalog.error}` : t(player.error ?? '')}</TextR></View>}
+      {config.search.visible && <View style={S.searchBarWrap}><View style={S.searchIconCircle}><Search size={18} color="#6E5545" strokeWidth={2.2} /></View><TextInput accessibilityLabel={copy(config.search.placeholder)} placeholder={copy(config.search.placeholder)} placeholderTextColor="#9A8374" value={query} onChangeText={setQuery} style={S.searchInput} clearButtonMode="while-editing" />{!!query && <Pressable accessibilityRole="button" accessibilityLabel={t('Clear search')} onPress={() => setQuery('')} hitSlop={10} style={S.clearBtn}><X size={15} color={C.muted} /></Pressable>}</View>}
       <View style={S.sectionTabsWrap}>{(['explore', ...(config.tabs.showFavorites ? ['favorites'] : []), ...(config.tabs.showRecent ? ['recent'] : [])] as ('explore' | 'favorites' | 'recent')[]).map(key => { const Icon = tabIcons[key], active = activeTab === key; return <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={() => setTab(key)} style={[S.sectionTab, active && S.sectionTabActive]}><Icon size={15} color={active ? C.primary : C.muted} /><TextR style={[S.sectionTabText, active && S.sectionTabTextActive]}>{copy(config.tabs[key])}</TextR>{key === 'favorites' && player.favorites.size > 0 && <View style={[S.tabBadge, active && S.tabBadgeActive]}><TextR style={[S.tabBadgeText, active && S.tabBadgeTextActive]}>{player.favorites.size}</TextR></View>}</Pressable>; })}</View>
       {selected !== 'all' && <Pressable accessibilityRole="button" onPress={() => setCategory('all')} style={S.categoryPill}><TextR>← {copy(config.results.all)}</TextR></Pressable>}{!editorial && !filtered.length && <View style={S.emptyState}><View style={S.emptyIconCircle}><Music size={30} color={C.saffron} /></View><TextR serif style={S.emptyTitle}>{copy(config.results.empty)}</TextR></View>}
     </View>} renderItem={({ item }) => item.type === 'heading' ? heading(item.title, item.subtitle) : item.type === 'track' ? trackCard(item.track, item.queue, false, item.theme) : renderSection(item.section)} />
@@ -116,6 +116,13 @@ export function ConfiguredMusicLibrary() {
 }
 const styles = StyleSheet.create({
   line: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  activeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
+    marginRight: 2,
+  },
   collection: { width: 180, flexDirection: 'column', alignItems: 'stretch' },
   compactImage: { width: '100%', height: 120, borderRadius: 15, overflow: 'hidden' },
   bannerArt: { width: '100%', height: 150, borderRadius: 16, marginBottom: 12 },

@@ -60,3 +60,25 @@ test('a newer local draft can be recovered without technical editing', async ({ 
   await expect(page.getByLabel('Page title · English', { exact: true })).toHaveValue('Recovered title');
   await expect(page.locator('.music-phone h3').first()).toHaveText('Recovered title');
 });
+test('a verified upload uses its local preview without a second Storage download', async ({ page }) => {
+  const draft = editorSeed(); let previewDownloads = 0;
+  const objectName = 'music/uploads/browser-test/test.mp3';
+  await page.route('**/api/music/admin/**', async route => {
+    const op = route.request().url().split('/').at(-1);
+    await route.fulfill({ json: op === 'load' ? { draft, releaseId: null, releases: [], media: [] } : op === 'validate-asset' ? { id: 'verified-recording', url: 'https://storage.googleapis.com/demo-geeta.appspot.com/music/validated/test.audio', mime: 'audio/mpeg', bytes: 4, sha256: 'a'.repeat(64), durationMs: 1000 } : { saved: true } });
+  });
+  await page.route('https://firebasestorage.googleapis.com/**', async route => {
+    if (route.request().method() === 'GET') { previewDownloads++; await route.abort(); return; }
+    if (route.request().headers()['x-goog-upload-protocol'] === 'multipart') { await route.fulfill({ json: { bucket: 'demo-geeta.appspot.com', name: new URL(route.request().url()).searchParams.get('name') || objectName, generation: '1', metageneration: '1', size: '4', contentType: 'audio/mpeg' } }); return; }
+    await route.fulfill({ status: 200, headers: { 'x-goog-upload-url': 'http://127.0.0.1:5178/mock-recording-upload', 'x-goog-upload-status': 'active' }, body: '' });
+  });
+  await page.route('**/mock-recording-upload', route => route.fulfill({ status: 200, headers: { 'x-goog-upload-status': 'final' }, json: { bucket: 'demo-geeta.appspot.com', name: objectName, generation: '1', metageneration: '1', size: '4', contentType: 'audio/mpeg', downloadTokens: 'test' } }));
+  await page.goto('/tests/music-fixture.html'); await expect(page.getByRole('status')).toContainText('Ready to edit');
+  await page.getByRole('button', { name: 'Recordings', exact: true }).click(); await page.getByRole('button', { name: '+ Add recording', exact: true }).click();
+  await page.getByLabel('Recording credits / owner', { exact: true }).fill('Recording owner');
+  await page.getByLabel('I confirm we have the rights to publish this recording', { exact: true }).check();
+  await page.locator('input[type=file][accept=".mp3,.m4a"]').setInputFiles({ name: 'recording.mp3', mimeType: 'audio/mpeg', buffer: Buffer.from('test') });
+  await expect(page.locator('audio')).toHaveAttribute('src', /^blob:/);
+  await expect(page.getByRole('status')).not.toContainText('retry-limit-exceeded');
+  expect(previewDownloads).toBe(0);
+});

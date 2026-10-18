@@ -1,5 +1,5 @@
-import { libraryStyles as styles } from '@/components/music/library-styles';
-import { ConfiguredMusicLibrary } from '@/components/music/configured-music-library';
+import { ConfiguredMusicLibrary } from "@/components/music/configured-music-library";
+import { libraryStyles as styles } from "@/components/music/library-styles";
 import { useRouter } from "expo-router";
 import {
   Activity,
@@ -13,7 +13,6 @@ import {
   Play,
   RotateCw,
   Search,
-  Sparkles,
   Sun,
   Wind,
   X,
@@ -47,14 +46,6 @@ import { refreshMusicCatalog } from "@/services/music/catalog";
 import { useMusicCatalog, useMusicPlayer } from "@/state/music-player-store";
 import type { MusicCategory, MusicTrack } from "@/types/music";
 
-const CATEGORY_ICONS: Record<MusicCategory, any> = {
-  gita: BookOpen,
-  mantra: Sparkles,
-  raga: Music,
-  flute: Wind,
-  pranayama: Activity,
-  soundscape: Sun,
-};
 
 function formatTrackDuration(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -221,7 +212,7 @@ function BundledLibraryLayout() {
             {/* Catalog or Player Error Banner */}
             {!!catalogError && (
               <View style={styles.alertBanner} accessibilityRole="alert">
-                <Sparkles size={14} color={C.primary} />
+                <Flame size={14} color={C.primary} />
                 <TextR style={styles.alertText}>
                   {translateText("Music catalog unavailable")} · {catalogError}
                 </TextR>
@@ -229,7 +220,7 @@ function BundledLibraryLayout() {
             )}
             {!!playerError && (
               <View style={styles.alertBanner} accessibilityRole="alert">
-                <Sparkles size={14} color={C.primary} />
+                <Flame size={14} color={C.primary} />
                 <TextR style={styles.alertText}>
                   {translateText(playerError)}
                 </TextR>
@@ -585,13 +576,7 @@ function BundledLibraryLayout() {
                         },
                       ]}
                     >
-                      <Sparkles
-                        size={14}
-                        color={
-                          selectedCategory === "all" ? "#FFFFFF" : C.saffron
-                        }
-                        strokeWidth={2.2}
-                      />
+                      {selectedCategory === "all" && <View style={styles.categoryActiveDot} />}
                       <TextR
                         style={[
                           styles.categoryPillText,
@@ -604,7 +589,6 @@ function BundledLibraryLayout() {
                     </Pressable>
 
                     {SACRED_CATEGORIES.map((cat) => {
-                      const IconComp = CATEGORY_ICONS[cat.id] || Music;
                       const isActive = selectedCategory === cat.id;
                       return (
                         <Pressable
@@ -621,11 +605,7 @@ function BundledLibraryLayout() {
                             },
                           ]}
                         >
-                          <IconComp
-                            size={14}
-                            color={isActive ? "#FFFFFF" : C.primary}
-                            strokeWidth={2.2}
-                          />
+                          {isActive && <View style={styles.categoryActiveDot} />}
                           <TextR
                             style={[
                               styles.categoryPillText,
@@ -899,14 +879,24 @@ function BundledLibraryLayout() {
   );
 }
 
-
 // Preserve the established layout as a recovery view if native presentation fails.
-class MusicPageBoundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
+class MusicPageBoundary extends React.Component<
+  { children: React.ReactNode },
+  { failed: boolean }
+> {
   state = { failed: false };
-  static getDerivedStateFromError() { return { failed: true }; }
-  render() { return this.state.failed ? <BundledLibraryLayout /> : this.props.children; }
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? <BundledLibraryLayout /> : this.props.children;
+  }
 }
 export default function MusicLibraryRoute() {
   const { releaseId } = useMusicCatalog();
-  return <MusicPageBoundary key={releaseId}><ConfiguredMusicLibrary /></MusicPageBoundary>;
+  return (
+    <MusicPageBoundary key={releaseId}>
+      <ConfiguredMusicLibrary />
+    </MusicPageBoundary>
+  );
 }

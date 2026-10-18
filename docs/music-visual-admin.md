@@ -56,3 +56,9 @@ Following explicit user authorization, the Music API, Storage rules, and admin H
 ## Deployment verification — 2026-10-18
 
 Firebase deployment completed for `functions:content:musicApi,storage,hosting`. The admin at https://geeta-56cdb.web.app returned HTTP 200 and its asset names matched the local production build. The `/api/music/catalog-v2` endpoint returned its expected HTTP 503 response, `No music release published`: an administrator must review and publish the first catalog. Existing apps continue using their bundled fallback until a release is published; older installed clients still require a client update for the configurable presentation.
+
+## Recording preview retry fix — 2026-10-18
+
+The first recording upload reached Available, then the automatic `getBlob` preview failed with `storage/retry-limit-exceeded`. The live bucket had no CORS entries. Browser download access now allows GET/HEAD from the two existing admin origins (`https://geeta-56cdb.firebaseapp.com` and `https://geeta-56cdb.web.app`), with storage authorization unchanged. `node scripts/music-storage-cors.cjs` inspects the configuration; `--apply` merges these entries using a metageneration precondition and the existing Firebase CLI login.
+
+Newly verified recordings use the selected local file for immediate playback, avoiding a redundant download of up to 200 MB. Manual server-preview failure explicitly says the saved recording does not need another upload. Storage metadata/download retry time is bounded at 15 seconds. Four browser tests pass, including a recording upload where no second Storage download is made.

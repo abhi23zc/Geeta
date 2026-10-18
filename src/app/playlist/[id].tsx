@@ -15,7 +15,7 @@ import {
   Pause,
   Play,
   Shuffle,
-  Sparkles,
+  Flame,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Screen, TextR, DawnMeshBackdrop, useDockHeight } from '@/components/ritual-ui';
@@ -170,7 +170,7 @@ export default function PlaylistDetailScreen() {
               />
               <View style={styles.bannerOverlayGrad} />
               <View style={styles.bannerBadgePill}>
-                <Sparkles size={11} color={C.gold} />
+                <Flame size={11} color={C.gold} fill={C.gold} />
                 <TextR style={styles.bannerBadgeText}>
                   {playlist.isCurated
                     ? translateText("CURATED SACRED RITUAL")

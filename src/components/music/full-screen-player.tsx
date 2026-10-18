@@ -28,7 +28,9 @@ import {
   Shuffle,
   SkipBack,
   SkipForward,
-  Sparkles,
+  Flame,
+  Check,
+  Music,
   Trash2,
   Wifi,
   X,
@@ -173,7 +175,7 @@ function PlayerBody() {
             </Pressable>
 
             <View style={styles.topHeaderPill}>
-              <Sparkles size={12} color={C.saffron} />
+              <Flame size={12} color={C.saffron} fill={C.saffron} />
               <TextR style={styles.topHeaderPillText}>
                 {tr('SACRED AUDIO', 'पवित्र संगीत')}
               </TextR>
@@ -214,7 +216,7 @@ function PlayerBody() {
                 tab === 'art' && styles.segmentedItemActive,
               ]}
             >
-              <Sparkles
+              <Music
                 size={13}
                 color={tab === 'art' ? C.primary : C.muted}
               />
@@ -354,7 +356,7 @@ function PlayerBody() {
                   onPress={() => setFollow(true)}
                   style={styles.followPill}
                 >
-                  <Sparkles size={12} color="#FFFFFF" />
+                  <BookOpen size={12} color="#FFFFFF" />
                   <TextR style={styles.followPillText}>
                     {tr('Follow shlokas', 'बोल के साथ चलें')}
                   </TextR>
@@ -734,7 +736,7 @@ function PlayerBody() {
                           {rate}×
                         </TextR>
                         {isSelected && (
-                          <Sparkles size={16} color={C.saffron} />
+                          <Check size={16} color={C.saffron} strokeWidth={2.4} />
                         )}
                       </Pressable>
                     );
