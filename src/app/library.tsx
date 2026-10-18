@@ -32,6 +32,9 @@ import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
 import { MusicArtwork } from "@/components/music/music-artwork";
+import { TactilePressable } from "@/components/music/tactile-pressable";
+import { SmoothSegmentedTabs } from "@/components/music/smooth-segmented-tabs";
+import { Sacred3DTexture } from "@/components/music/sacred-3d-texture";
 import {
   DawnMeshBackdrop,
   Header,
@@ -175,18 +178,15 @@ function BundledLibraryLayout() {
         title={translateText("Sacred Library")}
         showActions={false}
         rightAction={
-          <Pressable
+          <TactilePressable
             accessibilityRole="button"
             accessibilityLabel={translateText("Refresh music catalog")}
             onPress={onRefresh}
             hitSlop={8}
-            style={({ pressed }) => [
-              styles.headerRefreshBtn,
-              pressed && { opacity: 0.75, transform: [{ scale: 0.94 }] },
-            ]}
+            style={styles.headerRefreshBtn}
           >
             <RotateCw size={17} color={C.primary} strokeWidth={2.4} />
-          </Pressable>
+          </TactilePressable>
         }
       />
 
@@ -259,103 +259,15 @@ function BundledLibraryLayout() {
             </View>
 
             {/* 3D Tactile Section Segmented Switcher (Explore / Favorites / Recent) */}
-            <View style={styles.sectionTabsWrap}>
-              <Pressable
-                accessibilityRole="tab"
-                accessibilityState={{ selected: librarySection === "explore" }}
-                onPress={() => setLibrarySection("explore")}
-                style={[
-                  styles.sectionTab,
-                  librarySection === "explore" && styles.sectionTabActive,
-                ]}
-              >
-                <Compass
-                  size={15}
-                  color={librarySection === "explore" ? C.primary : C.muted}
-                  strokeWidth={2.2}
-                />
-                <TextR
-                  style={[
-                    styles.sectionTabText,
-                    librarySection === "explore" && styles.sectionTabTextActive,
-                  ]}
-                >
-                  {translateText("Explore")}
-                </TextR>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="tab"
-                accessibilityState={{
-                  selected: librarySection === "favorites",
-                }}
-                onPress={() => setLibrarySection("favorites")}
-                style={[
-                  styles.sectionTab,
-                  librarySection === "favorites" && styles.sectionTabActive,
-                ]}
-              >
-                <Heart
-                  size={15}
-                  color={librarySection === "favorites" ? C.primary : C.muted}
-                  fill={
-                    librarySection === "favorites" ? C.primary : "transparent"
-                  }
-                  strokeWidth={2.2}
-                />
-                <TextR
-                  style={[
-                    styles.sectionTabText,
-                    librarySection === "favorites" &&
-                      styles.sectionTabTextActive,
-                  ]}
-                >
-                  {translateText("Favorites")}
-                </TextR>
-                {favorites.size > 0 && (
-                  <View
-                    style={[
-                      styles.tabBadge,
-                      librarySection === "favorites" && styles.tabBadgeActive,
-                    ]}
-                  >
-                    <TextR
-                      style={[
-                        styles.tabBadgeText,
-                        librarySection === "favorites" &&
-                          styles.tabBadgeTextActive,
-                      ]}
-                    >
-                      {favorites.size}
-                    </TextR>
-                  </View>
-                )}
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="tab"
-                accessibilityState={{ selected: librarySection === "recent" }}
-                onPress={() => setLibrarySection("recent")}
-                style={[
-                  styles.sectionTab,
-                  librarySection === "recent" && styles.sectionTabActive,
-                ]}
-              >
-                <Clock
-                  size={15}
-                  color={librarySection === "recent" ? C.primary : C.muted}
-                  strokeWidth={2.2}
-                />
-                <TextR
-                  style={[
-                    styles.sectionTabText,
-                    librarySection === "recent" && styles.sectionTabTextActive,
-                  ]}
-                >
-                  {translateText("Recent")}
-                </TextR>
-              </Pressable>
-            </View>
+            <SmoothSegmentedTabs
+              tabs={[
+                { id: "explore" as const, label: translateText("Explore"), icon: Compass },
+                { id: "favorites" as const, label: translateText("Favorites"), icon: Heart, badgeCount: favorites.size },
+                { id: "recent" as const, label: translateText("Recent"), icon: Clock },
+              ]}
+              activeTab={librarySection}
+              onSelectTab={setLibrarySection}
+            />
 
             {/* In Explore mode with no query: Hero card, categories, and playlists */}
             {librarySection === "explore" && !searchQuery.trim() && (
@@ -363,40 +275,8 @@ function BundledLibraryLayout() {
                 {/* 🪷 Devotional Featured Hero Card matching Home & Today theme */}
                 {featuredTrack && (
                   <View style={styles.heroCard}>
-                    {/* Soft Sunlit Ambience Gradient */}
-                    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                      <Svg width="100%" height="100%">
-                        <Defs>
-                          <RadialGradient
-                            id="heroCardAmbience"
-                            cx="25%"
-                            cy="15%"
-                            r="90%"
-                          >
-                            <Stop
-                              offset="0%"
-                              stopColor="#FEE4C3"
-                              stopOpacity="0.45"
-                            />
-                            <Stop
-                              offset="55%"
-                              stopColor="#FFF2DE"
-                              stopOpacity="0.18"
-                            />
-                            <Stop
-                              offset="100%"
-                              stopColor="#FFF8F2"
-                              stopOpacity="0"
-                            />
-                          </RadialGradient>
-                        </Defs>
-                        <Rect
-                          width="100%"
-                          height="100%"
-                          fill="url(#heroCardAmbience)"
-                        />
-                      </Svg>
-                    </View>
+                    {/* Sacred 3D Parchment & Sunbeam Texture */}
+                    <Sacred3DTexture tintColor="#FEE4C3" />
 
                     {/* Top Header Row with Sacred Badge & Favorite Button */}
                     <View style={styles.heroTopRow}>
@@ -495,19 +375,13 @@ function BundledLibraryLayout() {
 
                     {/* Controls Footer */}
                     <View style={styles.heroFooter}>
-                      <Pressable
+                      <TactilePressable
                         disabled={featuredTrack.availability !== "available"}
                         accessibilityState={{
                           disabled: featuredTrack.availability !== "available",
                         }}
                         onPress={() => handleTrackPress(featuredTrack)}
-                        style={({ pressed }) => [
-                          styles.heroPlayBtn,
-                          pressed && {
-                            transform: [{ scale: 0.96 }],
-                            opacity: 0.92,
-                          },
-                        ]}
+                        style={styles.heroPlayBtn}
                         accessibilityRole="button"
                         accessibilityLabel={translateText(
                           "Play featured track",
@@ -537,7 +411,7 @@ function BundledLibraryLayout() {
                             </TextR>
                           </>
                         )}
-                      </Pressable>
+                      </TactilePressable>
 
                       <View style={styles.heroDurationPill}>
                         <Clock size={12} color={C.muted} />
@@ -561,19 +435,15 @@ function BundledLibraryLayout() {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.categoryScroll}
                   >
-                    <Pressable
+                    <TactilePressable
                       accessibilityRole="tab"
                       accessibilityState={{
                         selected: selectedCategory === "all",
                       }}
                       onPress={() => setSelectedCategory("all")}
-                      style={({ pressed }) => [
+                      style={[
                         styles.categoryPill,
                         selectedCategory === "all" && styles.categoryPillActive,
-                        pressed && {
-                          opacity: 0.85,
-                          transform: [{ scale: 0.97 }],
-                        },
                       ]}
                     >
                       {selectedCategory === "all" && <View style={styles.categoryActiveDot} />}
@@ -586,23 +456,19 @@ function BundledLibraryLayout() {
                       >
                         {translateText("All Sacred")}
                       </TextR>
-                    </Pressable>
+                    </TactilePressable>
 
                     {SACRED_CATEGORIES.map((cat) => {
                       const isActive = selectedCategory === cat.id;
                       return (
-                        <Pressable
+                        <TactilePressable
                           key={cat.id}
                           accessibilityRole="tab"
                           accessibilityState={{ selected: isActive }}
                           onPress={() => setSelectedCategory(cat.id)}
-                          style={({ pressed }) => [
+                          style={[
                             styles.categoryPill,
                             isActive && styles.categoryPillActive,
-                            pressed && {
-                              opacity: 0.85,
-                              transform: [{ scale: 0.97 }],
-                            },
                           ]}
                         >
                           {isActive && <View style={styles.categoryActiveDot} />}
@@ -614,7 +480,7 @@ function BundledLibraryLayout() {
                           >
                             {language === "hi" ? cat.hindiTitle : cat.title}
                           </TextR>
-                        </Pressable>
+                        </TactilePressable>
                       );
                     })}
                   </ScrollView>
@@ -634,18 +500,12 @@ function BundledLibraryLayout() {
                       contentContainerStyle={styles.playlistScroll}
                     >
                       {SACRED_PLAYLISTS.map((pl) => (
-                        <Pressable
+                        <TactilePressable
                           key={pl.id}
                           onPress={() =>
                             router.push(`/playlist/${pl.id}` as any)
                           }
-                          style={({ pressed }) => [
-                            styles.playlistCard,
-                            pressed && {
-                              transform: [{ scale: 0.97 }],
-                              opacity: 0.92,
-                            },
-                          ]}
+                          style={styles.playlistCard}
                           accessibilityRole="button"
                           accessibilityLabel={`${pl.title}, ${pl.trackIds.length} tracks`}
                         >
@@ -704,7 +564,7 @@ function BundledLibraryLayout() {
                               {pl.subtitle || pl.description}
                             </TextR>
                           </View>
-                        </Pressable>
+                        </TactilePressable>
                       ))}
                     </ScrollView>
                   </View>
@@ -749,14 +609,13 @@ function BundledLibraryLayout() {
 
           return (
             <View style={styles.trackCardWrap}>
-              <Pressable
+              <TactilePressable
                 disabled={!isPlayable}
                 accessibilityState={{ disabled: !isPlayable }}
                 onPress={() => handleTrackPress(item)}
-                style={({ pressed }) => [
+                style={[
                   styles.trackCard,
                   isCurrent && styles.trackCardActive,
-                  pressed && { opacity: 0.88, transform: [{ scale: 0.985 }] },
                   !isPlayable && { opacity: 0.75 },
                 ]}
               >
@@ -847,7 +706,7 @@ function BundledLibraryLayout() {
                       : translateText("Coming soon")}
                   </TextR>
                 </View>
-              </Pressable>
+              </TactilePressable>
             </View>
           );
         }}

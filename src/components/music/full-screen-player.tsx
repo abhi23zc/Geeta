@@ -39,6 +39,15 @@ import { useMusicPlayer } from '@/state/music-player-store';
 import { useLanguage } from '@/i18n/provider';
 import { TextR, DawnMeshBackdrop } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
+import { SmoothSegmentedTabs } from './smooth-segmented-tabs';
 import { MusicArtwork } from './music-artwork';
 import {
   downloadTrack,
@@ -83,6 +92,29 @@ function PlayerBody() {
 
   const scroll = useRef<ScrollView>(null);
   const lyricY = useRef<Record<number, number>>({});
+
+  // Centered Disc Smooth Circular Rotation when Playing
+  const discRotation = useSharedValue(0);
+
+  useEffect(() => {
+    if (p.isPlaying && motion.motionReady && !motion.reduced) {
+      discRotation.value = withRepeat(
+        withTiming(discRotation.value + 360, {
+          duration: 20000,
+          easing: Easing.linear,
+        }),
+        -1,
+        false,
+      );
+    } else {
+      cancelAnimation(discRotation);
+    }
+    return () => cancelAnimation(discRotation);
+  }, [p.isPlaying, motion.motionReady, motion.reduced, discRotation]);
+
+  const animatedDiscStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${discRotation.value}deg` }],
+  }));
 
   const track = p.currentTrack;
   const activeLyric =
@@ -148,10 +180,6 @@ function PlayerBody() {
         {/* Background Dawn Mesh Gradient */}
         <DawnMeshBackdrop />
 
-        {/* Ambient Warm Aura Orbs */}
-        <View style={styles.ambientAuraTop} pointerEvents="none" />
-        <View style={styles.ambientAuraBottom} pointerEvents="none" />
-
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
@@ -206,78 +234,17 @@ function PlayerBody() {
           </View>
 
           {/* Segmented Mode Tab Bar (Art / Lyrics / Queue) */}
-          <View style={styles.segmentedWrap}>
-            <Pressable
-              accessibilityRole="tab"
-              accessibilityState={{ selected: tab === 'art' }}
-              onPress={() => setTab('art')}
-              style={[
-                styles.segmentedItem,
-                tab === 'art' && styles.segmentedItemActive,
-              ]}
-            >
-              <Music
-                size={13}
-                color={tab === 'art' ? C.primary : C.muted}
-              />
-              <TextR
-                style={[
-                  styles.segmentedText,
-                  tab === 'art' && styles.segmentedTextActive,
-                ]}
-              >
-                {tr('Sacred Art', 'चित्र')}
-              </TextR>
-            </Pressable>
-
-            {!!track.lyrics?.length && (
-              <Pressable
-                accessibilityRole="tab"
-                accessibilityState={{ selected: tab === 'lyrics' }}
-                onPress={() => setTab('lyrics')}
-                style={[
-                  styles.segmentedItem,
-                  tab === 'lyrics' && styles.segmentedItemActive,
-                ]}
-              >
-                <BookOpen
-                  size={13}
-                  color={tab === 'lyrics' ? C.primary : C.muted}
-                />
-                <TextR
-                  style={[
-                    styles.segmentedText,
-                    tab === 'lyrics' && styles.segmentedTextActive,
-                  ]}
-                >
-                  {tr('Shlokas & Meaning', 'श्लोक व अर्थ')}
-                </TextR>
-              </Pressable>
-            )}
-
-            <Pressable
-              accessibilityRole="tab"
-              accessibilityState={{ selected: tab === 'queue' }}
-              onPress={() => setTab('queue')}
-              style={[
-                styles.segmentedItem,
-                tab === 'queue' && styles.segmentedItemActive,
-              ]}
-            >
-              <ListMusic
-                size={13}
-                color={tab === 'queue' ? C.primary : C.muted}
-              />
-              <TextR
-                style={[
-                  styles.segmentedText,
-                  tab === 'queue' && styles.segmentedTextActive,
-                ]}
-              >
-                {tr('Queue', 'सूची')} ({p.queue.length})
-              </TextR>
-            </Pressable>
-          </View>
+          <SmoothSegmentedTabs
+            tabs={[
+              { id: 'art' as const, label: tr('Sacred Art', 'चित्र'), icon: Music },
+              ...(track.lyrics?.length
+                ? [{ id: 'lyrics' as const, label: tr('Shlokas & Meaning', 'श्लोक व अर्थ'), icon: BookOpen }]
+                : []),
+              { id: 'queue' as const, label: `${tr('Queue', 'सूची')} (${p.queue.length})`, icon: ListMusic },
+            ]}
+            activeTab={tab}
+            onSelectTab={setTab}
+          />
 
           {/* Tab 1: Sacred Medallion Art */}
           {tab === 'art' && (
@@ -291,11 +258,12 @@ function PlayerBody() {
                 ]}
                 pointerEvents="none"
               />
-              <View
+              <Animated.View
                 style={[
                   styles.medallionOuter,
                   { width: artSize, height: artSize, borderRadius: artSize / 2 },
                   p.isPlaying && styles.medallionOuterPlaying,
+                  animatedDiscStyle,
                 ]}
               >
                 <MusicArtwork
@@ -304,7 +272,7 @@ function PlayerBody() {
                   style={styles.medallionArtwork}
                   iconSize={64}
                 />
-              </View>
+              </Animated.View>
             </View>
           )}
 
