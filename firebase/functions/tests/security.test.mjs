@@ -16,7 +16,23 @@ test('Firebase rules isolate drafts and deny client publication', async () => {
       await assertFails(getDoc(doc(ordinary.firestore(),path)));
       await assertFails(setDoc(doc(admin.firestore(),path),{unsafe:true}));
     }
+    for (const path of ['musicDelivery/current','musicReleases/release','musicAssets/asset','musicDrafts/editor','musicPageReleases/page','musicImages/image']) {
+      await assertFails(setDoc(doc(admin.firestore(),path),{unsafe:true}));
+      await assertFails(getDoc(doc(ordinary.firestore(),path)));
+    }
     const bytes=new Uint8Array([1,2,3]);
+    await assertFails(uploadBytes(ref(ordinary.storage(),'music/image-uploads/reader/a.png'),bytes,{contentType:'image/png'}));
+    await assertFails(uploadBytes(ref(admin.storage(),'music/image-uploads/other/a.png'),bytes,{contentType:'image/png'}));
+    await assertSucceeds(uploadBytes(ref(admin.storage(),'music/image-uploads/editor/a.png'),bytes,{contentType:'image/png'}));
+    await assertFails(uploadBytes(ref(admin.storage(),'music/image-uploads/editor/a.png'),bytes,{contentType:'image/png'}));
+    await assertFails(uploadBytes(ref(admin.storage(),'music/image-uploads/editor/a.svg'),bytes,{contentType:'image/svg+xml'}));
+    await assertFails(uploadBytes(ref(admin.storage(),'music/images/image/square.webp'),bytes,{contentType:'image/webp'}));
+    await assertFails(uploadBytes(ref(ordinary.storage(),'music/uploads/reader/a.mp3'),bytes,{contentType:'audio/mpeg'}));
+    await assertFails(uploadBytes(ref(admin.storage(),'music/uploads/other/a.mp3'),bytes,{contentType:'audio/mpeg'}));
+    await assertSucceeds(uploadBytes(ref(admin.storage(),'music/uploads/editor/a.mp3'),bytes,{contentType:'audio/mpeg'}));
+    await assertFails(uploadBytes(ref(admin.storage(),'music/uploads/editor/a.mp3'),new Uint8Array([4,5,6,7]),{contentType:'audio/mpeg'}));
+    await assertFails(uploadBytes(ref(admin.storage(),'music/uploads/editor/a.wav'),bytes,{contentType:'audio/wav'}));
+    await assertFails(uploadBytes(ref(admin.storage(),'music/published/a.audio'),bytes,{contentType:'audio/mpeg'}));
     await assertFails(uploadBytes(ref(ordinary.storage(),'drafts/reader/a.mp3'),bytes,{contentType:'audio/mpeg'}));
     await assertSucceeds(uploadBytes(ref(admin.storage(),'drafts/editor/a.mp3'),bytes,{contentType:'audio/mpeg'}));
     await assertFails(getBytes(ref(ordinary.storage(),'drafts/editor/a.mp3')));

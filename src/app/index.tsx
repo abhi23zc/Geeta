@@ -1,3 +1,4 @@
+import { MusicHomeGateway } from '@/components/music/music-home-gateway';
 import { StorageRecoveryNotice } from '@/components/storage-recovery-notice';
 import { useGrowthFocusTarget } from '@/features/progress/tree/focus-target';
 import { useLanguage } from '@/i18n/provider';
@@ -437,6 +438,8 @@ export default function Home() {
              {translate("Begin with a few quiet breaths before you enter today's ritual.")} </TextR>
         </View>
       </View>
+
+      <MusicHomeGateway />
 
       {/* Quick Access Devotional Action Grid */}
       <View style={s.gatewaysSection}>

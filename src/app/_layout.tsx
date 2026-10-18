@@ -24,11 +24,14 @@ import { OnboardingGate } from '@/features/onboarding/gate';
 import { needsIntroduction } from '@/features/onboarding/model';
 import { AnimatedSplashScreen } from '@/components/animated-splash';
 import { SubscriptionProvider } from '@/features/subscriptions/provider';
+import { MusicPlayerProvider } from '@/state/music-player-store';
+import { MiniPlayer } from '@/components/music/mini-player';
+import { FullScreenPlayer } from '@/components/music/full-screen-player';
 
 const alarmScreenLayout: NonNullable<React.ComponentProps<typeof Stack>['screenLayout']> =
   ({ children }) => <AlarmNavigationGuard><OnboardingGate>{children}</OnboardingGate></AlarmNavigationGuard>;
 
-const TAB_ROUTES = new Set(['/', '/index', '/today', '/quiz', '/quiz/index', '/progress']);
+const TAB_ROUTES = new Set(['/', '/index', '/today', '/library', '/quiz', '/quiz/index', '/progress']);
 
 function AppChrome() {
   const presentation = useAlarmPresentation();
@@ -55,6 +58,8 @@ function AppChrome() {
         <Stack.Screen name="gita" />
         <Stack.Screen name="breathe" />
         <Stack.Screen name="today" />
+        <Stack.Screen name="library" />
+        <Stack.Screen name="playlist/[id]" />
         <Stack.Screen name="quiz" />
         <Stack.Screen name="language" />
         <Stack.Screen name="progress" />
@@ -63,6 +68,7 @@ function AppChrome() {
         <Stack.Screen name="alarm/help" />
         <Stack.Screen name="alarm/wake" options={{ presentation: 'fullScreenModal' }} />
       </Stack>
+      {!introduction && !presentation.active && !isExcluded && <><MiniPlayer /><FullScreenPlayer /></>}
       {showTabs && <TabBar />}
       {!introduction && <GrowthCelebrationHost />}
       <AnimatedSplashScreen />
@@ -79,9 +85,9 @@ export default function RootLayout() {
             <RitualProvider>
               <TasksProvider>
                 <GitaProvider>
-                  <ContentProvider><NotificationProvider>
+                  <ContentProvider><NotificationProvider><MusicPlayerProvider>
                     {__DEV__ ? <SubscriptionProvider><AppChrome /></SubscriptionProvider> : <AppChrome />}
-                  </NotificationProvider></ContentProvider>
+                  </MusicPlayerProvider></NotificationProvider></ContentProvider>
                 </GitaProvider>
               </TasksProvider>
             </RitualProvider>

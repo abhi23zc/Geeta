@@ -19,7 +19,7 @@ object ContentFiles {
     val digest = MessageDigest.getInstance("SHA-256")
     file.inputStream().use { input ->
       val buffer = ByteArray(64 * 1024)
-      while (true) { val size = input.read(buffer); if (size < 0) break; digest.update(buffer, 0, size) }
+      while (true) { if(Thread.currentThread().isInterrupted)throw java.io.InterruptedIOException("Verification cancelled"); val size = input.read(buffer); if (size < 0) break; digest.update(buffer, 0, size) }
     }
     return digest.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
   }

@@ -68,7 +68,8 @@
     "test:content": "node --test tests/content-contract.test.mjs tests/content-cache.test.mjs tests/admin-import.test.mjs tests/admin-editor.test.mjs tests/content-publish-day.test.mjs",
     "content:emulators": "firebase/functions/node_modules/.bin/firebase emulators:start --project demo-geeta",
     "test:firebase": "npm --prefix firebase/functions run build && firebase/functions/node_modules/.bin/firebase emulators:exec --project demo-geeta --only auth,firestore,storage,functions 'npm --prefix firebase/functions test'",
-    "test:notifications": "node --test tests/notifications.test.mjs tests/task-notifications.test.mjs"
+    "test:notifications": "node --test tests/notifications.test.mjs tests/task-notifications.test.mjs",
+    "test:music": "node --test --test-isolation=none tests/music-*.test.mjs"
   },
   "private": true
 }

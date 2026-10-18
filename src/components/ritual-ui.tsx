@@ -7,6 +7,7 @@ import {
   BookOpen,
   ChevronLeft,
   Flame,
+  Music,
   Sun,
   Target,
   User
@@ -599,11 +600,12 @@ export function Header({
   );
 }
 
-type TabHref = "/" | "/today" | "/quiz" | "/progress";
+type TabHref = "/" | "/today" | "/library" | "/quiz" | "/progress";
 
 const tabs: { href: TabHref; label: string; IconComponent: typeof Flame }[] = [
   { href: "/", label: "Home", IconComponent: Flame },
   { href: "/today", label: "Today", IconComponent: Sun },
+  { href: "/library", label: "Library", IconComponent: Music },
   { href: "/quiz", label: "Quiz", IconComponent: BookOpen },
   { href: "/progress", label: "Daily Goal", IconComponent: Target },
 ];
@@ -729,7 +731,7 @@ export function TabBar({ night }: { night?: boolean }) {
               tab={t}
               active={active}
               night={isNight}
-              onPress={() => router.navigate(t.href)}
+              onPress={() => router.navigate(t.href as any)}
             />
           );
         })}

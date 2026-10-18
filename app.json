@@ -68,7 +68,7 @@
         {
           "microphonePermission": false,
           "recordAudioAndroid": false,
-          "enableBackgroundPlayback": false
+          "enableBackgroundPlayback": true
         }
       ],
       "./plugins/with-alarm-desugaring",

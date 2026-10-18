@@ -1,7 +1,8 @@
+import { serializedAudioMode } from '@/services/music/ownership';
 import { useDecorativeMotion } from '@/hooks/use-motion-environment';
 import { StorageRecoveryNotice } from "@/components/storage-recovery-notice";
 import { useLanguage } from "@/i18n/provider";
-import { setAudioModeAsync, useAudioPlayer } from "expo-audio";
+import { useAudioPlayer } from "expo-audio";
 import {
   useFocusEffect,
   useLocalSearchParams,
@@ -999,7 +1000,7 @@ function GitaContent({ today }: { today: string }) {
   }, [navigation, pause, persist, sessionComplete, translate]);
 
   useEffect(() => {
-    setAudioModeAsync({
+    serializedAudioMode({
       playsInSilentMode: true,
       interruptionMode: "doNotMix",
       shouldPlayInBackground: false,

@@ -81,7 +81,7 @@ export function AlarmTimeWheel({
       const centeredIndex = data.length * 2 + valIndex;
       currentIndexRef.current = centeredIndex;
       reportedRef.current = nextVal;
-      translateY.value = -(centeredIndex - 1) * rowHeight;
+      translateY.set(-(centeredIndex - 1) * rowHeight);
 
       if (delta !== 0) {
         onDelta(delta);
@@ -100,7 +100,7 @@ export function AlarmTimeWheel({
       const targetIndex = currentIndexRef.current + delta;
       const snapY = -(targetIndex - 1) * rowHeight;
 
-      translateY.value = withSpring(
+      translateY.set(withSpring(
         snapY,
         {
           damping: 24,
@@ -112,7 +112,7 @@ export function AlarmTimeWheel({
             runOnJS(handleSettled)(targetIndex);
           }
         }
-      );
+      ));
     },
     [handleMovingStart, handleSettled, rowHeight, translateY]
   );
@@ -123,34 +123,36 @@ export function AlarmTimeWheel({
     const target = nearestWheelIndex(currentIndexRef.current, data.indexOf(value), data.length);
     currentIndexRef.current = target;
     reportedRef.current = value;
-    translateY.value = withSpring(-(target - 1) * rowHeight, {
+    translateY.set(withSpring(-(target - 1) * rowHeight, {
       damping: 24,
       stiffness: 170,
       mass: 0.6,
-    });
+    }));
   }, [value, data, rowHeight, translateY]);
 
   useEffect(() => {
-    translateY.value = -(currentIndexRef.current - 1) * rowHeight;
+    translateY.set(-(currentIndexRef.current - 1) * rowHeight);
   }, [rowHeight, translateY]);
 
-  // Gestures for 120 FPS ultra smooth native interaction
+  // Gesture builders register deferred UI-thread worklets; no JS refs are read during render.
+  /* eslint-disable react-hooks/refs */
+  // Gestures for native interaction
   const panGesture = Gesture.Pan()
     .activeOffsetY([-6, 6])
     .onStart(() => {
       'worklet';
       cancelAnimation(translateY);
-      startY.value = translateY.value;
+      startY.set(translateY.get());
       runOnJS(handleMovingStart)();
     })
     .onUpdate((e) => {
       'worklet';
-      translateY.value = startY.value + e.translationY;
+      translateY.set(startY.get() + e.translationY);
 
       // Haptic tick when passing each notch
-      const visualIndex = Math.round(1 - translateY.value / rowHeight);
-      if (visualIndex !== lastHapticIndex.value) {
-        lastHapticIndex.value = visualIndex;
+      const visualIndex = Math.round(1 - translateY.get() / rowHeight);
+      if (visualIndex !== lastHapticIndex.get()) {
+        lastHapticIndex.set(visualIndex);
         runOnJS(triggerHaptic)();
       }
     })
@@ -160,11 +162,11 @@ export function AlarmTimeWheel({
       // Natural momentum glide proportional to fling velocity
       const clampedVelocity = Math.max(-3500, Math.min(3500, v));
       const momentumDistance = clampedVelocity * 0.16;
-      const rawTargetY = translateY.value + momentumDistance;
+      const rawTargetY = translateY.get() + momentumDistance;
       const targetIndex = Math.round(1 - rawTargetY / rowHeight);
       const snapY = -(targetIndex - 1) * rowHeight;
 
-      translateY.value = withSpring(
+      translateY.set(withSpring(
         snapY,
         {
           damping: 22,
@@ -177,7 +179,7 @@ export function AlarmTimeWheel({
             runOnJS(handleSettled)(targetIndex);
           }
         }
-      );
+      ));
     });
 
   const tapGesture = Gesture.Tap().onEnd((e) => {
@@ -191,8 +193,10 @@ export function AlarmTimeWheel({
 
   const composedGesture = Gesture.Exclusive(panGesture, tapGesture);
 
+  /* eslint-enable react-hooks/refs */
+
   const containerAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
+    transform: [{ translateY: translateY.get() }],
   }));
 
   return (

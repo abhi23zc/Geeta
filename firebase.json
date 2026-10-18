@@ -25,6 +25,13 @@
     ],
     "rewrites": [
       {
+        "source": "/api/music/**",
+        "function": {
+          "functionId": "musicApi",
+          "region": "asia-south1"
+        }
+      },
+      {
         "source": "/api/notifications/**",
         "function": {
           "functionId": "notificationApi",

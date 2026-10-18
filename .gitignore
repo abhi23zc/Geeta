@@ -56,3 +56,7 @@ firestore-debug.log
 firebase-debug.log
 storage-debug.log
 ui-debug.log
+
+# Browser verification artifacts
+/admin/test-results/
+/admin/playwright-report/

@@ -146,6 +146,7 @@ class AlarmService : Service() {
   }
 
   private fun startSound(config: AlarmConfig) {
+    MusicService.takeOwnership("alarm")
     val local = if (AlarmPolicy.useDownloadedTone(config.toneKind)) runCatching { ContentFiles.resolve(this, ContentFiles.key(config.toneKey)) }.getOrNull() else null
     val choices = listOfNotNull(
       local?.let { android.net.Uri.fromFile(it) to ContentFiles.key(config.toneKey) },
