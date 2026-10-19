@@ -33,7 +33,15 @@ test('real upload validation, atomic publication, ETag, conflict and rollback', 
   assert.equal((await fetch(url,{headers:{'If-None-Match':response.headers.get('ETag')}})).status,304);
   const conflict=await post('publish',body);assert.equal(conflict.status,400);assert.match(conflict.body.error,/Another admin/);
   const invalid=await post('publish',{...body,expectedReleaseId:published.body.releaseId,practices:[]});assert.equal(invalid.status,400);assert.equal((await db.doc('delivery/current').get()).data().releaseId,published.body.releaseId);
-  const restored=await post('restore',{restoreId:published.body.releaseId,expectedReleaseId:published.body.releaseId});assert.equal(restored.status,200);assert.notEqual(restored.body.releaseId,published.body.releaseId);
+  const cycle={key:'gita',revision:'draft',startDate:'2026-10-19',tracks:Array.from({length:14},(_,i)=>({title:`Day ${i+1}`,asset}))};
+  const cyclePublication=await post('publish-alarm-cycle',{cycle,expectedReleaseId:published.body.releaseId});assert.equal(cyclePublication.status,200,JSON.stringify(cyclePublication.body));
+  const withCycle=await (await fetch(url)).json();assert.equal(withCycle.alarmCycles[0].tracks.length,14);assert.equal(withCycle.alarms.length,3);assert.equal(withCycle.days[0].practice.id,practice.id);
+  assert.notEqual(withCycle.alarmCycles[0].revision,'draft');assert.match(withCycle.alarmCycles[0].tracks[13].asset.url,/token=/);
+  const teachingPublication=await post('publish-day',{date:'2026-10-04',practice,expectedReleaseId:cyclePublication.body.releaseId});assert.equal(teachingPublication.status,200);
+  assert.equal((await (await fetch(url)).json()).alarmCycles[0].revision,withCycle.alarmCycles[0].revision);
+  const cycleRestored=await post('restore',{restoreId:cyclePublication.body.releaseId,expectedReleaseId:teachingPublication.body.releaseId});assert.equal(cycleRestored.status,200);
+  assert.equal((await (await fetch(url)).json()).alarmCycles[0].revision,withCycle.alarmCycles[0].revision);
+  const restored=await post('restore',{restoreId:published.body.releaseId,expectedReleaseId:cycleRestored.body.releaseId});assert.equal(restored.status,200);assert.notEqual(restored.body.releaseId,published.body.releaseId);
   assert.equal((await post('delivery',{enabled:false})).status,200);assert.equal((await (await fetch(url)).json()).enabled,false);
   await post('delivery',{enabled:true});
   await auth.deleteUser(user.uid);

@@ -2,6 +2,13 @@ package expo.modules.morningalarm
 import org.junit.Assert.*
 import org.junit.Test
 class MusicPolicyTest {
+  @Test fun previousAvailabilityMatchesRestartAndHistory() {
+    assertFalse(MusicPolicy.canPrevious(3000,false,"off",true))
+    assertTrue(MusicPolicy.canPrevious(3001,false,"off",true))
+    assertTrue(MusicPolicy.canPrevious(0,true,"off",true))
+    assertTrue(MusicPolicy.canPrevious(0,false,"all",true))
+    assertFalse(MusicPolicy.canPrevious(0,false,"all",false))
+  }
   @Test fun endTimerWinsBeforeRepeatAndAdvance(){assertNull(MusicPolicy.next(listOf("a","b"),"a","one",true,true))}
   @Test fun repeatOneOnlyRepeatsNaturalCompletion(){assertEquals("a",MusicPolicy.next(listOf("a","b"),"a","one",true,false));assertEquals("b",MusicPolicy.next(listOf("a","b"),"a","one",false,false))}
   @Test fun repeatOffStopsAndAllWraps(){assertNull(MusicPolicy.next(listOf("a","b"),"b","off",true,false));assertEquals("a",MusicPolicy.next(listOf("a","b"),"b","all",true,false))}

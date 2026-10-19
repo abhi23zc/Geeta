@@ -1,12 +1,14 @@
+import { Image } from 'expo-image';
+import { localDateKey } from '@/data/gita-verses';
+import { prepareAlarmImage } from '@/services/content-cache';
 import { useLanguage } from '@/i18n/provider';
 import { useNavigation } from "expo-router";
 import {
   Leaf,
-  Music2,
   Sun,
   Sunrise,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   AccessibilityInfo,
   Alert,
@@ -27,7 +29,6 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { AruMascot } from "@/components/aru-mascot";
-import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
 import { Interactive3DCard } from "@/components/interactive-3d-card";
 import { Screen, TextR } from "@/components/ritual-ui";
 import { C } from "@/constants/ritual-theme";
@@ -45,31 +46,57 @@ import {
 } from "@/services/alarm";
 import * as Haptics from "expo-haptics";
 import { useContent } from "@/state/content-store";
-import { useRitual } from "@/state/ritual-store";
+import { formatWakeClock, wakeHeading, showScheduledAlarm } from "@/features/alarm/wake-presentation";
 
 const HOLD_DURATION_MS = 1500;
 
-function formatAlarm(value: string) {
-  const [h = "06", m = "30"] = value.split(":");
-  const hour24 = Number(h);
-  const meridiem = hour24 >= 12 ? "PM" : "AM";
-  const hour12 = hour24 > 12 ? hour24 - 12 : hour24 === 0 ? 12 : hour24;
-  return {
-    time: `${String(hour12).padStart(2, "0")}:${m}`,
-    meridiem,
-  };
-}
-
 export default function Wake() {
-  const { t: translate } = useLanguage();
+  const { t: translate, formatDate } = useLanguage();
   const navigation = useNavigation("/");
   const { width, height, fontScale } = useWindowDimensions();
   const isSmall = width < 360;
   const isTablet = width >= 768;
   const isCompact = height < 750;
 
-  const { alarmTime, alarmTone } = useRitual();
-  const { practice: currentVerse } = useContent();
+  const { practice, ready: contentReady } = useContent();
+  // Pin the first cache-ready teaching for this screen's lifetime.
+  const [capturedVerse, setCapturedVerse] = useState<typeof practice | null>(() => contentReady ? practice : null);
+  if (contentReady && capturedVerse === null) setCapturedVerse(practice);
+  const currentVerse = capturedVerse ?? practice;
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const stop = () => { clearInterval(timer); timer = undefined; };
+    const refresh = () => setNow(new Date());
+    const start = () => {
+      stop();
+      if (AppState.currentState !== 'active' || !navigation.isFocused()) return;
+      refresh();
+      timer = setInterval(refresh, 1_000);
+    };
+    start();
+    const appState = AppState.addEventListener('change', state => { if (state === 'active') start(); else stop(); });
+    const focus = navigation.addListener('focus', start);
+    const blur = navigation.addListener('blur', stop);
+    return () => { stop(); appState.remove(); focus(); blur(); };
+  }, [navigation]);
+
+  const [alarmImage, setAlarmImage] = useState<string | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    let release: (() => void) | undefined;
+    // Resolve once from local storage. Content sync never changes this session's image.
+    const imageSession = getAlarmPresentationState().sessionId;
+    const occurrence = Number(imageSession?.split(':')[0]);
+    const date = Number.isFinite(occurrence) && occurrence > 0 ? new Date(occurrence) : new Date();
+    void prepareAlarmImage(localDateKey(date), imageSession).then(image => {
+      if (!alive) { image?.release(); return; }
+      release = image?.release;
+      setAlarmImage(image?.uri ?? null);
+    }).catch(() => undefined);
+    return () => { alive = false; release?.(); };
+  }, []);
 
   const [screenReaderEnabled, setScreenReaderEnabled] = useState(false);
   useEffect(() => {
@@ -230,23 +257,13 @@ export default function Wake() {
     holdProgress.set(withSpring(0, { damping: 15, stiffness: 220 }));
   };
 
-  const formatted = useMemo(() => {
-    if (playback.scheduledAt > 0) {
-      const date = new Date(playback.scheduledAt);
-      return formatAlarm(`${date.getHours()}:${String(date.getMinutes()).padStart(2, "0")}`);
-    }
-    return formatAlarm(alarmTime);
-  }, [alarmTime, playback.scheduledAt]);
-
-  const playing = playback.ringing;
-  const ragaTitle =
-    playback.actualTone === "system" || playback.actualTone === "notification"
-      ? translate("Dawn Chimes")
-      : playback.actualTone === "silent"
-        ? translate("Silent Awakening")
-        : alarmTone === "Raag Bhairav & Sacred Flute"
-          ? translate("Raag Bhairav")
-          : alarmTone.split("&")[0].trim();
+  const formatted = formatWakeClock(now);
+  // Explicit zone keeps the shared formatter cache correct after timezone changes.
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const dateLabel = formatDate(now, { weekday: 'long', day: 'numeric', month: 'long', timeZone });
+  const scheduledLabel = showScheduledAlarm(now.getTime(), playback.scheduledAt)
+    ? formatDate(new Date(playback.scheduledAt), { hour: 'numeric', minute: '2-digit', hour12: true, timeZone })
+    : null;
 
   // Responsive sizes for zero-scroll viewport
   const mascotSize = isSmall ? 150 : isCompact ? 175 : isTablet ? 240 : 195;
@@ -276,12 +293,12 @@ export default function Wake() {
           void notifyWakeScreenReady().catch(() => undefined);
         }}
       >
-        {/* ─── 1. Header Pill & Sacred Brahma Muhurta Time ───────────────────── */}
+        {/* ─── 1. Header, Live Local Time & Date ───────────────────── */}
         <View style={s.topContainer}>
-          <View style={[s.sunriseChip, isSmall && { height: 28, paddingHorizontal: 12 }]}>
+          <View style={[s.sunriseChip, isSmall && { minHeight: 28, paddingHorizontal: 12 }]}>
             <Sunrise size={isSmall ? 14 : 16} color="#8A5D18" strokeWidth={2.4} />
             <TextR style={[s.sunriseText, isSmall && { fontSize: 10 }]}>
-               {translate("BRAHMA MUHURTA · SACRED DAWN")} </TextR>
+               {translate(wakeHeading(now))} </TextR>
           </View>
 
           <View style={s.timeRow}>
@@ -306,35 +323,27 @@ export default function Wake() {
             </TextR>
           </View>
 
+          {scheduledLabel && <TextR style={s.subtitle}>{translate("Alarm set for {time}", { time: scheduledLabel })}</TextR>}
           <TextR style={[s.subtitle, isSmall && { fontSize: 11.5 }]}>
-             {translate("Softly illuminated · Kartik Shukla · Awaken with Dharma")} </TextR>
+            {dateLabel} · {translate("Awaken with Dharma")}
+          </TextR>
         </View>
 
         {/* ─── 2. Aru Mascot — Meditative Awakening Dais ─────────────────────── */}
         <View style={s.mascotHero}>
-          <AruMascot
+          {alarmImage && !imageFailed ? <Image source={{ uri: alarmImage }} style={{ width: mascotSize, height: mascotSize }} contentFit="contain" onError={() => setImageFailed(true)} /> : <AruMascot
             clip="start_my_day_wake"
             size={mascotSize}
             loop
             muted
             glow="day"
             interactive
-          />
+          />}
         </View>
 
         {/* ─── 3. Daily Sacred Sankalpa Wisdom Card (Clean & Serene) ────────── */}
         <Interactive3DCard maxTiltDeg={4} style={s.sankalpaCard3D}>
-          {/* Card Top Meta: Ambient Dawn Raga Badge */}
           <View style={s.sankalpaHeader}>
-            <View style={s.ragaPill}>
-              <AudioSpectrumVisualizer
-                isPlaying={playing}
-                barCount={5}
-                height={12}
-              />
-              <Music2 size={12} color="#8C4010" />
-              <TextR style={s.ragaText}>{ragaTitle}  {translate("· Sacred Dawn")}</TextR>
-            </View>
             <TextR style={s.gitaRefText}>
                {translate("GITA CH.")} {currentVerse.chapter} · {currentVerse.verse}
             </TextR>
@@ -437,7 +446,8 @@ const s = StyleSheet.create({
     marginBottom: 2,
   },
   sunriseChip: {
-    height: 30,
+    minHeight: 30,
+    paddingVertical: 5,
     paddingHorizontal: 14,
     borderRadius: 20,
     flexDirection: "row",
@@ -460,6 +470,8 @@ const s = StyleSheet.create({
     fontSize: 10.5,
     fontWeight: "800",
     letterSpacing: 1.6,
+    flexShrink: 1,
+    textAlign: "center",
   },
   timeRow: {
     marginTop: 6,
@@ -518,24 +530,8 @@ const s = StyleSheet.create({
   sankalpaHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     marginBottom: 10,
-  },
-  ragaPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    backgroundColor: "rgba(255, 246, 238, 0.95)",
-    borderWidth: 1,
-    borderColor: "rgba(216, 144, 64, 0.25)",
-  },
-  ragaText: {
-    fontSize: 11.5,
-    fontWeight: "700",
-    color: "#7D4A26",
   },
   gitaRefText: {
     fontSize: 11,

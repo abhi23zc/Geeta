@@ -62,9 +62,8 @@ export default function PlaylistDetailScreen() {
   const {
     currentTrack,
     isPlaying,
-    playTrack,
+    activateTrack,
     playPlaylist,
-    togglePlayPause,
     openFullPlayer,
     toggleFavorite,
     isFavorite,
@@ -98,12 +97,7 @@ export default function PlaylistDetailScreen() {
 
   const handleTrackPress = (track: MusicTrack, index: number) => {
     if (track.availability !== 'available') return;
-    if (currentTrack?.id === track.id) {
-      if (!isPlaying) togglePlayPause();
-      openFullPlayer();
-    } else {
-      void playTrack(track, playlistTracks, index);
-    }
+    void activateTrack(track, playlistTracks, index).then(openFullPlayer).catch(() => undefined);
   };
 
   const handlePlayAll = () => {
@@ -131,7 +125,7 @@ export default function PlaylistDetailScreen() {
 
       <FlatList
         data={playlistTracks}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.listContent, { paddingBottom: bottomClearance }]}
         ListHeaderComponent={
@@ -194,7 +188,7 @@ export default function PlaylistDetailScreen() {
               <View style={styles.statsRow}>
                 <Clock size={12} color={C.primary} />
                 <TextR style={styles.statsText}>
-                  {playlistTracks.length} {translateText('tracks')} ·{' '}
+                  {playlistTracks.filter(t => t.availability === 'available').length} {translateText('available')} · {playlistTracks.filter(t => t.availability !== 'available').length} {translateText('Coming soon')} ·{' '}
                   {translateText('Listening duration')}:{' '}
                   {totalDurationMs ? formatTrackDuration(totalDurationMs) : '—'}
                 </TextR>

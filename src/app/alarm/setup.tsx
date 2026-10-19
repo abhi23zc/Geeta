@@ -43,6 +43,7 @@ import {
   scheduleRecurringAlarm,
 } from "@/services/alarm";
 import { useRitual } from "@/state/ritual-store";
+import { useAlarmMusic } from '@/services/use-alarm-music';
 import { useContent } from "@/state/content-store";
 
 type ModeKey = "gita" | "shankh" | "pranayama";
@@ -298,6 +299,19 @@ function SetupContent() {
 
   const selectedMode = modes.find((item) => item.key === mode) ?? modes[0];
   const { refresh: refreshContent } = useContent();
+  const upcomingAt = useMemo(() => {
+    const now = new Date();
+    const [h, m] = toStoreTime(hour, minute, meridiem).split(':').map(Number);
+    for (let offset = 0; offset <= 7; offset++) {
+      const date = new Date(now); date.setDate(date.getDate() + offset); date.setHours(h, m, 0, 0);
+      const id = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][date.getDay()];
+      if (date > now && days.some(d => d.id === id && d.selected)) return date.getTime();
+    }
+    return 0;
+    // Refresh relative dates along with the existing countdown ticker.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hour, minute, meridiem, days, ticker]);
+  const music = useAlarmMusic(mode, upcomingAt);
 
   const updateMeridiem = (next: "AM" | "PM") => {
     setPickedTime(time => time % 720 + (next === 'PM' ? 720 : 0));
@@ -513,6 +527,11 @@ function SetupContent() {
         <Leaf size={isSmall ? 20 : 23} color={C.goldDark} />
       </View>
 
+      <View style={{ paddingHorizontal: 24, marginBottom: 16, gap: 6 }}>
+        {music.status?.title ? <TextR>{music.status.title}</TextR> : null}
+        {music.status?.length ? <TextR>{translate("Day {day} of {count}", { day: music.status.day, count: music.status.length })}</TextR> : null}
+        <TextR>{translate(music.ready ? 'Downloaded alarm music keeps repeating until replaced.' : 'New alarm music is not ready. Your previous music will keep playing.')}</TextR>
+      </View>
       <View style={s.modeList}>
         {modes.map((item) => (
           <ModeCard

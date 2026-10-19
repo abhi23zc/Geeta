@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   View,
@@ -10,6 +11,7 @@ import {
   Play,
   Pause,
   SkipForward,
+  X,
 } from 'lucide-react-native';
 
 import { useMusicPlayer } from '@/state/music-player-store';
@@ -129,8 +131,6 @@ export function MiniPlayer({ night = false }: { night?: boolean }) {
               >
                 {p.error
                   ? tr('Playback failed · Retry', 'ऑडियो विफल · फिर प्रयास करें')
-                  : p.isLoading
-                  ? tr('Loading…', 'लोड हो रहा है…')
                   : p.currentTrack.subtitle ||
                     p.currentTrack.artist ||
                     tr('Sacred Audio', 'पवित्र संगीत')}
@@ -149,9 +149,9 @@ export function MiniPlayer({ night = false }: { night?: boolean }) {
               ]}
               onPress={p.togglePlayPause}
               accessibilityRole="button"
-              accessibilityLabel={p.isPlaying ? tr('Pause', 'रोकें') : tr('Play', 'चलाएँ')}
+              accessibilityLabel={p.isLoading ? tr('Cancel loading', 'लोड करना रद्द करें') : p.isPlaying ? tr('Pause', 'रोकें') : tr('Play', 'चलाएँ')}
             >
-              {p.isPlaying ? (
+              {p.isLoading || p.isBuffering || p.isSeeking ? <ActivityIndicator size="small" color="white" /> : p.isPlaying ? (
                 <Pause size={18} color="#FFFFFF" fill="#FFFFFF" />
               ) : (
                 <Play
@@ -167,9 +167,12 @@ export function MiniPlayer({ night = false }: { night?: boolean }) {
             <Pressable
               style={({ pressed }) => [
                 styles.nextBtn,
+                !p.canNext && { opacity: 0.35 },
                 pressed && { opacity: 0.6 },
               ]}
-              onPress={() => void p.nextTrack()}
+              disabled={!p.canNext}
+              accessibilityState={{ disabled: !p.canNext }}
+              onPress={() => void p.nextTrack().catch(() => undefined)}
               accessibilityRole="button"
               accessibilityLabel={tr('Next track', 'अगला ट्रैक')}
               hitSlop={8}
@@ -180,6 +183,7 @@ export function MiniPlayer({ night = false }: { night?: boolean }) {
                 strokeWidth={2.2}
               />
             </Pressable>
+            <Pressable onPress={p.stop} accessibilityRole="button" accessibilityLabel={tr('Stop playback', 'संगीत बंद करें')} style={styles.nextBtn} hitSlop={8}><X size={18} color={night ? '#F4B942' : C.primary} /></Pressable>
           </View>
         </View>
       </View>

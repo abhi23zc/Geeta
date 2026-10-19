@@ -11,7 +11,32 @@ export type PublishedPractice = {
   narration: { asset: AudioAsset; completionMs: number; segments: Segment[] };
 };
 export type AlarmTone = { key: ToneKey; revision: string; title: string; description: string; asset: AudioAsset };
-export type ContentWindow = { schemaVersion: 1; releaseId: string; publishedAt: string; enabled: boolean; locale: 'hi-IN'; days: { date: string; practice: PublishedPractice | null }[]; alarms: AlarmTone[] };
+export type AlarmCycle = { key: ToneKey; revision: string; startDate: string; tracks: { title: string; asset: AudioAsset }[] };
+export type ImageAsset = { id: string; url: string; mimeType: 'image/webp'; bytes: number; sha256: string; width: number; height: number };
+export type AlarmImageCycle = { revision: string; startDate: string; images: (ImageAsset | null)[] };
+export type ContentAsset = AudioAsset | ImageAsset;
+export function parseImageAsset(value: unknown): ImageAsset {
+  const v = record(value);
+  const url = new URL(string(v.url, 'image URL', 2048));
+  if (url.protocol !== 'https:' || url.username || url.password || !['firebasestorage.googleapis.com', 'storage.googleapis.com'].includes(url.hostname)) throw new Error('Unsupported image host');
+  if (v.mimeType !== 'image/webp' || typeof v.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(v.sha256)) throw new Error('Invalid image metadata');
+  const bytes = number(v.bytes, 'image size', 10 * MB, 1);
+  const width = number(v.width, 'image width', 2048, 1), height = number(v.height, 'image height', 2048, 1);
+  if (![bytes, width, height].every(Number.isInteger)) throw new Error('Invalid image dimensions or size');
+  return { id: identifier(v.id), url: url.href, mimeType: 'image/webp', bytes, sha256: v.sha256, width, height };
+}
+export function parseAlarmImageCycle(value: unknown): AlarmImageCycle {
+  const v = record(value);
+  if (!validDate(v.startDate) || !Array.isArray(v.images) || v.images.length !== 7) throw new Error('Choose a start date and seven image slots');
+  return { revision: identifier(v.revision), startDate: v.startDate, images: Array.from(v.images, image => image === null ? null : parseImageAsset(image)) };
+}
+export function alarmImageIndex(cycle: Pick<AlarmImageCycle, 'startDate'>, date: string): number | null {
+  if (!validDate(date) || !validDate(cycle.startDate)) return null;
+  const days = Math.round((Date.parse(date) - Date.parse(cycle.startDate)) / 86400000);
+  return days < 0 ? null : days % 7;
+}
+export function contentAssetFilename(asset: ContentAsset) { return `${asset.id}-${asset.sha256}.${asset.mimeType === 'image/webp' ? 'webp' : 'audio'}`; }
+export type ContentWindow = { schemaVersion: 1; releaseId: string; publishedAt: string; enabled: boolean; locale: 'hi-IN'; days: { date: string; practice: PublishedPractice | null }[]; alarms: AlarmTone[]; alarmCycles?: AlarmCycle[]; alarmImageCycle?: AlarmImageCycle };
 export const MB = 1024 * 1024;
 export const TONE_KEYS: ToneKey[] = ['gita', 'shankh', 'pranayama'];
 export function toneKey(value: string): ToneKey {
@@ -92,6 +117,28 @@ export function parseAlarm(value: unknown): AlarmTone {
   if (!TONE_KEYS.includes(v.key as ToneKey)) throw new Error('Invalid alarm mode');
   return { key: v.key as ToneKey, revision: identifier(v.revision), title: string(v.title, 'tone title'), description: string(v.description, 'tone description'), asset: parseAsset(v.asset, 10 * MB) };
 }
+export function parseAlarmCycle(value: unknown): AlarmCycle {
+  const v = record(value);
+  if (!TONE_KEYS.includes(v.key as ToneKey) || !validDate(v.startDate)) throw new Error('Invalid alarm cycle mode or start date');
+  if (!Array.isArray(v.tracks) || v.tracks.length < 1 || v.tracks.length > 14) throw new Error('An alarm cycle requires 1–14 tracks');
+  return { key: v.key as ToneKey, revision: identifier(v.revision), startDate: v.startDate, tracks: Array.from(v.tracks, item => {
+    const t = record(item);
+    return { title: string(t.title, 'track title', 200), asset: parseAsset(t.asset, 10 * MB) };
+  }) };
+}
+export function parseAlarmCycles(value: unknown): AlarmCycle[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 3) throw new Error('Invalid alarm cycles');
+  const cycles = value.map(parseAlarmCycle);
+  if (new Set(cycles.map(c => c.key)).size !== cycles.length) throw new Error('Duplicate alarm cycle mode');
+  return cycles;
+}
+/** Dates are local calendar labels; UTC arithmetic avoids DST changing the day index. */
+export function alarmCycleIndex(cycle: Pick<AlarmCycle, 'startDate' | 'tracks'>, date: string): number | null {
+  if (!validDate(date) || !validDate(cycle.startDate) || !cycle.tracks.length) return null;
+  const elapsed = Math.round((Date.parse(date) - Date.parse(cycle.startDate)) / 86400000);
+  return elapsed < 0 ? null : elapsed % cycle.tracks.length;
+}
 export function parseWindow(value: unknown, start: string): ContentWindow {
   const v = record(value), expected = dateWindow(start);
   if (v.schemaVersion !== 1 || v.locale !== 'hi-IN' || typeof v.enabled !== 'boolean') throw new Error('Unsupported content schema');
@@ -99,10 +146,12 @@ export function parseWindow(value: unknown, start: string): ContentWindow {
   const days = v.days.map((item, i) => { const d = record(item); if (d.date !== expected[i]) throw new Error('Unexpected date assignment'); return { date: expected[i], practice: d.practice === null ? null : parsePractice(d.practice) }; });
   const alarms = v.alarms.map(parseAlarm);
   if (new Set(alarms.map(a => a.key)).size !== alarms.length) throw new Error('Duplicate alarm mode');
-  const assets = [...days.flatMap(d => d.practice ? [d.practice.narration.asset] : []), ...alarms.map(a => a.asset)];
+  const alarmCycles = parseAlarmCycles(v.alarmCycles);
+  const alarmImageCycle = v.alarmImageCycle === undefined ? undefined : parseAlarmImageCycle(v.alarmImageCycle);
+  const assets = [...(alarmImageCycle?.images.filter((a): a is ImageAsset => a !== null) ?? []), ...alarmCycles.flatMap(c => c.tracks.map(t => t.asset)), ...days.flatMap(d => d.practice ? [d.practice.narration.asset] : []), ...alarms.map(a => a.asset)];
   const identities = new Map<string, string>();
   for (const a of assets) { const identity = `${a.sha256}:${a.bytes}:${a.mimeType}`; if (identities.has(a.id) && identities.get(a.id) !== identity) throw new Error('Conflicting asset identity'); identities.set(a.id, identity); }
   const publishedAt = string(v.publishedAt, 'publication time', 64);
   if (!Number.isFinite(Date.parse(publishedAt))) throw new Error('Invalid publication time');
-  return { schemaVersion: 1, releaseId: identifier(v.releaseId), publishedAt, enabled: v.enabled, locale: 'hi-IN', days, alarms };
+  return { schemaVersion: 1, releaseId: identifier(v.releaseId), publishedAt, enabled: v.enabled, locale: 'hi-IN', days, alarms, ...(v.alarmCycles !== undefined ? { alarmCycles } : {}), ...(alarmImageCycle ? { alarmImageCycle } : {}) };
 }

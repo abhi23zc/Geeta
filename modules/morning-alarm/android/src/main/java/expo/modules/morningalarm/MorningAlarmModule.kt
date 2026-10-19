@@ -60,9 +60,12 @@ class MorningAlarmModule : Module() {
     }.runOnQueue(Queues.MAIN)
 
     AsyncFunction("hashContentFile") { uri: String -> ContentFiles.hash(ContentFiles.source(context, uri)) }
+    AsyncFunction("installAlarmCycle") { json: String -> AlarmCycles.install(context, json) }
+    AsyncFunction("verifyAlarmCycle") { key: String, revision: String -> AlarmCycles.verify(context, ContentFiles.key(key), revision) }
+    AsyncFunction("getAlarmMusicStatus") { key: String, at: Double -> AlarmCycles.status(context, ContentFiles.key(key), at.toLong()) }
     AsyncFunction("getInstalledAlarmTone") { ContentFiles.installed(context) }
     AsyncFunction("installAlarmTone") { input: ReadableArguments ->
-      ContentFiles.install(context, input.getString("key"), input.getString("uri"), input.getString("revision"), input.getDouble("bytes").toLong(), input.getString("sha256"))
+      ContentFiles.install(context, input.getString("key"), input.getString("uri"), input.getString("revision"), input.getDouble("bytes").toLong(), input.getString("sha256"), input.getString("title", input.getString("key")))
     }
 
     OnCreate {

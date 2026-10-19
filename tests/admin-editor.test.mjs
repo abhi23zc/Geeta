@@ -15,7 +15,7 @@ function harness(){
  const compiled=ts.transpileModule(readFileSync(new URL('../admin/src/main.tsx',import.meta.url),'utf8').replace('import.meta.env','({VITE_FIREBASE_PROJECT_ID:"demo"})'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.React,esModuleInterop:true}}).outputText;
  const LocalURL=class extends URL{static createObjectURL(){return 'blob:preview';}static revokeObjectURL(){}};
  runInNewContext(compiled,{exports:{},require:n=>mocks[n],crypto:{randomUUID},document:{getElementById:()=>({})},URL:LocalURL,confirm:()=>true,fetch:async(path,options)=>{const body=JSON.parse(options.body);posts.push({path,body});return {ok:true,json:async()=>path.endsWith('validate-asset')?asset:{releaseId:'new'} };}});
- const render=()=>{cursor=0;return component();};render();states[0]={uid:'editor',getIdToken:async()=> 'valid'};states[1]=true;
+ const render=()=>{cursor=0;return component();};render();states[1]={uid:'editor',getIdToken:async()=> 'valid'};states[2]=true;
  function all(element,predicate){if(!element || typeof element!=='object')return [];const children=element.props?.children;return [...(predicate(element)?[element]:[]),...[children].flat(Infinity).flatMap(e=>all(e,predicate))];}
  const button=(tree,label)=>all(tree,e=>e.type==='button' && e.props.children===label)[0];
  const flush=async()=>{for(let i=0;i<20;i++)await Promise.resolve();};
@@ -24,7 +24,7 @@ function harness(){
 test('pasted content survives upload, switching dates and saving an incomplete draft',async()=>{
  const h=harness();let tree=h.render();h.all(tree,e=>e.type==='textarea')[0].props.onChange({target:{value:'{"unfinished":true}'}});
  tree=h.render();const upload=h.all(tree,e=>e.type==='input' && e.props.type==='file' && e.props.accept==='.mp3,.m4a')[0];upload.props.onChange({target:{files:[{name:'recording.mp3',size:1000}],value:'recording.mp3'}});await h.flush();tree=h.render();assert.equal(h.all(tree,e=>e.type==='textarea')[0].props.value,'{"unfinished":true}');
- const nav=h.all(tree,e=>e.type==='nav')[0];nav.props.children[1].props.onClick();tree=h.render();h.all(tree,e=>e.type==='nav')[0].props.children[0].props.onClick();tree=h.render();assert.equal(h.all(tree,e=>e.type==='textarea')[0].props.value,'{"unfinished":true}');
+ const nav=h.all(tree,e=>e.type==='nav' && e.props['aria-label']==='Publication dates')[0];nav.props.children[1].props.onClick();tree=h.render();h.all(tree,e=>e.type==='nav' && e.props['aria-label']==='Publication dates')[0].props.children[0].props.onClick();tree=h.render();assert.equal(h.all(tree,e=>e.type==='textarea')[0].props.value,'{"unfinished":true}');
  h.button(tree,'Save draft').props.onClick();await h.flush();assert.equal(h.drafts[0].value.buffers[0],'{"unfinished":true}');assert.equal(h.drafts[0].value.assets[0].id,'verified');
 });
 test('review and publication automatically combine supplied JSON with verified audio for the selected date',async()=>{

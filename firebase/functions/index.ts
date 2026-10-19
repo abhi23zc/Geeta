@@ -6,12 +6,12 @@ import { onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions';
 import { createHash, randomUUID } from 'node:crypto';
-import { publishDay, publishValidatedAsset, validateUploadedAsset } from './content-publisher';
-import { parseAlarm, parsePractice, dateWindow, validDate, MB, identifier, type AudioAsset, type ContentWindow, type PublishedPractice, type AlarmTone } from '../../shared/content';
+import { publishAlarmImages, validateAlarmImage, publishAlarmCycle, publishDay, publishValidatedAsset, validateUploadedAsset } from './content-publisher';
+import { parseAlarm, parsePractice, dateWindow, validDate, MB, identifier, type AudioAsset, type ContentWindow, type PublishedPractice, type AlarmTone, type AlarmCycle } from '../../shared/content';
 
 initializeApp();
 const db = getFirestore(), bucket = () => getStorage().bucket();
-type Release = { schemaVersion: 1; releaseId: string; publishedAt: string; enabled: boolean; locale: 'hi-IN'; schedule: Record<string, PublishedPractice>; alarms: AlarmTone[]; actor: string };
+type Release = { schemaVersion: 1; releaseId: string; publishedAt: string; enabled: boolean; locale: 'hi-IN'; schedule: Record<string, PublishedPractice>; alarms: AlarmTone[]; alarmCycles?: AlarmCycle[]; alarmImageCycle?: ContentWindow['alarmImageCycle']; actor: string };
 const etag = (value: unknown) => `"${createHash('sha256').update(JSON.stringify(value)).digest('hex')}"`;
 const requestCounts = new Map<string, { since: number; count: number }>();
 async function admin(token: string | undefined) {
@@ -32,7 +32,7 @@ export const contentApi = onRequest({ region: 'asia-south1', cors: true, memory:
       if (!validDate(start) || req.query.days !== '7' || req.query.locale !== 'hi-IN') { res.status(400).json({ error: 'Expected start date, days=7 and locale=hi-IN' }); return; }
       const control = (await db.doc('delivery/current').get()).data();
       const release = control?.releaseId ? (await db.doc(`releases/${control.releaseId}`).get()).data() as Release | undefined : undefined;
-      const response: ContentWindow = { schemaVersion: 1, releaseId: release?.releaseId ?? 'empty', publishedAt: release?.publishedAt ?? new Date(0).toISOString(), enabled: control?.enabled !== false, locale: 'hi-IN', days: dateWindow(start).map(date => ({ date, practice: release?.schedule[date] ?? null })), alarms: release?.alarms ?? [] };
+      const response: ContentWindow = { schemaVersion: 1, releaseId: release?.releaseId ?? 'empty', publishedAt: release?.publishedAt ?? new Date(0).toISOString(), enabled: control?.enabled !== false, locale: 'hi-IN', days: dateWindow(start).map(date => ({ date, practice: release?.schedule[date] ?? null })), alarms: release?.alarms ?? [], alarmCycles: release?.alarmCycles ?? [], ...(release?.alarmImageCycle ? { alarmImageCycle: release.alarmImageCycle } : {}) };
       const tag = etag(response); res.set('ETag', tag).set('Cache-Control', 'public,max-age=300');
       if (req.headers['if-none-match'] === tag) { res.status(304).end(); return; }
       res.json(response); return;
@@ -42,26 +42,32 @@ export const contentApi = onRequest({ region: 'asia-south1', cors: true, memory:
     if (req.method !== 'POST') { res.status(405).json({ error: 'POST required' }); return; }
     if (JSON.stringify(req.body).length > 2 * MB) { res.status(413).json({ error: 'Request too large' }); return; }
     const input = req.body;
+    if (req.path.endsWith('/admin/validate-alarm-image')) { res.json(await validateAlarmImage(db, bucket(), user.uid, input.path)); return; }
+    if (req.path.endsWith('/admin/publish-alarm-images')) { res.json(await publishAlarmImages(db, bucket(), user.uid, input)); return; }
     if (req.path.endsWith('/admin/validate-asset')) {
       const asset = await validateUploadedAsset(db, bucket(), user.uid, input.path, input.kind);
       res.json(asset); return;
+    }
+    if (req.path.endsWith('/admin/publish-alarm-cycle')) {
+      res.json(await publishAlarmCycle(db, bucket(), user.uid, input)); return;
     }
     if (req.path.endsWith('/admin/publish-day')) {
       res.json(await publishDay(db, bucket(), user.uid, input)); return;
     }
     if (req.path.endsWith('/admin/publish') || req.path.endsWith('/admin/restore')) {
-      let schedule: Record<string, PublishedPractice> = {}, alarms: AlarmTone[] = [];
+      let schedule: Record<string, PublishedPractice> = {}, alarms: AlarmTone[] = [], alarmCycles: AlarmCycle[] = [];
+      let alarmImageCycle: ContentWindow['alarmImageCycle'];
       if (req.path.endsWith('/admin/restore')) {
         const previous = (await db.doc(`releases/${identifier(input.restoreId)}`).get()).data() as Release | undefined;
         if (!previous) throw new Error('Release does not exist');
-        schedule = previous.schedule; alarms = previous.alarms;
+        schedule = previous.schedule; alarms = previous.alarms; alarmCycles = previous.alarmCycles ?? []; alarmImageCycle = previous.alarmImageCycle;
       } else {
         if (!validDate(input.start) || !Array.isArray(input.practices) || input.practices.length !== 7 || !Array.isArray(input.alarms) || input.alarms.length !== 3) throw new Error('Seven practices and all three alarm modes are required');
         const current = await db.doc('delivery/current').get();
         if ((current.data()?.releaseId ?? null) !== (input.expectedReleaseId ?? null)) throw new Error('Another admin published first. Reload before publishing.');
         if (current.data()?.releaseId) {
           const previous = (await db.doc(`releases/${current.data()!.releaseId}`).get()).data() as Release;
-          schedule = { ...previous.schedule }; alarms = previous.alarms;
+          schedule = { ...previous.schedule }; alarms = previous.alarms; alarmCycles = previous.alarmCycles ?? []; alarmImageCycle = previous.alarmImageCycle;
         }
         const dates = dateWindow(input.start);
         const practices = input.practices;
@@ -78,7 +84,7 @@ export const contentApi = onRequest({ region: 'asia-south1', cors: true, memory:
       // Bound release size without deleting immutable historical releases.
       const keys = Object.keys(schedule).sort(); if (keys.length > 60) for (const date of keys.slice(0, keys.length - 60)) delete schedule[date];
       const releaseId = randomUUID(), publishedAt = new Date().toISOString();
-      const release: Release = { schemaVersion: 1, releaseId, publishedAt, enabled: true, locale: 'hi-IN', schedule, alarms, actor: user.uid };
+      const release: Release = { schemaVersion: 1, releaseId, publishedAt, enabled: true, locale: 'hi-IN', schedule, alarms, alarmCycles, ...(alarmImageCycle ? { alarmImageCycle } : {}), actor: user.uid };
       if (Buffer.byteLength(JSON.stringify(release)) > 900000) throw new Error('Release is too large; reduce text and timings');
       await db.runTransaction(async transaction => {
         const ref = db.doc('delivery/current'), current = await transaction.get(ref);

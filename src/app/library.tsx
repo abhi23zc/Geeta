@@ -1,8 +1,7 @@
 import { ConfiguredMusicLibrary } from "@/components/music/configured-music-library";
 import { libraryStyles as styles } from "@/components/music/library-styles";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  Activity,
   BookOpen,
   Clock,
   Compass,
@@ -13,28 +12,24 @@ import {
   Play,
   RotateCw,
   Search,
-  Sun,
-  Wind,
   X,
 } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Pressable,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
 import { AudioSpectrumVisualizer } from "@/components/audio-spectrum-visualizer";
 import { MusicArtwork } from "@/components/music/music-artwork";
-import { TactilePressable } from "@/components/music/tactile-pressable";
-import { SmoothSegmentedTabs } from "@/components/music/smooth-segmented-tabs";
 import { Sacred3DTexture } from "@/components/music/sacred-3d-texture";
+import { SmoothSegmentedTabs } from "@/components/music/smooth-segmented-tabs";
+import { TactilePressable } from "@/components/music/tactile-pressable";
 import {
   DawnMeshBackdrop,
   Header,
@@ -46,9 +41,9 @@ import { C } from "@/constants/ritual-theme";
 import { SACRED_CATEGORIES, unavailableMusicTrack } from "@/data/music-catalog";
 import { useLanguage } from "@/i18n/provider";
 import { refreshMusicCatalog } from "@/services/music/catalog";
+import { notificationPlayerAction } from "@/services/music/model";
 import { useMusicCatalog, useMusicPlayer } from "@/state/music-player-store";
 import type { MusicCategory, MusicTrack } from "@/types/music";
-
 
 function formatTrackDuration(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -72,8 +67,8 @@ function BundledLibraryLayout() {
     currentTrack,
     error: playerError,
     isPlaying,
-    playTrack,
-    togglePlayPause,
+    activateTrack,
+    playPlaylist,
     openFullPlayer,
     favorites,
     recentlyPlayed,
@@ -148,14 +143,9 @@ function BundledLibraryLayout() {
 
   const handleTrackPress = (track: MusicTrack) => {
     if (track.availability !== "available") return;
-    if (currentTrack?.id === track.id) {
-      if (!isPlaying) {
-        togglePlayPause();
-      }
-      openFullPlayer();
-    } else {
-      void playTrack(track, displayedTracks);
-    }
+    void activateTrack(track, displayedTracks)
+      .then(openFullPlayer)
+      .catch(() => undefined);
   };
 
   const isFeaturedCurrent = currentTrack?.id === featuredTrack?.id;
@@ -261,9 +251,22 @@ function BundledLibraryLayout() {
             {/* 3D Tactile Section Segmented Switcher (Explore / Favorites / Recent) */}
             <SmoothSegmentedTabs
               tabs={[
-                { id: "explore" as const, label: translateText("Explore"), icon: Compass },
-                { id: "favorites" as const, label: translateText("Favorites"), icon: Heart, badgeCount: favorites.size },
-                { id: "recent" as const, label: translateText("Recent"), icon: Clock },
+                {
+                  id: "explore" as const,
+                  label: translateText("Explore"),
+                  icon: Compass,
+                },
+                {
+                  id: "favorites" as const,
+                  label: translateText("Favorites"),
+                  icon: Heart,
+                  badgeCount: favorites.size,
+                },
+                {
+                  id: "recent" as const,
+                  label: translateText("Recent"),
+                  icon: Clock,
+                },
               ]}
               activeTab={librarySection}
               onSelectTab={setLibrarySection}
@@ -446,7 +449,9 @@ function BundledLibraryLayout() {
                         selectedCategory === "all" && styles.categoryPillActive,
                       ]}
                     >
-                      {selectedCategory === "all" && <View style={styles.categoryActiveDot} />}
+                      {selectedCategory === "all" && (
+                        <View style={styles.categoryActiveDot} />
+                      )}
                       <TextR
                         style={[
                           styles.categoryPillText,
@@ -471,7 +476,9 @@ function BundledLibraryLayout() {
                             isActive && styles.categoryPillActive,
                           ]}
                         >
-                          {isActive && <View style={styles.categoryActiveDot} />}
+                          {isActive && (
+                            <View style={styles.categoryActiveDot} />
+                          )}
                           <TextR
                             style={[
                               styles.categoryPillText,
@@ -534,19 +541,68 @@ function BundledLibraryLayout() {
                             {/* Track count pill */}
                             <View style={styles.playlistBadgePill}>
                               <TextR style={styles.playlistBadgeText}>
-                                {pl.trackIds.length} {translateText("Tracks")}
+                                {
+                                  pl.trackIds.filter((id) =>
+                                    SACRED_TRACKS.some(
+                                      (t) =>
+                                        t.id === id &&
+                                        t.availability === "available",
+                                    ),
+                                  ).length
+                                }{" "}
+                                {translateText("available")}
+                                {"\n"}
+                                {
+                                  pl.trackIds.filter(
+                                    (id) =>
+                                      !SACRED_TRACKS.some(
+                                        (t) =>
+                                          t.id === id &&
+                                          t.availability === "available",
+                                      ),
+                                  ).length
+                                }{" "}
+                                {translateText("Coming soon")}
                               </TextR>
                             </View>
 
                             {/* Floating Play Overlay Badge */}
-                            <View style={styles.playlistPlayOverlay}>
+                            <Pressable
+                              style={styles.playlistPlayOverlay}
+                              accessibilityRole="button"
+                              accessibilityLabel={`${translateText("Play")} ${pl.title}`}
+                              disabled={
+                                !pl.trackIds.some((id) =>
+                                  SACRED_TRACKS.some(
+                                    (t) =>
+                                      t.id === id &&
+                                      t.availability === "available",
+                                  ),
+                                )
+                              }
+                              accessibilityState={{
+                                disabled: !pl.trackIds.some((id) =>
+                                  SACRED_TRACKS.some(
+                                    (t) =>
+                                      t.id === id &&
+                                      t.availability === "available",
+                                  ),
+                                ),
+                              }}
+                              onPress={(event) => {
+                                event.stopPropagation();
+                                void playPlaylist(pl)
+                                  .then(openFullPlayer)
+                                  .catch(() => undefined);
+                              }}
+                            >
                               <Play
                                 size={13}
                                 color="#FFFFFF"
                                 fill="#FFFFFF"
                                 style={{ marginLeft: 1 }}
                               />
-                            </View>
+                            </Pressable>
                           </View>
 
                           <View style={styles.playlistTextCol}>
@@ -753,6 +809,28 @@ class MusicPageBoundary extends React.Component<
 }
 export default function MusicLibraryRoute() {
   const { releaseId } = useMusicCatalog();
+  const { player: request } = useLocalSearchParams<{ player?: string }>();
+  const router = useRouter();
+  const { sessionReady, currentTrack, interruption, openFullPlayer } =
+    useMusicPlayer(false);
+  useEffect(() => {
+    const action = notificationPlayerAction(
+      request,
+      sessionReady,
+      !!currentTrack,
+      ["alarm", "ritual"].includes(interruption ?? ""),
+    );
+    if (request !== "1" || action === "wait") return;
+    router.setParams({ player: undefined });
+    if (action === "open") openFullPlayer();
+  }, [
+    request,
+    sessionReady,
+    currentTrack,
+    interruption,
+    openFullPlayer,
+    router,
+  ]);
   return (
     <MusicPageBoundary key={releaseId}>
       <ConfiguredMusicLibrary />

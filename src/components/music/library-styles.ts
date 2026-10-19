@@ -1,14 +1,18 @@
 // Original Sacred Library design, shared by configured and recovery layouts.
-import { StyleSheet } from 'react-native';
-import { C } from '@/constants/ritual-theme';
+import { C } from "@/constants/ritual-theme";
+import { StyleSheet } from "react-native";
 
 export const libraryStyles = StyleSheet.create({
   screenContent: {
-    paddingHorizontal: 0,
+    paddingHorizontal: 16,
+  },
+  headerWrap: {
+    paddingHorizontal: 4,
+    marginBottom: 4,
   },
   listContent: {
     paddingTop: 4,
-    paddingHorizontal: 16,
+    paddingHorizontal: 4,
   },
   headerArea: {
     paddingTop: 4,
@@ -708,4 +712,3 @@ export const libraryStyles = StyleSheet.create({
     lineHeight: 18.5,
   },
 });
-

@@ -7,7 +7,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   View,
   useWindowDimensions,
 } from 'react-native';
@@ -31,8 +30,6 @@ import {
   Flame,
   Check,
   Music,
-  Trash2,
-  Wifi,
   X,
 } from 'lucide-react-native';
 import { useMusicPlayer } from '@/state/music-player-store';
@@ -49,15 +46,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SmoothSegmentedTabs } from './smooth-segmented-tabs';
 import { MusicArtwork } from './music-artwork';
-import {
-  downloadTrack,
-  readMusicDownloads,
-  removeDownloadedTrack,
-  clearMusicCache,
-  setMusicWifiOnly,
-  getMusicWifiOnly,
-  subscribeMusicDownloads,
-} from '@/services/music-downloads';
+import { downloadTrack } from '@/services/music-downloads';
+import { useMusicDownloads } from '@/services/use-music-downloads';
 import type { SleepTimerOption } from '@/types/music';
 
 const time = (ms: number) =>
@@ -65,14 +55,23 @@ const time = (ms: number) =>
     Math.floor(Math.max(0, ms) / 1000) % 60,
   ).padStart(2, '0')}`;
 
+type PlayerTab = 'art' | 'lyrics' | 'queue';
+
 export function FullScreenPlayer() {
   const p = useMusicPlayer();
+  const [tab, setTab] = useState<PlayerTab>('art');
+  const trackKey = p.currentTrack ? `${p.currentTrack.id}-${p.currentTrack.revision}` : '';
+  const [previousTrack, setPreviousTrack] = useState(trackKey);
+  if (previousTrack !== trackKey) {
+    setPreviousTrack(trackKey);
+    if (tab === 'lyrics' && !p.currentTrack?.lyrics?.length) setTab('art');
+  }
   return p.isFullPlayerVisible && p.currentTrack ? (
-    <PlayerBody key={`${p.currentTrack.id}-${p.currentTrack.revision}`} />
+    <PlayerBody tab={tab === 'lyrics' && !p.currentTrack.lyrics?.length ? 'art' : tab} setTab={setTab} />
   ) : null;
 }
 
-function PlayerBody() {
+function PlayerBody({ tab, setTab }: { tab: PlayerTab; setTab: (tab: PlayerTab) => void }) {
   const motion = useMotionEnvironment();
   const p = useMusicPlayer();
   const { language } = useLanguage();
@@ -81,17 +80,43 @@ function PlayerBody() {
 
   const tr = (en: string, hi: string) => (language === 'hi' ? hi : en);
 
-  const [tab, setTab] = useState<'art' | 'lyrics' | 'queue'>('art');
-  const [sheet, setSheet] = useState<'speed' | 'timer' | 'downloads' | null>(null);
+  const [sheet, setSheet] = useState<'speed' | 'timer' | null>(null);
   const [barWidth, setBarWidth] = useState(1);
   const [drag, setDrag] = useState<number | null>(null);
   const [follow, setFollow] = useState(true);
   const [message, setMessage] = useState('');
-  const [wifi, setWifi] = useState(true);
-  const [downloads, setDownloads] = useState<Awaited<ReturnType<typeof readMusicDownloads>>>([]);
+  const { views: downloadViews } = useMusicDownloads();
+  const [downloadError, setDownloadError] = useState('');
+  const [downloadPending, setDownloadPending] = useState(false);
 
+  const seekBar = useRef<View>(null);
+  const seekBarX = useRef(0);
+  const progress = useSharedValue(0);
+  const thumbStyle = useAnimatedStyle(() => ({ left: `${Math.max(0, Math.min(97, progress.value))}%` }));
+  const progressStyle = useAnimatedStyle(() => ({ width: `${progress.value}%` }));
+  useEffect(() => {
+    const position = drag ?? p.seekTargetMs ?? p.positionMs;
+    const ratio = p.durationMs > 0 ? Math.min(100, position / p.durationMs * 100) : 0;
+    cancelAnimation(progress);
+    progress.value = ratio;
+    if (drag === null && p.isPlaying && !p.isBuffering && !p.isSeeking && !motion.reduced && p.durationMs > 0) {
+      progress.value = withTiming(Math.min(100, ratio + 250 * p.playbackRate / p.durationMs * 100), { duration: 250, easing: Easing.linear });
+    }
+  }, [drag, p.positionMs, p.seekTargetMs, p.durationMs, p.isPlaying, p.isBuffering, p.isSeeking, p.playbackRate, motion.reduced, progress]);
   const scroll = useRef<ScrollView>(null);
   const lyricY = useRef<Record<number, number>>({});
+  const recordingKey = `${p.queueEntries[p.queueIndex]?.entryId}-${p.currentTrack?.id}-${p.currentTrack?.revision}`;
+  const [previousRecording, setPreviousRecording] = useState(recordingKey);
+  if (previousRecording !== recordingKey) {
+    setPreviousRecording(recordingKey);
+    setDrag(null);
+    setFollow(true);
+    setMessage('');
+    setDownloadError('');setDownloadPending(false);
+    setSheet(null);
+  }
+  useEffect(() => { lyricY.current = {}; }, [recordingKey]);
+
 
   // Centered Disc Smooth Circular Rotation when Playing
   const discRotation = useSharedValue(0);
@@ -131,24 +156,19 @@ function PlayerBody() {
     }
   }, [activeLyric, follow, tab]);
 
-  useEffect(() => {
-    if (sheet !== 'downloads' || Platform.OS === 'web') return;
-    const load = () => {
-      void readMusicDownloads()
-        .then((rows) => {
-          setDownloads(rows);
-          setWifi(getMusicWifiOnly());
-        })
-        .catch((e) => setMessage(String(e)));
-    };
-    load();
-    return subscribeMusicDownloads(load);
-  }, [sheet]);
+  const recordingRef = useRef(recordingKey);
+  useEffect(() => { recordingRef.current = recordingKey; return () => { recordingRef.current = ''; }; }, [recordingKey]);
+  const download = downloadViews.find(v => v.hash === p.currentTrack?.asset?.sha256);
+  const downloadSaved = !!p.currentTrack?.bundledId || !!download?.saved && download.status === 'ready';
+  const downloadBusy = downloadPending || !!download?.saved && ['queued', 'downloading', 'verifying'].includes(download.status);
+  const downloadDisabled = Platform.OS === 'web' || downloadSaved || downloadBusy || !p.currentTrack?.asset;
+  const percentage = download ? Math.min(99, Math.floor(download.bytesWritten / download.totalBytes * 100)) : 0;
+  const downloadLabel = p.currentTrack?.bundledId ? tr('Included with app', 'ऐप में शामिल') : downloadSaved ? tr('Downloaded ✓', 'डाउनलोड हो गया ✓') : downloadBusy ? `${tr('Downloading…', 'डाउनलोड हो रहा है…')} ${percentage}%` : downloadError || download?.saved && ['failed','paused','cancelled'].includes(download.status) ? tr('Retry download', 'फिर डाउनलोड करें') : tr('Download', 'डाउनलोड');
 
   if (!p.isFullPlayerVisible || !track) return null;
 
   const seek = (x: number) =>
-    Math.round(Math.min(1, Math.max(0, x / barWidth)) * p.durationMs);
+    Math.round(Math.min(1, Math.max(0, (x - seekBarX.current) / Math.max(1, barWidth))) * p.durationMs);
 
   const run = (fn: () => Promise<unknown>) => {
     void fn().catch((e) => setMessage(String(e)));
@@ -156,9 +176,7 @@ function PlayerBody() {
 
   const isFav = p.isFavorite(track.id);
   const artSize = Math.min(width - 64, 280);
-  const currentPos = drag ?? p.positionMs;
-  const progressRatio =
-    p.durationMs > 0 ? Math.min(100, (currentPos / p.durationMs) * 100) : 0;
+  const currentPos = drag ?? p.seekTargetMs ?? p.positionMs;
 
   return (
     <Modal
@@ -341,8 +359,8 @@ function PlayerBody() {
                 const isAvail = t.availability === 'available';
                 return (
                   <Pressable
-                    key={`${t.id}-${i}`}
-                    onPress={() => run(() => p.playTrack(t, p.queue, i))}
+                    key={p.queueEntries[i].entryId}
+                    onPress={() => run(() => p.selectEntry(p.queueEntries[i].entryId))}
                     disabled={!isAvail}
                     accessibilityRole="button"
                     style={[
@@ -393,16 +411,7 @@ function PlayerBody() {
             </TextR>
           </View>
 
-          {/* Loading or Error Banners */}
-          {(p.isLoading || p.isBuffering) && (
-            <View style={styles.loadingBanner}>
-              <ActivityIndicator color={C.saffron} size="small" />
-              <TextR style={styles.loadingBannerText}>
-                {tr('Connecting divine audio…', 'ऑडियो लोड हो रहा है…')}
-              </TextR>
-            </View>
-          )}
-
+          {/* Playback loading is shown only inside the main transport button. */}
           {p.error && (
             <View style={styles.errorBanner} accessibilityRole="alert">
               <TextR style={styles.errorText}>{p.error}</TextR>
@@ -419,7 +428,8 @@ function PlayerBody() {
           {/* Interactive Scrub Bar */}
           <View style={styles.scrubberSection}>
             <View
-              onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
+              ref={seekBar}
+              onLayout={(e) => { setBarWidth(e.nativeEvent.layout.width); seekBar.current?.measureInWindow((x) => { seekBarX.current = x; }); }}
               style={styles.scrubTrack}
               accessible
               accessibilityRole="adjustable"
@@ -430,6 +440,7 @@ function PlayerBody() {
                 now: Math.round(p.positionMs / 1000),
                 text: `${time(p.positionMs)} / ${time(p.durationMs)}`,
               }}
+              accessibilityState={{ disabled: !p.seekable }}
               accessibilityActions={[
                 { name: 'increment', label: tr('Forward 15 seconds', '15 सेकंड आगे') },
                 { name: 'decrement', label: tr('Back 15 seconds', '15 सेकंड पीछे') },
@@ -442,33 +453,24 @@ function PlayerBody() {
                   ),
                 )
               }
-              onStartShouldSetResponder={() => true}
-              onMoveShouldSetResponder={() => true}
-              onResponderGrant={(e) => setDrag(seek(e.nativeEvent.locationX))}
-              onResponderMove={(e) => setDrag(seek(e.nativeEvent.locationX))}
+              onStartShouldSetResponder={() => p.seekable && p.durationMs > 0}
+              onMoveShouldSetResponder={() => p.seekable && p.durationMs > 0}
+              onResponderGrant={(e) => { seekBar.current?.measureInWindow((x) => { seekBarX.current = x; }); setDrag(seek(e.nativeEvent.pageX)); }}
+              onResponderMove={(e) => setDrag(seek(e.nativeEvent.pageX))}
               onResponderRelease={(e) => {
-                run(() => p.seekTo(seek(e.nativeEvent.locationX)));
+                run(() => p.seekTo(seek(e.nativeEvent.pageX)));
                 setDrag(null);
               }}
               onResponderTerminate={() => setDrag(null)}
             >
               {/* Scrub Track Rail */}
-              <View style={styles.scrubRail}>
-                <View
-                  style={[
-                    styles.scrubFill,
-                    { width: `${progressRatio}%` },
-                  ]}
-                />
+              <View pointerEvents="none" style={styles.scrubRail}>
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: '#EDCDB9', width: `${p.durationMs > 0 ? Math.min(100, p.bufferedPositionMs / p.durationMs * 100) : 0}%` }]} />
+                <Animated.View style={[styles.scrubFill, progressStyle]} />
               </View>
 
               {/* Illuminated Thumb */}
-              <View
-                style={[
-                  styles.scrubThumb,
-                  { left: `${Math.max(0, Math.min(97, progressRatio))}%` },
-                ]}
-              />
+              <Animated.View pointerEvents="none" style={[styles.scrubThumb, thumbStyle]} />
             </View>
 
             <View style={styles.timeRow}>
@@ -502,9 +504,12 @@ function PlayerBody() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={tr('Previous', 'पिछला')}
+              disabled={!p.canPrevious}
+              accessibilityState={{ disabled: !p.canPrevious }}
               onPress={() => run(p.prevTrack)}
               style={({ pressed }) => [
                 styles.transportSkipBtn,
+                !p.canPrevious && { opacity: 0.35 },
                 pressed && { opacity: 0.8, transform: [{ scale: 0.94 }] },
               ]}
             >
@@ -515,15 +520,16 @@ function PlayerBody() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={
-                p.isPlaying ? tr('Pause', 'रोकें') : tr('Play', 'चलाएँ')
+                p.isLoading ? tr('Cancel loading', 'लोड करना रद्द करें') : p.isPlaying ? tr('Pause', 'रोकें') : tr('Play', 'चलाएँ')
               }
+              accessibilityState={{ busy: p.isLoading || p.isBuffering || p.isSeeking }}
               onPress={p.togglePlayPause}
               style={({ pressed }) => [
                 styles.mainPlayBtn,
                 pressed && { transform: [{ scale: 0.94 }], opacity: 0.92 },
               ]}
             >
-              {p.isPlaying ? (
+              {p.isLoading || p.isBuffering || p.isSeeking ? <ActivityIndicator color="#FFFFFF" /> : p.isPlaying ? (
                 <Pause size={30} color="#FFFFFF" fill="#FFFFFF" />
               ) : (
                 <Play
@@ -539,9 +545,12 @@ function PlayerBody() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={tr('Next', 'अगला')}
+              disabled={!p.canNext}
+              accessibilityState={{ disabled: !p.canNext }}
               onPress={() => run(p.nextTrack)}
               style={({ pressed }) => [
                 styles.transportSkipBtn,
+                !p.canNext && { opacity: 0.35 },
                 pressed && { opacity: 0.8, transform: [{ scale: 0.94 }] },
               ]}
             >
@@ -574,6 +583,12 @@ function PlayerBody() {
             </Pressable>
           </View>
 
+          <View style={[styles.utilitiesRow, { justifyContent: 'space-around' }]}>
+            <Pressable style={styles.utilityAction} accessibilityRole="button" accessibilityLabel={tr('Back 15 seconds', '15 सेकंड पीछे')} onPress={() => run(() => p.skipBackward())}><TextR>↶ 15s</TextR></Pressable>
+            <Pressable style={styles.utilityAction} accessibilityRole="button" accessibilityLabel={tr('Stop playback', 'संगीत बंद करें')} onPress={p.stop}><TextR>{tr('Stop playback', 'संगीत बंद करें')}</TextR></Pressable>
+            <Pressable style={styles.utilityAction} accessibilityRole="button" accessibilityLabel={tr('Forward 15 seconds', '15 सेकंड आगे')} onPress={() => run(() => p.skipForward())}><TextR>15s ↷</TextR></Pressable>
+          </View>
+          {!!p.persistenceError && <View style={styles.alertNotice} accessibilityRole="alert"><TextR style={styles.alertNoticeText}>{tr('Listening progress or favorites could not be saved.', 'सुनने की प्रगति या पसंद सहेजी नहीं जा सकी।')}</TextR></View>}
           {/* Secondary Utilities Bar (Speed / Timer / Downloads) */}
           <View style={styles.utilitiesRow}>
             {/* Speed Pill */}
@@ -622,23 +637,25 @@ function PlayerBody() {
               </TextR>
             </Pressable>
 
-            {/* Offline Downloads Pill */}
+            {/* One tap saves this recording for offline playback. */}
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={tr('Music downloads', 'संगीत डाउनलोड')}
-              onPress={() => setSheet('downloads')}
-              style={({ pressed }) => [
-                styles.utilityPill,
-                pressed && { opacity: 0.8, transform: [{ scale: 0.97 }] },
-              ]}
+              accessibilityLabel={downloadLabel}
+              accessibilityState={{ disabled: downloadDisabled, busy: downloadBusy }}
+              disabled={downloadDisabled}
+              onPress={() => {
+                setDownloadError('');setDownloadPending(true);
+                const selected = recordingKey;
+                void downloadTrack(track).catch(() => { if (recordingRef.current === selected) setDownloadError(tr('Could not download. Tap Retry.', 'डाउनलोड नहीं हुआ। फिर प्रयास करें।')); }).finally(() => { if (recordingRef.current === selected) setDownloadPending(false); });
+              }}
+              style={({ pressed }) => [styles.utilityPill, pressed && { opacity: 0.8 }]}
             >
-              <Download size={14} color={C.primary} strokeWidth={2.2} />
-              <TextR style={styles.utilityPillText}>
-                {tr('Downloads', 'डाउनलोड')}
-              </TextR>
+              {downloadSaved ? <Check size={14} color={C.primary} /> : <Download size={14} color={C.primary} />}
+              <TextR style={styles.utilityPillText}>{downloadLabel}</TextR>
             </Pressable>
           </View>
 
+          {!!downloadError && !downloadSaved && !downloadBusy && <TextR accessibilityRole="alert" style={styles.alertNoticeText}>{downloadError}</TextR>}
           {!!message && (
             <View style={styles.alertNotice} accessibilityRole="alert">
               <TextR style={styles.alertNoticeText}>{message}</TextR>
@@ -662,9 +679,7 @@ function PlayerBody() {
                 <TextR serif style={styles.sheetTitle}>
                   {sheet === 'speed'
                     ? tr('Playback Speed', 'चलाने की गति')
-                    : sheet === 'timer'
-                    ? tr('Sleep Timer', 'स्लीप टाइमर')
-                    : tr('Offline Downloads', 'ऑफ़लाइन डाउनलोड')}
+                    : tr('Sleep Timer', 'स्लीप टाइमर')}
                 </TextR>
 
                 <Pressable
@@ -764,105 +779,6 @@ function PlayerBody() {
                 </View>
               )}
 
-              {/* Offline Downloads */}
-              {sheet === 'downloads' && (
-                <ScrollView style={{ maxHeight: 340 }}>
-                  {Platform.OS === 'web' ? (
-                    <TextR style={styles.downloadsNote}>
-                      {tr(
-                        'Music downloads are available in the mobile app.',
-                        'संगीत डाउनलोड मोबाइल ऐप में उपलब्ध हैं।',
-                      )}
-                    </TextR>
-                  ) : (
-                    <View style={styles.downloadsBody}>
-                      <View style={styles.wifiRow}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                          <Wifi size={18} color={C.ink} />
-                          <TextR style={styles.wifiLabel}>
-                            {tr('Wi-Fi only', 'केवल वाई-फ़ाई')}
-                          </TextR>
-                        </View>
-                        <Switch
-                          accessibilityLabel={tr('Wi-Fi only', 'केवल वाई-फ़ाई')}
-                          value={wifi}
-                          onValueChange={(v) => {
-                            setWifi(v);
-                            run(() => setMusicWifiOnly(v));
-                          }}
-                          thumbColor={wifi ? C.saffron : '#C4CBDD'}
-                          trackColor={{ false: 'rgba(140, 64, 16, 0.15)', true: 'rgba(229, 107, 39, 0.35)' }}
-                        />
-                      </View>
-
-                      <TextR style={styles.storageText}>
-                        {Math.round(
-                          downloads.reduce((n, r) => n + r.bytes, 0) / 1048576,
-                        )}{' '}
-                        / 1024 MB {tr('used', 'प्रयुक्त')}
-                      </TextR>
-
-                      <Pressable
-                        disabled={!track.asset}
-                        onPress={() =>
-                          run(() =>
-                            downloadTrack(track, (r) =>
-                              setMessage(`${Math.round(r * 100)}%`),
-                            ),
-                          )
-                        }
-                        style={[
-                          styles.downloadActionBtn,
-                          !track.asset && { opacity: 0.5 },
-                        ]}
-                      >
-                        <Download size={16} color="#FFFFFF" strokeWidth={2.2} />
-                        <TextR style={styles.downloadActionBtnText}>
-                          {track.asset
-                            ? tr('Download this track', 'इस ट्रैक को डाउनलोड करें')
-                            : tr('Included with app', 'ऐप में शामिल')}
-                        </TextR>
-                      </Pressable>
-
-                      {downloads.map((r) => (
-                        <View key={r.hash} style={styles.downloadItemRow}>
-                          <View style={{ flex: 1 }}>
-                            <TextR style={styles.downloadItemName}>{r.track}</TextR>
-                            <TextR style={styles.downloadItemStatus}>
-                              {tr(r.status, {
-                                queued: 'कतार में',
-                                downloading: 'डाउनलोड हो रहा है',
-                                verifying: 'जाँच हो रही है',
-                                ready: 'तैयार',
-                                cancelled: 'रद्द',
-                                failed: 'विफल',
-                                paused: 'रुका हुआ',
-                              }[r.status])}
-                            </TextR>
-                          </View>
-                          <Pressable
-                            onPress={() => run(() => removeDownloadedTrack(r.track))}
-                            style={styles.deleteDownloadBtn}
-                          >
-                            <Trash2 size={16} color="#D32F2F" />
-                          </Pressable>
-                        </View>
-                      ))}
-
-                      {downloads.length > 0 && (
-                        <Pressable
-                          onPress={() => run(clearMusicCache)}
-                          style={styles.clearDownloadsBtn}
-                        >
-                          <TextR style={styles.clearDownloadsText}>
-                            {tr('Clear all music downloads', 'संगीत डाउनलोड साफ़ करें')}
-                          </TextR>
-                        </Pressable>
-                      )}
-                    </View>
-                  )}
-                </ScrollView>
-              )}
             </View>
           </View>
         </Modal>
@@ -872,6 +788,7 @@ function PlayerBody() {
 }
 
 const styles = StyleSheet.create({
+  utilityAction: { minHeight: 44, minWidth: 48, alignItems: 'center', justifyContent: 'center' },
   root: {
     flex: 1,
     backgroundColor: C.canvas,
@@ -1325,6 +1242,7 @@ const styles = StyleSheet.create({
   },
   utilitiesRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
@@ -1444,84 +1362,5 @@ const styles = StyleSheet.create({
   optionItemTextActive: {
     color: C.primary,
     fontWeight: '800',
-  },
-  downloadsNote: {
-    color: C.muted,
-    fontSize: 13,
-    textAlign: 'center',
-    paddingVertical: 20,
-  },
-  downloadsBody: {
-    gap: 12,
-  },
-  wifiRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-  },
-  wifiLabel: {
-    color: C.ink,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  storageText: {
-    color: C.muted,
-    fontSize: 12,
-  },
-  downloadActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: C.saffron,
-    paddingVertical: 13,
-    borderRadius: 14,
-    marginTop: 4,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.4)',
-    shadowColor: C.saffron,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  downloadActionBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  downloadItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FBF5EE',
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(222, 192, 180, 0.45)',
-  },
-  downloadItemName: {
-    color: C.ink,
-    fontSize: 13.5,
-    fontWeight: '600',
-  },
-  downloadItemStatus: {
-    color: C.muted,
-    fontSize: 11,
-    marginTop: 2,
-  },
-  deleteDownloadBtn: {
-    padding: 8,
-  },
-  clearDownloadsBtn: {
-    alignItems: 'center',
-    paddingVertical: 10,
-    marginTop: 8,
-  },
-  clearDownloadsText: {
-    color: '#D32F2F',
-    fontSize: 13,
-    fontWeight: '700',
   },
 });

@@ -7,6 +7,7 @@ object MusicPolicy {
     if(natural && repeat=="one")return current
     return order.getOrNull(order.indexOf(current)+1) ?: if(repeat=="all")order.firstOrNull() else null
   }
+  fun canPrevious(position: Long, hasHistory: Boolean, repeat: String, hasEligible: Boolean) = position > 3000 || hasHistory || (repeat=="all" && hasEligible)
   fun remaining(deadline: Long, elapsed: Long): Long? = if(deadline>0)(deadline-elapsed).coerceAtLeast(0) else null
   fun blocked(owner:String,alarmRinging:Boolean,ritualActive:Boolean)=owner!="none" || alarmRinging || ritualActive
 }

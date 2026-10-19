@@ -5,9 +5,8 @@ import { useLanguage } from '@/i18n/provider';
 import { useOnboarding } from '@/features/onboarding/provider';
 import { translate, type TranslationKey } from '@/i18n/translations';
 import type { AppLanguage } from '@/i18n/model';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  AccessibilityInfo,
   AppState,
   Linking,
   Pressable,
@@ -27,9 +26,10 @@ import {
   Trophy,
 } from 'lucide-react-native';
 
-import { DiyaGraphic, Header, Screen, TextR } from '@/components/ritual-ui';
+import { Header, Screen, TextR } from '@/components/ritual-ui';
 import { TactileTile } from '@/components/tactile-tile';
 import { C } from '@/constants/ritual-theme';
+import { useAlarmMusic } from '@/services/use-alarm-music';
 import { toneLabel } from '../../shared/content';
 import { useContent } from '@/state/content-store';
 import { saveTeaching } from '@/services/content-cache';
@@ -179,7 +179,6 @@ export default function Home() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [alarmError, setAlarmError] = useState<string | null>(null);
-  const [reducedMotion, setReducedMotion] = useState(false);
 
   const refreshAlarm = useCallback(async () => {
     try {
@@ -200,17 +199,6 @@ export default function Home() {
     return () => { clearTimeout(timer); subscription.remove(); };
   }, [alarmReady, refreshAlarm]));
 
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then(setReducedMotion)
-      .catch(() => undefined);
-    const subscription = AccessibilityInfo.addEventListener(
-      'reduceMotionChanged',
-      setReducedMotion,
-    );
-    return () => subscription.remove();
-  }, []);
-
   const displayedAlarmError = alarmError ?? snapshotError;
   const status = getAlarmStatus(snapshot, isUpdating);
   const issue = getAlarmIssue(snapshot);
@@ -219,7 +207,8 @@ export default function Home() {
     ? `${String(activeConfig.hour).padStart(2, '0')}:${String(activeConfig.minute).padStart(2, '0')}`
     : alarmTime;
   const formattedAlarm = formatAlarm(displayTime);
-  const displayTone = translateText(toneLabel(activeConfig?.tone.key ?? alarmTone));
+  const music = useAlarmMusic(activeConfig?.tone.key ?? alarmTone, snapshot?.scheduledAt ?? 0);
+  const displayTone = music.status?.title ?? translateText(toneLabel(activeConfig?.tone.key ?? alarmTone));
   const displayDays = activeConfig?.weekdays ?? alarmDays;
   const alarmRequested = activeConfig?.enabled ?? alarmEnabled;
   const bookmarked = bookmarks.has(todayVerse.id);
@@ -379,6 +368,7 @@ export default function Home() {
           <Music size={18} color={C.primary} />
           <TextR style={s.toneText} numberOfLines={1}>{displayTone}</TextR>
         </View>
+        {music.status?.length ? <TextR style={s.scheduleText}>{translate("Day {day} of {count}", { day: music.status.day, count: music.status.length })}</TextR> : null}
         <TextR style={s.scheduleText}>{formatDays(displayDays, language)}</TextR>
 
         <View style={s.alarmFooterRow}>
@@ -425,19 +415,6 @@ export default function Home() {
         {alarmRequested && (snapshot?.scheduleStatus === 'failed' || snapshot?.scheduleStatus === 'unknown') ? <TextR style={s.alarmErrorText}>{translate('Alarm scheduling could not be confirmed. Open alarm setup and retry.')}</TextR> : null}
         {displayedAlarmError && <TextR style={s.alarmErrorText}>{translateText(displayedAlarmError)}</TextR>}
       </Pressable>
-
-      {/* Awakening Vibe Banner */}
-      <View style={s.vibeCard}>
-        <View style={s.diyaGlowCircle}>
-          <DiyaGraphic size={isSmall ? 38 : 44} color={C.saffron} flameColor={C.gold} showAura={false} animated={!reducedMotion} />
-        </View>
-        <View style={s.vibeContent}>
-          <TextR style={s.vibeKicker}>{translate("AWAKENING VIBE")}</TextR>
-          <TextR style={s.vibeTitle}>{translate("Inner Light Sanctuary")}</TextR>
-          <TextR style={s.vibeSub} numberOfLines={2}>
-             {translate("Begin with a few quiet breaths before you enter today's ritual.")} </TextR>
-        </View>
-      </View>
 
       <MusicHomeGateway />
 
@@ -753,63 +730,6 @@ const s = StyleSheet.create({
     fontWeight: '800',
     color: C.greenDark,
     letterSpacing: 0.8,
-  },
-  vibeCard: {
-    backgroundColor: 'rgba(254, 236, 220, 0.85)',
-    borderRadius: 22,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    marginBottom: 20,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.9)',
-    borderTopColor: '#FFFFFF',
-    shadowColor: C.saffron,
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 3,
-  },
-  diyaGlowCircle: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: C.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.95)',
-    shadowColor: C.saffron,
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    flexShrink: 0,
-  },
-  vibeContent: {
-    flex: 1,
-    minWidth: 0,
-  },
-  vibeKicker: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: C.goldDark,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  vibeTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: C.ink,
-    marginTop: 1,
-  },
-  vibeSub: {
-    fontSize: 13,
-    lineHeight: 19,
-    color: C.muted,
-    marginTop: 2,
-    fontWeight: '500',
   },
   gatewaysSection: {
     marginBottom: 22,

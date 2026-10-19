@@ -25,6 +25,6 @@ export function MusicHomeGateway() {
 }
 const styles = StyleSheet.create({
   card: { backgroundColor: 'rgba(254, 236, 220, 0.85)', borderRadius: 22, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 4, marginBottom: 20, borderWidth: 1.5, borderColor: 'rgba(244, 185, 66, 0.4)', borderTopColor: '#FFFFFF', shadowColor: C.saffron, shadowOpacity: .1, shadowRadius: 16, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
-  iconCircle: { width: 58, height: 58, borderRadius: 29, backgroundColor: 'rgba(244, 185, 66, 0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.95)', shadowColor: C.saffron, shadowOpacity: .2, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4, flexShrink: 0 },
+  iconCircle: { width: 58, height: 58, borderRadius: 29, backgroundColor: 'rgba(244, 185, 66, 0.15)', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' },
   art: { width: '100%', height: '100%', borderRadius: 29 }, eyebrow: { fontSize: 11, color: C.saffron, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' }, title: { fontSize: 18, fontWeight: '700', color: C.ink, marginTop: 1 }, subtitle: { fontSize: 13, lineHeight: 19, color: C.muted, marginTop: 2, fontWeight: '500' }, button: { color: C.saffron, fontSize: 12, fontWeight: '700' },
 });

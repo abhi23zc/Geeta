@@ -3,6 +3,9 @@ import { onboardingCopy } from "./onboarding-copy.ts";
 
 // App-owned copy only. User-authored and published sacred content must not pass through this catalog.
 export const catalog = {
+  "Day {day} of {count}": ["दिन {day}, कुल {count}", "Din {day}, kul {count}"],
+  "Downloaded alarm music keeps repeating until replaced.": ["डाउनलोड किया गया अलार्म संगीत बदलने तक दोहराता रहेगा।", "Downloaded alarm music badalne tak repeat hota rahega."],
+  "New alarm music is not ready. Your previous music will keep playing.": ["नया अलार्म संगीत तैयार नहीं है। आपका पिछला संगीत बजता रहेगा।", "Naya alarm music taiyar nahi hai. Aapka pichhla music bajta rahega."],
   "SACRED AUDIO & CHANTS": [
     "पवित्र संगीत और मंत्र",
     "Pavitra sangeet aur mantra",
@@ -49,6 +52,7 @@ export const catalog = {
     "हमारे संगीत संग्रह में उपलब्ध रिकॉर्डिंग सुनें।",
     "Explore our sacred morning collection and play divine chants.",
   ],
+  "available": ["उपलब्ध", "available"],
   "Coming soon": ["जल्द आ रहा है", "Coming soon"],
   "Back to Library": ["संग्रह पर लौटें", "Back to Library"],
   "Playlist Not Found": ["संगीत सूची नहीं मिली", "Playlist Not Found"],
@@ -1426,6 +1430,13 @@ export const catalog = {
   "Dawn Chimes": ["भोर की घंटियां", "Bhor ki bells"],
   "Silent Awakening": ["शांत जागरण", "Shaant jagran"],
   "Raag Bhairav": ["राग भैरव", "Raag Bhairav"],
+  "Sacred Dawn": ["पवित्र भोर", "Pavitra Bhor"],
+  "Morning Awakening": ["सुबह का जागरण", "Subah ka Jagran"],
+  "Afternoon Pause": ["दोपहर का विराम", "Dopahar ka Viram"],
+  "Evening Reflection": ["संध्या चिंतन", "Sandhya Chintan"],
+  "Peaceful Night": ["शांत रात्रि", "Shaant Raat"],
+  "Awaken with Dharma": ["धर्म के साथ जागें", "Dharma ke saath jagein"],
+  "Alarm set for {time}": ["अलार्म का समय {time}", "Alarm ka samay {time}"],
   "BRAHMA MUHURTA · SACRED DAWN": [
     "ब्रह्म मुहूर्त · पवित्र भोर",
     "BRAHMA MUHURTA · PAVITRA BHOR",

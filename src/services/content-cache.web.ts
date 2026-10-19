@@ -16,3 +16,5 @@ export async function preparePracticeRecording(practice: GitaVerse): Promise<{ n
   if (typeof practice.narration?.audioSource === 'number') return { narration: practice.narration, release: () => {} };
   throw new Error('Recording downloads require Android. You can complete by reading.');
 }
+
+export const prepareAlarmImage = async (_date: string, _sessionId?: string | null): Promise<{ uri: string; release: () => void } | null> => null;

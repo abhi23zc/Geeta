@@ -29,3 +29,23 @@ test('reject unsupported schemas, date reassignment and conflicting immutable as
 test('legacy alarm mode names resolve without altering the schedule', () => {
   assert.equal(toneKey('Raag Bhairav & Sacred Flute'),'gita'); assert.equal(toneKey('Gentle Shankh & Chants'),'shankh'); assert.equal(toneKey('Pranayama First'),'pranayama');
 });
+
+test('alarm cycles support 1–14 slots without changing legacy content windows', async () => {
+  const { parseAlarmCycle, parseAlarmCycles, alarmCycleIndex } = await import('../shared/content.ts');
+  for (const length of [1, 7, 14]) {
+    const cycle = parseAlarmCycle({key:'gita',revision:'cycle1',startDate:'2026-10-19',tracks:Array.from({length},(_,i)=>({title:`Track ${i+1}`,asset}))});
+    assert.equal(cycle.tracks.length,length);
+    assert.equal(alarmCycleIndex(cycle,'2026-10-18'),null);
+    for(const offset of [0,1,7,14,3650]) {
+      const date=new Date(Date.parse(cycle.startDate)+offset*86400000).toISOString().slice(0,10);
+      assert.equal(alarmCycleIndex(cycle,date),offset%length);
+    }
+    const parsed=parseWindow({...window(),alarmCycles:[cycle]},'2026-10-03');
+    assert.equal(parsed.alarmCycles[0].revision,'cycle1');
+  }
+  assert.equal(parseWindow(window(),'2026-10-03').alarmCycles,undefined);
+  const cycle={key:'gita',revision:'v1',startDate:'2026-10-19',tracks:[{title:'Music',asset}]};
+  for(const override of [{tracks:[]},{tracks:Array(15).fill(cycle.tracks[0])},{key:'bad'},{startDate:'2026-02-30'},{tracks:[{title:'',asset}]},{tracks:[{title:'Music',asset:{...asset,bytes:11*MB}}]}]) assert.throws(()=>parseAlarmCycle({...cycle,...override}));
+  assert.throws(()=>parseAlarmCycles([cycle,cycle]));
+  assert.throws(()=>parseWindow({...window(),alarmCycles:[{...cycle,tracks:[{title:'Conflict',asset:{...asset,sha256:'b'.repeat(64)}}]}]},'2026-10-03'));
+});

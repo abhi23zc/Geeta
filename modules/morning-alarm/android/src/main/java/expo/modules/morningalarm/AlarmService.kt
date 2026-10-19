@@ -148,7 +148,10 @@ class AlarmService : Service() {
   private fun startSound(config: AlarmConfig) {
     MusicService.takeOwnership("alarm")
     val local = if (AlarmPolicy.useDownloadedTone(config.toneKind)) runCatching { ContentFiles.resolve(this, ContentFiles.key(config.toneKey)) }.getOrNull() else null
+    val cycleTrack = if (AlarmPolicy.useDownloadedTone(config.toneKind)) runCatching { AlarmCycles.session(this, ContentFiles.key(config.toneKey), occurrenceAt) }.getOrNull() else null
+    val cycleFile = runCatching { AlarmCycles.resolveSession(this, cycleTrack) }.getOrNull()
     val choices = listOfNotNull(
+      cycleFile?.let { android.net.Uri.fromFile(it) to "cycle" },
       local?.let { android.net.Uri.fromFile(it) to ContentFiles.key(config.toneKey) },
       RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)?.let { it to "system" },
       RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)?.let { it to "notification" },
@@ -157,6 +160,9 @@ class AlarmService : Service() {
     for ((uri, actual) in choices) {
       try {
         playUri(config, uri)
+        createDeviceProtectedStorageContext().getSharedPreferences("alarm-cycle-playback", Context.MODE_PRIVATE).edit()
+          .putString("title", if (actual == "cycle") cycleTrack?.getString("title") else if (actual == ContentFiles.key(config.toneKey)) ContentFiles.metadata(this, actual)["title"] else null)
+          .putString("revision", if (actual == "cycle") cycleTrack?.getString("revision") else null).apply()
         ContentFiles.report(this, actual, if (config.toneKind != "system" && (actual == "system" || actual == "notification")) if (local == null) "Selected sound unavailable" else "Selected sound failed" else null)
         return
       } catch (error: Throwable) {
@@ -165,6 +171,7 @@ class AlarmService : Service() {
         player = null
       }
     }
+    createDeviceProtectedStorageContext().getSharedPreferences("alarm-cycle-playback", Context.MODE_PRIVATE).edit().clear().apply()
     ContentFiles.report(this, "silent", "All sound sources failed")
     throw failure ?: IllegalStateException("No alarm sound available")
   }
@@ -273,6 +280,7 @@ class AlarmService : Service() {
     cancelVibration()
     wakeLock?.takeIf { it.isHeld }?.release()
     wakeLock = null
+    if (reason != "snoozed") runCatching { AlarmCycles.releaseSession(this, occurrenceAt) }
     AlarmStore.setRinging(this, false)
     AlarmStore.setTest(this, false)
     if (reason == "notification-delivery-failed" || reason == "timeout" || reason == "foreground-promotion-failed" || reason == "service-destroyed") {
@@ -341,7 +349,8 @@ class AlarmService : Service() {
         "volumeProgress" to progress,
         "actualTone" to ContentFiles.playback(context)["actualTone"],
         "fallbackReason" to ContentFiles.playback(context)["fallbackReason"],
-        "toneRevision" to ContentFiles.playback(context)["toneRevision"],
+        "toneRevision" to (context.createDeviceProtectedStorageContext().getSharedPreferences("alarm-cycle-playback", Context.MODE_PRIVATE).getString("revision", null) ?: ContentFiles.playback(context)["toneRevision"]),
+        "trackTitle" to context.createDeviceProtectedStorageContext().getSharedPreferences("alarm-cycle-playback", Context.MODE_PRIVATE).getString("title", null),
       )
     }
     fun pauseForSnooze(context: Context, occurrence: Long) {

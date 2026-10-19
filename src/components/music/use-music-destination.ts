@@ -18,7 +18,7 @@ export function useMusicDestination() {
     }
     const track = catalog.tracks.find(t => t.id === target.id);
     if (!track || !catalog.enabled || track.availability !== 'available') return;
-    if (target.play) await player.playTrack(track);
+    if (target.play) await player.activateTrack(track);
     else if (player.currentTrack?.id !== track.id) { const entryId = `open-${Date.now()}`; await player.adapter.replaceQueue([{ entryId, track }], entryId, false); }
     player.openFullPlayer();
   };

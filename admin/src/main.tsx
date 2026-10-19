@@ -4,10 +4,12 @@ import { initializeApp } from 'firebase/app';
 import { connectAuthEmulator, getAuth, GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { connectFirestoreEmulator, collection, doc, getDoc, getDocs, getFirestore, setDoc } from 'firebase/firestore';
 import { connectStorageEmulator, getBlob, getStorage, ref, uploadBytesResumable } from 'firebase/storage';
-import { dateWindow, validDate, parseAlarm, type AudioAsset, type PublishedPractice, type AlarmTone } from '../../shared/content';
+import { dateWindow, validDate, parseAlarm, type AudioAsset, type PublishedPractice, type AlarmTone, type AlarmCycle, type AlarmImageCycle } from '../../shared/content';
 import { checkAudioFile, importPractice } from './practice-import';
 import './style.css';
 const MusicWorkspace = React.lazy(() => import('./music').then(module => ({ default: module.MusicWorkspace })));
+import { AlarmImagesEditor } from './alarm-images';
+import { AlarmCyclesEditor } from './alarm-cycles';
 import { NotificationsWorkspace } from './notifications';
 const env = import.meta.env;
 const configured = !!env.VITE_FIREBASE_PROJECT_ID;
@@ -18,7 +20,7 @@ const blank = (): string => JSON.stringify({ id: crypto.randomUUID(), revision: 
 const localDate = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
 const initialAlarms = (): AlarmTone[] => ['gita', 'shankh', 'pranayama'].map(key => ({ key: key as AlarmTone['key'], title: key, description: '', revision: crypto.randomUUID(), asset: {} as AudioAsset }));
 function Admin() {
-  const [workspace, setWorkspace] = useState<'content' | 'notifications' | 'music'>('content');
+  const [workspace, setWorkspace] = useState<'content' | 'notifications' | 'music' | 'alarms' | 'images'>('content');
   const [user, setUser] = useState<User | null>(null), [authorized, setAuthorized] = useState(false), [status, setStatus] = useState(''), [busy, setBusy] = useState(false);
   const [start, setStart] = useState(localDate()), [selected, setSelected] = useState(0);
   const [buffers, setBuffers] = useState<string[]>(() => Array.from({ length: 7 }, blank));
@@ -26,6 +28,8 @@ function Admin() {
   const [filenames, setFilenames] = useState<string[]>(Array(7).fill(''));
   const [alarms, setAlarms] = useState<AlarmTone[]>(initialAlarms);
   const [release, setRelease] = useState<string | null>(null), [releases, setReleases] = useState<string[]>([]), [enabled, setEnabled] = useState(true), [coverage, setCoverage] = useState<string[]>([]);
+  const [imageCycle, setImageCycle] = useState<AlarmImageCycle>();
+  const [cycles, setCycles] = useState<AlarmCycle[]>([]);
   const [published, setPublished] = useState<Record<string, PublishedPractice>>({});
   const [preview, setPreview] = useState(''), [position, setPosition] = useState(0), [dirty, setDirty] = useState(false);
   const player = useRef<HTMLAudioElement>(null), locked = useRef(false);
@@ -43,6 +47,7 @@ function Admin() {
     const current = (await getDoc(doc(db, 'delivery/current'))).data(); setRelease(current?.releaseId ?? null); setEnabled(current?.enabled !== false);
     const ids = (await getDocs(collection(db, 'releases'))).docs.map(d => ({ id: d.id, at: d.data().publishedAt })).sort((a,b) => String(b.at).localeCompare(String(a.at))); setReleases(ids.map(d => d.id));
     const r = current?.releaseId ? (await getDoc(doc(db, `releases/${current.releaseId}`))).data() : undefined;
+    setCycles(r?.alarmCycles ?? []); setImageCycle(r?.alarmImageCycle);
     setPublished(r?.schedule ?? {}); setCoverage(dateWindow(localDate(), 14).filter(date => !r?.schedule?.[date]));
     return r;
   }
@@ -83,9 +88,11 @@ function Admin() {
   if (!configured) return <main><h1>Geeta admin setup</h1><p>Copy .env.example to .env.local and enter the Firebase web app configuration, then restart the admin server.</p></main>;
   if (!user) return <main><h1>Geeta content admin</h1><button disabled={busy} onClick={() => void action(async () => { await signInWithPopup(auth!, new GoogleAuthProvider()); })}>Sign in with Google</button><p>{status}</p></main>;
   if (!authorized) return <main><h1>Admin access required</h1><p>Ask the project operator to assign the admin claim to {user.uid}, then sign in again.</p><button onClick={() => void signOut(auth!)}>Sign out</button></main>;
+  if (workspace === 'images') return <main><header><h1>Alarm Images</h1></header><AlarmImagesEditor user={user} db={db!} storage={storage!} cycle={imageCycle} release={release} api={api} reload={load} onBack={() => setWorkspace('content')} /></main>;
+  if (workspace === 'alarms') return <main><header><h1>Alarm Music Studio</h1></header><AlarmCyclesEditor onBack={() => setWorkspace('content')} user={user} db={db!} storage={storage!} release={release} cycles={cycles} api={api} reload={load} /></main>;
   if (workspace === 'music') return <main><header><h1>Geeta Music Studio</h1><button onClick={() => setWorkspace('content')}>Content workspace</button></header><React.Suspense fallback={<p role="status">Loading Music Studio…</p>}><MusicWorkspace user={user} storage={storage!} /></React.Suspense></main>;
   if (workspace === 'notifications') return <main><header><h1>Geeta Admin Studio</h1><button onClick={() => setWorkspace('content')}>Content workspace</button></header><NotificationsWorkspace user={user} /></main>;
-  return <main><header><div><h1>Geeta content studio</h1><p>Choose a date, paste your teaching, and upload its narration.</p></div><button disabled={busy} onClick={() => { if (!dirty || confirm('Sign out with unsaved changes?')) void signOut(auth!); }}>Sign out</button></header><nav aria-label="Workspaces"><button disabled={busy} onClick={() => setWorkspace('music')}>Music workspace</button><button disabled={busy} onClick={() => setWorkspace('notifications')}>Notifications workspace</button></nav><p role="status">{status}</p>
+  return <main><header><div><h1>Geeta content studio</h1><p>Choose a date, paste your teaching, and upload its narration.</p></div><button disabled={busy} onClick={() => { if (!dirty || confirm('Sign out with unsaved changes?')) void signOut(auth!); }}>Sign out</button></header><nav aria-label="Workspaces"><button disabled={busy} onClick={() => setWorkspace('images')}>Alarm images</button><button disabled={busy} onClick={() => setWorkspace('alarms')}>Alarm music cycles</button><button disabled={busy} onClick={() => setWorkspace('music')}>Music workspace</button><button disabled={busy} onClick={() => setWorkspace('notifications')}>Notifications workspace</button></nav><p role="status">{status}</p>
     <section><h2>1. Choose the date</h2><label>Calendar starts on<input type="date" disabled={busy} value={start} onChange={e => { if(validDate(e.target.value)) { setStart(e.target.value); setDirty(true); resetPreview(); } }} /></label>
       <nav aria-label="Publication dates">{dates.map((d,i) => <button disabled={busy} key={d} aria-pressed={selected === i} onClick={() => { setSelected(i); resetPreview(); }}>{d}<small>{published[d] ? 'Published' : 'Not published'}</small></button>)}</nav>
       <p>Your content will be published for <strong>{date}</strong>. You can publish one date at a time.</p>

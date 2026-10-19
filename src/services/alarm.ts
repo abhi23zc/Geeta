@@ -62,7 +62,10 @@ export type AlarmLaunchDiagnostics = {
   events: string[];
 };
 
+export type AlarmMusicStatus = { key: string; revision: string | null; pendingRevision: string | null; fallbackRevision?: string | null; title: string | null; day: number; length: number; scheduledAt: number; bytes: number };
+export type AlarmCycleInstall = { key: string; revision: string; startDate: string; tracks: { title: string; uri: string; bytes: number; sha256: string }[] };
 export type AlarmPlaybackState = {
+  trackTitle?: string;
   snoozeAvailable?: boolean;
   actualTone?: string;
   fallbackReason?: string;
@@ -118,7 +121,10 @@ declare class MorningAlarmNativeModule extends NativeModule<AlarmEvents> {
   setRitualScreenAwake(awake: boolean): Promise<void>;
   requestRitualUnlock(): Promise<boolean>;
   hashContentFile(uri: string): Promise<string>;
-  installAlarmTone(input: { key: string; uri: string; revision: string; bytes: number; sha256: string }): Promise<string>;
+  installAlarmTone(input: { key: string; uri: string; revision: string; bytes: number; sha256: string; title?: string }): Promise<string>;
+  verifyAlarmCycle?(key: string, revision: string): Promise<boolean>;
+  installAlarmCycle?(json: string): Promise<string>;
+  getAlarmMusicStatus?(key: string, at: number): Promise<string>;
   getInstalledAlarmTone(): Promise<{ key: string | null; revision: string | null }>;
   schedule(config: NativeAlarmConfig): Promise<{ scheduled: boolean; scheduledAt?: number }>;
   cancel(): Promise<void>;
@@ -223,9 +229,19 @@ export async function hashContentFile(uri: string) {
   if (!NativeAlarm) throw new Error("Verified downloads require the updated Android native build.");
   return NativeAlarm.hashContentFile(uri);
 }
-export async function installAlarmTone(input: { key: string; uri: string; revision: string; bytes: number; sha256: string }) {
+export async function installAlarmTone(input: { key: string; uri: string; revision: string; bytes: number; sha256: string; title?: string }) {
   if (!NativeAlarm) throw new Error("Downloaded alarms require an Android native build.");
   return NativeAlarm.installAlarmTone(input);
+}
+export async function verifyAlarmCycle(key: string, revision: string): Promise<boolean> {
+  return await NativeAlarm?.verifyAlarmCycle?.(key, revision) ?? false;
+}
+export async function installAlarmCycle(input: AlarmCycleInstall) {
+  if (!NativeAlarm?.installAlarmCycle) throw new Error('Update the app to download alarm music cycles');
+  return NativeAlarm.installAlarmCycle(JSON.stringify(input));
+}
+export async function getAlarmMusicStatus(key: string, at = 0): Promise<AlarmMusicStatus | null> {
+  return NativeAlarm?.getAlarmMusicStatus ? JSON.parse(await NativeAlarm.getAlarmMusicStatus(toneKey(key), at)) : null;
 }
 export async function getInstalledAlarmTone() { return NativeAlarm?.getInstalledAlarmTone() ?? null; }
 
