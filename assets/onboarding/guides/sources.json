@@ -4,7 +4,7 @@
     "source": "https://dontkillmyapp.com/assets/img/xiaomi/miui14_autostart.png",
     "sha256": "1aa91fb58234be85f4f74ea69ee05f7a8834e2708f3c9ddd6a8bea1a99686b4b",
     "width": 532,
-    "height": 1005,
+    "height": 895,
     "file": "xiaomi-autostart.webp",
     "license": "CC-BY (Urbandroid Team)",
     "retrieved": "2026-10-09",
@@ -18,9 +18,9 @@
     "eligible": true,
     "highlight": [
       0.04,
-      0.2,
+      0.0624,
       0.91,
-      0.09
+      0.1054
     ],
     "audit": "Inspected genuine manufacturer screenshot",
     "supportedBrands": [
@@ -38,7 +38,7 @@
     "source": "https://dontkillmyapp.com/assets/img/xiaomi/miui12_settings3.jpg",
     "sha256": "424d998290a0a4cb4c2fc8077d832e54bb8c1b6d143218c7015058279808419b",
     "width": 600,
-    "height": 1333,
+    "height": 1193,
     "file": "xiaomi-battery.webp",
     "license": "CC-BY (Urbandroid Team)",
     "retrieved": "2026-10-09",
@@ -52,9 +52,9 @@
     "eligible": true,
     "highlight": [
       0.02,
-      0.11,
+      0.0,
       0.96,
-      0.09
+      0.1051
     ],
     "audit": "Inspected genuine manufacturer screenshot",
     "supportedBrands": [
@@ -72,7 +72,7 @@
     "source": "https://dontkillmyapp.com/assets/img/oppo/oppo_autolaunch2.jpg",
     "sha256": "e4a65d0212168a88d3836d13d55ffe0f7af88fb1133f16160a77047eff6d163c",
     "width": 600,
-    "height": 1285,
+    "height": 1155,
     "file": "oppo-autostart.webp",
     "license": "CC-BY (Urbandroid Team)",
     "retrieved": "2026-10-09",
@@ -86,9 +86,9 @@
     "eligible": true,
     "highlight": [
       0.01,
-      0.52,
+      0.4411,
       0.96,
-      0.08
+      0.0931
     ],
     "audit": "Inspected genuine manufacturer screenshot",
     "supportedBrands": [
@@ -104,7 +104,7 @@
     "source": "https://dontkillmyapp.com/assets/img/oppo/oppo_background2.jpg",
     "sha256": "d1d852bc66661a844273a43367734c5ebc81eb679484a1cbb4e220667892c933",
     "width": 600,
-    "height": 1333,
+    "height": 1198,
     "file": "oppo-battery.webp",
     "license": "CC-BY (Urbandroid Team)",
     "retrieved": "2026-10-09",
@@ -118,9 +118,9 @@
     "eligible": true,
     "highlight": [
       0.02,
-      0.12,
+      0.0,
       0.96,
-      0.075
+      0.0872
     ],
     "audit": "Inspected genuine manufacturer screenshot",
     "supportedBrands": [
@@ -136,7 +136,7 @@
     "source": "https://dontkillmyapp.com/assets/img/realme/realme_3.jpg",
     "sha256": "093c66c18c599eebb122440bd54bc45389516f5cbf9a1ab336e924ea5436c0f0",
     "width": 600,
-    "height": 1333,
+    "height": 1203,
     "file": "realme-battery.webp",
     "license": "CC-BY (Urbandroid Team)",
     "retrieved": "2026-10-09",
@@ -150,9 +150,9 @@
     "eligible": true,
     "highlight": [
       0.03,
-      0.1,
+      0.0,
       0.94,
-      0.26
+      0.301
     ],
     "audit": "Inspected genuine manufacturer screenshot",
     "supportedBrands": [
@@ -169,7 +169,7 @@
     "source": "https://dontkillmyapp.com/assets/img/ss_oneplus_1.jpg",
     "sha256": "1a333084db8846203425de7c9c66e9e821aaeab60bcedd698a4d760584dd08c4",
     "width": 600,
-    "height": 1067,
+    "height": 942,
     "file": "oneplus-battery.webp",
     "license": "CC-BY (Urbandroid Team)",
     "retrieved": "2026-10-09",
@@ -183,9 +183,9 @@
     "eligible": true,
     "highlight": [
       0.01,
-      0.08,
+      0.0,
       0.97,
-      0.045
+      0.0541
     ],
     "audit": "Inspected genuine manufacturer screenshot",
     "supportedBrands": [
@@ -201,7 +201,7 @@
     "source": "https://dontkillmyapp.com/assets/img/vivo/vivo_battery_unrestricted.jpg",
     "sha256": "2762d306d26f54b4c0585f7aec4430d530af6977738bff691bb537d8795bf848",
     "width": 600,
-    "height": 1333,
+    "height": 1198,
     "file": "vivo-battery.webp",
     "license": "CC-BY (Urbandroid Team)",
     "retrieved": "2026-10-09",
@@ -229,7 +229,7 @@
     "source": "https://dontkillmyapp.com/assets/img/vivo/vivo_background_power_usage.jpg",
     "sha256": "7d98f6a47795e8938a67e251973fa846a2901b22b180de55a812bb0ef1ca9948",
     "width": 600,
-    "height": 1333,
+    "height": 1198,
     "file": "vivo-background.webp",
     "license": "CC-BY (Urbandroid Team)",
     "retrieved": "2026-10-09",
@@ -243,9 +243,9 @@
     "eligible": true,
     "highlight": [
       0.03,
-      0.38,
+      0.2791,
       0.94,
-      0.085
+      0.0989
     ],
     "audit": "Inspected genuine manufacturer screenshot",
     "supportedBrands": [
@@ -262,7 +262,7 @@
     "source": "https://dontkillmyapp.com/assets/img/samsung/samsung13_per_app_4.jpg",
     "sha256": "9d88264fc1a03f857b37e5ba057afbc66616df4ff6be4010b5479a477b576f89",
     "width": 600,
-    "height": 1333,
+    "height": 1173,
     "file": "samsung-battery.webp",
     "license": "CC-BY (Urbandroid Team)",
     "retrieved": "2026-10-09",
@@ -276,9 +276,9 @@
     "eligible": true,
     "highlight": [
       0.03,
-      0.24,
+      0.0663,
       0.94,
-      0.11
+      0.1351
     ],
     "audit": "Inspected genuine manufacturer screenshot",
     "supportedBrands": [
@@ -294,7 +294,7 @@
     "source": "https://dontkillmyapp.com/assets/img/samsung/samsung13_alarms_2.jpg",
     "sha256": "afefe5ebcff544e243364eca1faa1a57db945a377480f029f0a0e2ab40c3704d",
     "width": 600,
-    "height": 1333,
+    "height": 1173,
     "file": "samsung-exact.webp",
     "license": "CC-BY (Urbandroid Team)",
     "retrieved": "2026-10-09",
@@ -308,9 +308,9 @@
     "eligible": true,
     "highlight": [
       0.02,
-      0.235,
+      0.0603,
       0.96,
-      0.07
+      0.086
     ],
     "audit": "Inspected genuine manufacturer screenshot",
     "supportedBrands": [
@@ -326,7 +326,7 @@
     "source": "https://dontkillmyapp.com/assets/img/huawei/ss_huawei_app_launch_4.png",
     "sha256": "98096e106948fa5fb6913da6c7fbeacf6aa83f78222458135519b5fb2570e808",
     "width": 600,
-    "height": 451,
+    "height": 366,
     "file": "huawei-autostart.webp",
     "license": "CC-BY (Urbandroid Team)",
     "retrieved": "2026-10-09",
@@ -340,9 +340,9 @@
     "eligible": true,
     "highlight": [
       0.03,
-      0.24,
+      0.0635,
       0.92,
-      0.72
+      0.8872
     ],
     "audit": "Inspected genuine manufacturer screenshot",
     "supportedBrands": [
@@ -412,7 +412,7 @@
     "source": "https://source.android.com/static/docs/core/permissions/images/fsi-ui.png",
     "sha256": "b2a569ec78381d7744222cfe05343fc5259e409b7d2b83bf005b51a34c0f311e",
     "width": 204,
-    "height": 400,
+    "height": 350,
     "file": "android-fullscreen.webp",
     "license": "CC-BY-4.0",
     "retrieved": "2026-10-09",
@@ -421,14 +421,14 @@
     "setting": "fullscreen",
     "softwareVersion": "Android 14",
     "uiVariant": "AOSP Android 14 Settings",
-    "attribution": "Android Open Source Project · CC-BY-4.0",
+    "attribution": "Android Open Source Project \u00b7 CC-BY-4.0",
     "redistributionRights": "CC-BY-4.0; retain attribution and indicate WebP conversion",
     "eligible": true,
     "highlight": [
       0.04,
-      0.48,
+      0.4057,
       0.92,
-      0.09
+      0.1029
     ],
     "audit": "AOSP Android 14 full-screen intent documentation capture",
     "supportedBrands": [
@@ -455,23 +455,23 @@
     "source": "device-capture://xiaomi/M2101K7BI/MIUI14/notifications",
     "sha256": "7ba84d43f166c11f15d076b711e86b4e0a41e4a6cda7dea8dfeb883483503211",
     "width": 1080,
-    "height": 2400,
+    "height": 2110,
     "file": "xiaomi-miui14-notifications.png",
     "license": "Project device capture",
     "retrieved": "2026-10-10",
     "manufacturer": "xiaomi",
     "brand": "xiaomi",
     "setting": "notifications",
-    "softwareVersion": "MIUI 14 · Android 13",
-    "uiVariant": "Xiaomi M2101K7BI · English · dark theme",
+    "softwareVersion": "MIUI 14 \u00b7 Android 13",
+    "uiVariant": "Xiaomi M2101K7BI \u00b7 English \u00b7 dark theme",
     "attribution": "Geeta project device capture",
-    "redistributionRights": "Captured at the user’s request for inclusion in Geeta’s offline settings guides",
+    "redistributionRights": "Captured at the user\u2019s request for inclusion in Geeta\u2019s offline settings guides",
     "eligible": true,
     "highlight": [
       0.06,
-      0.18,
+      0.0,
       0.88,
-      0.045
+      0.0561
     ],
     "audit": "Inspected original device screenshot; settings were not changed",
     "supportedBrands": [
@@ -490,23 +490,23 @@
     "source": "device-capture://xiaomi/M2101K7BI/MIUI14/exact",
     "sha256": "297b5a5056e9db41fac58b4c79a6b2211dff827a89f6020e17c20f110ad83b1f",
     "width": 1080,
-    "height": 2400,
+    "height": 2110,
     "file": "xiaomi-miui14-exact.png",
     "license": "Project device capture",
     "retrieved": "2026-10-10",
     "manufacturer": "xiaomi",
     "brand": "xiaomi",
     "setting": "exact",
-    "softwareVersion": "MIUI 14 · Android 13",
-    "uiVariant": "Xiaomi M2101K7BI · English · dark theme",
+    "softwareVersion": "MIUI 14 \u00b7 Android 13",
+    "uiVariant": "Xiaomi M2101K7BI \u00b7 English \u00b7 dark theme",
     "attribution": "Geeta project device capture",
-    "redistributionRights": "Captured at the user’s request for inclusion in Geeta’s offline settings guides",
+    "redistributionRights": "Captured at the user\u2019s request for inclusion in Geeta\u2019s offline settings guides",
     "eligible": true,
     "highlight": [
       0.06,
-      0.18,
+      0.0,
       0.88,
-      0.045
+      0.0561
     ],
     "audit": "Inspected original device screenshot; settings were not changed",
     "supportedBrands": [
@@ -524,23 +524,23 @@
     "source": "device-capture://xiaomi/M2101K7BI/MIUI14/channel",
     "sha256": "d030b6eb3db22d4f6479fccd2db9fcd019477cf110ee4caa1204617be4c66b32",
     "width": 1080,
-    "height": 2400,
+    "height": 2110,
     "file": "xiaomi-miui14-channel.png",
     "license": "Project device capture",
     "retrieved": "2026-10-10",
     "manufacturer": "xiaomi",
     "brand": "xiaomi",
     "setting": "channel",
-    "softwareVersion": "MIUI 14 · Android 13",
-    "uiVariant": "Xiaomi M2101K7BI · English · dark theme",
+    "softwareVersion": "MIUI 14 \u00b7 Android 13",
+    "uiVariant": "Xiaomi M2101K7BI \u00b7 English \u00b7 dark theme",
     "attribution": "Geeta project device capture",
-    "redistributionRights": "Captured at the user’s request for inclusion in Geeta’s offline settings guides",
+    "redistributionRights": "Captured at the user\u2019s request for inclusion in Geeta\u2019s offline settings guides",
     "eligible": true,
     "highlight": [
       0.06,
-      0.18,
+      0.0,
       0.88,
-      0.17
+      0.2116
     ],
     "audit": "Inspected original device screenshot; settings were not changed",
     "supportedBrands": [
@@ -558,23 +558,23 @@
     "source": "device-capture://xiaomi/M2101K7BI/MIUI14/other",
     "sha256": "08269a868d654348b2f3ce3f117e18120ff6af08a1eeae73b236fc47eaa10b79",
     "width": 1080,
-    "height": 2400,
+    "height": 2110,
     "file": "xiaomi-miui14-lockscreen.png",
     "license": "Project device capture",
     "retrieved": "2026-10-10",
     "manufacturer": "xiaomi",
     "brand": "xiaomi",
     "setting": "lockscreen",
-    "softwareVersion": "MIUI 14 · Android 13",
-    "uiVariant": "Xiaomi M2101K7BI · English · dark theme",
+    "softwareVersion": "MIUI 14 \u00b7 Android 13",
+    "uiVariant": "Xiaomi M2101K7BI \u00b7 English \u00b7 dark theme",
     "attribution": "Geeta project device capture",
-    "redistributionRights": "Captured at the user’s request for inclusion in Geeta’s offline settings guides",
+    "redistributionRights": "Captured at the user\u2019s request for inclusion in Geeta\u2019s offline settings guides",
     "eligible": true,
     "highlight": [
       0.06,
-      0.27,
+      0.091,
       0.88,
-      0.05
+      0.0622
     ],
     "audit": "Inspected original device screenshot; settings were not changed",
     "supportedBrands": [
@@ -592,23 +592,23 @@
     "source": "device-capture://xiaomi/M2101K7BI/MIUI14/other",
     "sha256": "08269a868d654348b2f3ce3f117e18120ff6af08a1eeae73b236fc47eaa10b79",
     "width": 1080,
-    "height": 2400,
+    "height": 2110,
     "file": "xiaomi-miui14-background-popup.png",
     "license": "Project device capture",
     "retrieved": "2026-10-10",
     "manufacturer": "xiaomi",
     "brand": "xiaomi",
     "setting": "background-popup",
-    "softwareVersion": "MIUI 14 · Android 13",
-    "uiVariant": "Xiaomi M2101K7BI · English · dark theme",
+    "softwareVersion": "MIUI 14 \u00b7 Android 13",
+    "uiVariant": "Xiaomi M2101K7BI \u00b7 English \u00b7 dark theme",
     "attribution": "Geeta project device capture",
-    "redistributionRights": "Captured at the user’s request for inclusion in Geeta’s offline settings guides",
+    "redistributionRights": "Captured at the user\u2019s request for inclusion in Geeta\u2019s offline settings guides",
     "eligible": true,
     "highlight": [
       0.06,
-      0.34,
+      0.1781,
       0.88,
-      0.05
+      0.0622
     ],
     "audit": "Inspected original device screenshot; settings were not changed",
     "supportedBrands": [
@@ -626,23 +626,23 @@
     "source": "device-capture://xiaomi/M2101K7BI/MIUI14/autostart",
     "sha256": "46f286f49c4b8c8375af67971f038ba823f11649433d7b66a9fc72db42865ea9",
     "width": 1080,
-    "height": 2400,
+    "height": 2310,
     "file": "xiaomi-miui14-startup.png",
     "license": "Project device capture",
     "retrieved": "2026-10-10",
     "manufacturer": "xiaomi",
     "brand": "xiaomi",
     "setting": "startup",
-    "softwareVersion": "MIUI 14 · Android 13",
-    "uiVariant": "Xiaomi M2101K7BI · English · dark theme",
+    "softwareVersion": "MIUI 14 \u00b7 Android 13",
+    "uiVariant": "Xiaomi M2101K7BI \u00b7 English \u00b7 dark theme",
     "attribution": "Geeta project device capture",
-    "redistributionRights": "Captured at the user’s request for inclusion in Geeta’s offline settings guides",
+    "redistributionRights": "Captured at the user\u2019s request for inclusion in Geeta\u2019s offline settings guides",
     "eligible": true,
     "highlight": [
       0.06,
-      0.115,
+      0.0805,
       0.88,
-      0.05
+      0.0519
     ],
     "audit": "Inspected original device screenshot; settings were not changed",
     "supportedBrands": [

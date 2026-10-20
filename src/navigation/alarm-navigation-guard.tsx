@@ -60,7 +60,7 @@ export function AlarmNavigationGuard({ children }: PropsWithChildren) {
   }, [navigation, presentation.active, presentation.locked, removalId, route.key, setPreventRemove]);
   useEffect(() => {
     const controller = createRitualRouteRestoration({
-      frame: requestAnimationFrame, cancelFrame: cancelAnimationFrame,
+      frame: callback => requestAnimationFrame(callback), cancelFrame: id => cancelAnimationFrame(id),
       target: () => ritualRouteTarget(getAlarmPresentationState(), route.name),
       canNavigate: () => AppState.currentState === 'active' && navigation.isFocused() &&
         !!navigation.getState()?.routes.some(candidate => candidate.key === route.key),
@@ -117,7 +117,7 @@ export function AlarmNavigationGuard({ children }: PropsWithChildren) {
           identityKey({ sessionId: latest.sessionId, stage: latest.stage, hostGeneration: latest.hostGeneration, coverGeneration: latest.coverGeneration }) === identityKey(identity);
       },
       acknowledge: acknowledgeRitualScreen,
-      frame: requestAnimationFrame, cancelFrame: cancelAnimationFrame,
+      frame: callback => requestAnimationFrame(callback), cancelFrame: id => cancelAnimationFrame(id),
       onError: error => console.error('Could not show the ritual screen', error),
     });
     const delayTimer = delay > 0 ? setTimeout(() => { delayElapsed = true; handshake.recheck(); }, delay) : null;

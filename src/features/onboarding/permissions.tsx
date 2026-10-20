@@ -113,24 +113,31 @@ export function OnboardingPermissions({ onProgress, registerBack, onFinish }: {
               </TextR>
             </Pressable>
           )}
-          {id !== 'vibration' && <OnboardingButton
-            secondary={hasReviewed || ready || !page.required}
-            label={t(actionLabel)}
-            disabled={blocked}
-            onPress={() => {
-              setReviewedPages(prev => ({ ...prev, [id]: true }));
-              setAutoAdvance(true); lastAutomaticId.current = undefined;
-              void controller.open(id, !page.required || ready);
-            }}
-          />}
-          <OnboardingButton label={t(isLastPage ? 'Continue' : 'Next')} disabled={blocked || (page.required && !!controller.error) || !permissionPageCanContinue(page, status)} onPress={next} />
+          {id !== 'vibration' && !hasReviewed && !ready && (
+            <OnboardingButton
+              label={t(actionLabel ?? 'Review settings')}
+              disabled={blocked}
+              onPress={() => {
+                setReviewedPages(prev => ({ ...prev, [id]: true }));
+                setAutoAdvance(true); lastAutomaticId.current = undefined;
+                void controller.open(id, !page.required || ready);
+              }}
+            />
+          )}
+          {(id === 'vibration' || hasReviewed || ready) && (
+            <OnboardingButton
+              label={t(isLastPage ? 'Continue' : 'Next')}
+              disabled={blocked || (page.required && !!controller.error) || !permissionPageCanContinue(page, status)}
+              onPress={next}
+            />
+          )}
         </View>}
       </>}
       {controller.error && <TextR accessibilityRole="alert">{text(controller.error)}</TextR>}
       {controller.settingsHint && <TextR accessibilityLiveRegion="polite">{text(controller.settingsHint)}</TextR>}
       {controller.error && <OnboardingButton secondary label={t('Retry')} disabled={blocked} onPress={() => { void controller.refresh(); }} />}
     </>}
-    <OnboardingButton secondary label={t(onFinish ? 'Close' : 'Set up later')} disabled={blocked} onPress={finish} />
+    {onFinish && <OnboardingButton secondary label={t('Close')} disabled={blocked} onPress={finish} />}
   </View>;
 }
 

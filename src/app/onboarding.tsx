@@ -1,4 +1,5 @@
 import { AruMascot } from "@/components/aru-mascot";
+import { TreeGrowthOnboardingStage } from "@/components/onboarding/tree-growth-stage";
 import { Screen, TextR } from "@/components/ritual-ui";
 import { SacredLotusCoin } from "@/components/sacred-lotus-coin";
 import { C, R } from "@/constants/ritual-theme";
@@ -14,7 +15,10 @@ import { confirmAction } from "@/features/quiz/actions";
 import { LanguagePicker } from "@/i18n/language-picker";
 import { useLanguage } from "@/i18n/provider";
 import { useAlarmPresentation } from "@/navigation/alarm-presentation";
-import { getAlarmCapabilityStatus, isNativeAlarmAvailable } from "@/services/alarm";
+import {
+  getAlarmCapabilityStatus,
+  isNativeAlarmAvailable,
+} from "@/services/alarm";
 import {
   CommonActions,
   useIsFocused,
@@ -22,15 +26,15 @@ import {
 } from "expo-router/react-navigation";
 import {
   ArrowLeft,
-  Award,
   Bell,
   BookOpen,
   Flame,
   Globe,
   Lock,
+  Share2,
+  Sprout,
   Sun,
   TreePine,
-  Trophy,
   Wind,
 } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -44,7 +48,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { accessDeadline, permissionPageIds } from '@/features/onboarding/permission-model';
+import {
+  accessDeadline,
+  permissionPageIds,
+} from "@/features/onboarding/permission-model";
 
 const ACTIVE_ONBOARDING_STEPS = [
   "welcome",
@@ -78,23 +85,45 @@ export default function OnboardingScreen() {
   );
 
   const permissionBack = useRef<(() => void) | null>(null);
-  const [permissionProgress, setPermissionProgress] = useState({ position: 1, total: 1 });
-  const registerBack = useCallback((action: (() => void) | null) => { permissionBack.current = action; }, []);
-  const onPermissionProgress = useCallback((position: number, total: number) => {
-    setPermissionProgress(previous => previous.position === position && previous.total === total ? previous : { position, total });
+  const [permissionProgress, setPermissionProgress] = useState({
+    position: 1,
+    total: 1,
+  });
+  const registerBack = useCallback((action: (() => void) | null) => {
+    permissionBack.current = action;
   }, []);
+  const onPermissionProgress = useCallback(
+    (position: number, total: number) => {
+      setPermissionProgress((previous) =>
+        previous.position === position && previous.total === total
+          ? previous
+          : { position, total },
+      );
+    },
+    [],
+  );
   useEffect(() => {
     let alive = true;
-    if (isNativeAlarmAvailable) void accessDeadline(getAlarmCapabilityStatus()).then(status => {
-      if (alive) setPermissionProgress(previous => ({ ...previous, total: permissionPageIds(status).length }));
-    }).catch(() => {});
-    return () => { alive = false; };
+    if (isNativeAlarmAvailable)
+      void accessDeadline(getAlarmCapabilityStatus())
+        .then((status) => {
+          if (alive)
+            setPermissionProgress((previous) => ({
+              ...previous,
+              total: permissionPageIds(status).length,
+            }));
+        })
+        .catch(() => {});
+    return () => {
+      alive = false;
+    };
   }, []);
   const step: OnboardingStep = record?.step ?? "welcome";
 
   // Resume older records that stopped on the removed alarm introduction.
   useEffect(() => {
-    if (step === 'alarm' && !busy && eligible()) void update(value => ({ ...value, step: 'permissions' }));
+    if (step === "alarm" && !busy && eligible())
+      void update((value) => ({ ...value, step: "permissions" }));
   }, [step, busy, eligible, update]);
 
   // If a device reaches or reloads into legacy 'ready' step, immediately complete and transition to Home
@@ -123,11 +152,20 @@ export default function OnboardingScreen() {
 
   const back = useCallback(() => {
     if (!record || busy || !eligible()) return;
-    if (record.step === 'permissions') { permissionBack.current?.(); return; }
-    const currentIdx = ACTIVE_ONBOARDING_STEPS.indexOf(record.step as (typeof ACTIVE_ONBOARDING_STEPS)[number]);
+    if (record.step === "permissions") {
+      permissionBack.current?.();
+      return;
+    }
+    const currentIdx = ACTIVE_ONBOARDING_STEPS.indexOf(
+      record.step as (typeof ACTIVE_ONBOARDING_STEPS)[number],
+    );
     const previous =
       ACTIVE_ONBOARDING_STEPS[
-        Math.max(0, (currentIdx >= 0 ? currentIdx : ACTIVE_ONBOARDING_STEPS.length - 1) - 1)
+        Math.max(
+          0,
+          (currentIdx >= 0 ? currentIdx : ACTIVE_ONBOARDING_STEPS.length - 1) -
+            1,
+        )
       ];
     void update((value) => ({
       ...value,
@@ -175,19 +213,32 @@ export default function OnboardingScreen() {
     );
   }
 
-  if (alarm.active || !needsIntroduction(record) || step === 'alarm') return null;
+  if (alarm.active || !needsIntroduction(record) || step === "alarm")
+    return null;
 
   const blocked = busy || languageBusy;
   const currentStepIndex = ACTIVE_ONBOARDING_STEPS.indexOf(
     step as (typeof ACTIVE_ONBOARDING_STEPS)[number],
   );
   const position =
-    (currentStepIndex >= 0 ? currentStepIndex : ACTIVE_ONBOARDING_STEPS.length - 1) + (step === 'permissions' ? permissionProgress.position : 1);
-  const progressSteps = [...ACTIVE_ONBOARDING_STEPS.slice(0, -1), ...Array.from({ length: permissionProgress.total }, (_, index) => `permission-${index}`)];
+    (currentStepIndex >= 0
+      ? currentStepIndex
+      : ACTIVE_ONBOARDING_STEPS.length - 1) +
+    (step === "permissions" ? permissionProgress.position : 1);
+  const progressSteps = [
+    ...ACTIVE_ONBOARDING_STEPS.slice(0, -1),
+    ...Array.from(
+      { length: permissionProgress.total },
+      (_, index) => `permission-${index}`,
+    ),
+  ];
   const isCompact = height < 740;
+  const isTall = height >= 820;
+
+  // Responsive stage sizing adapted gracefully to screen height
   const mascotSize = Math.min(
-    220,
-    Math.max(165, Math.round(height * (isCompact ? 0.21 : 0.24))),
+    200,
+    Math.max(130, Math.round(height * (isCompact ? 0.16 : isTall ? 0.20 : 0.18))),
   );
 
   return (
@@ -195,7 +246,7 @@ export default function OnboardingScreen() {
       contentContainerStyle={[
         s.screenScroll,
         {
-          paddingBottom: Math.max(insets.bottom + 16, 28),
+          paddingBottom: Math.max(insets.bottom + 12, 20),
         },
       ]}
     >
@@ -203,7 +254,10 @@ export default function OnboardingScreen() {
         style={[
           s.pageContainer,
           {
-            minHeight: Math.max(560, height - insets.top - insets.bottom - 40),
+            minHeight: Math.max(
+              480,
+              height - insets.top - insets.bottom - (isCompact ? 20 : 36),
+            ),
           },
         ]}
       >
@@ -258,9 +312,20 @@ export default function OnboardingScreen() {
         <View style={s.middleHeroSection}>
           {/* Animated Mascot Stage with Radiant Sunburst Aura */}
           {step !== "permissions" && (
-            <View style={[s.mascotStage, { height: mascotSize + 16 }]}>
+            <View
+              style={[
+                s.mascotStage,
+                step === "practice"
+                  ? { minHeight: 135, justifyContent: "center" }
+                  : { height: mascotSize + 16 },
+              ]}
+            >
               {step === "welcome" && (
-                <AruMascot clip="streak_celebration" size={mascotSize} glow="day" />
+                <AruMascot
+                  clip="streak_celebration"
+                  size={mascotSize}
+                  glow="day"
+                />
               )}
               {step === "language" && (
                 <AruMascot
@@ -276,14 +341,7 @@ export default function OnboardingScreen() {
                   glow="day"
                 />
               )}
-              {step === "practice" && (
-                <AruMascot
-                  clip="streak_celebration"
-                  size={Math.round(mascotSize * 0.95)}
-                  glow="day"
-                />
-              )}
-
+              {step === "practice" && <TreeGrowthOnboardingStage />}
             </View>
           )}
 
@@ -335,10 +393,10 @@ export default function OnboardingScreen() {
                   </View>
                   <View style={s.featureCopy}>
                     <TextR style={s.featureHeading}>
-                      {t("A little practice, steady growth")}
+                      {t("Grow habits, plant a tree")}
                     </TextR>
                     <TextR style={s.featureSub}>
-                      Daily 30-level tree growth & lotus rewards
+                      {t("30-day streak plants a real tree in your name")}
                     </TextR>
                   </View>
                 </View>
@@ -457,49 +515,82 @@ export default function OnboardingScreen() {
             <View style={s.stepBody}>
               <View style={s.titleGroup}>
                 <View style={s.kickerPill}>
-                  <TreePine size={13} color={C.greenDark} />
-                  <TextR style={s.kickerText}>SACRED PROGRESS</TextR>
+                  <Sprout size={13} color={C.greenDark} />
+                  <TextR style={s.kickerText}>
+                    {t("EARTH SEVA · 30 DAYS")}
+                  </TextR>
                 </View>
                 <TextR serif accessibilityRole="header" style={s.title}>
-                  {t("A little practice, steady growth")}
+                  {t("Grow your habit, plant a real tree")}
                 </TextR>
                 <TextR style={s.lead}>
                   {t(
-                    "Complete the daily quiz and morning ritual to grow your tree by one level.",
+                    "Practice for 30 days. Aarambh will plant a real tree in your name for the environment — with details you can share.",
                   )}
                 </TextR>
               </View>
 
-              {/* Sacred Tree & Points Feature Card */}
+              {/* Sacred Tree & Real Seva Feature Card */}
               <View style={s.sacredContainer}>
-                <View style={s.rewardsHeaderRow}>
-                  <SacredLotusCoin size={50} />
+                {/* 1. Real Tree Planted in Your Name */}
+                <View style={s.rewardsFeatureRow}>
+                  <View
+                    style={[
+                      s.featureIconCircle,
+                      { backgroundColor: "#DCFCE7" },
+                    ]}
+                  >
+                    <TreePine size={20} color={C.greenDark} />
+                  </View>
                   <View style={{ flex: 1, gap: 2 }}>
-                    <TextR style={s.rewardPointsTitle}>
-                      +20 Lotus Points / Day
+                    <TextR style={s.featureHeading}>
+                      {t("Real tree planted in your name")}
                     </TextR>
-                    <TextR style={s.rewardPointsSub}>
-                      Earned every day you complete ritual & quiz
+                    <TextR style={s.featureSub}>
+                      {t(
+                        "After 30 days, Aarambh plants a living tree dedicated to you for the environment.",
+                      )}
                     </TextR>
                   </View>
                 </View>
 
                 <View style={s.cardDivider} />
 
-                <View style={s.milestoneChipsRow}>
-                  <View style={s.milestoneChip}>
-                    <Award size={15} color={C.primary} />
-                    <TextR style={s.milestoneChipText}>Level 7: +40 pts</TextR>
-                  </View>
+                {/* 2. Shareable Tree Details & Certificate */}
+                <View style={s.rewardsFeatureRow}>
                   <View
                     style={[
-                      s.milestoneChip,
-                      { borderColor: "#F4B942", backgroundColor: "#FFFBEB" },
+                      s.featureIconCircle,
+                      { backgroundColor: "#FFEDD5" },
                     ]}
                   >
-                    <Trophy size={15} color="#8C5E0D" />
-                    <TextR style={[s.milestoneChipText, { color: "#8C5E0D" }]}>
-                      Level 30: +100 pts
+                    <Share2 size={18} color={C.primary} />
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <TextR style={s.featureHeading}>
+                      {t("Shareable tree details & certificate")}
+                    </TextR>
+                    <TextR style={s.featureSub}>
+                      {t(
+                        "Get verified tree details, species, and a certificate you can proudly share.",
+                      )}
+                    </TextR>
+                  </View>
+                </View>
+
+                <View style={s.cardDivider} />
+
+                {/* 3. Lotus Points */}
+                <View style={s.rewardsFeatureRow}>
+                  <SacredLotusCoin size={38} />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <TextR style={s.featureHeading}>
+                      {t("+20 Lotus Points / Day")}
+                    </TextR>
+                    <TextR style={s.featureSub}>
+                      {t(
+                        "Permanent rewards (+10 ritual, +10 quiz). They stay yours forever!",
+                      )}
                     </TextR>
                   </View>
                 </View>
@@ -508,7 +599,12 @@ export default function OnboardingScreen() {
           )}
 
           {/* ── Step 6: System Permissions ──────────────────────────────── */}
-          {step === "permissions" && <OnboardingPermissions onProgress={onPermissionProgress} registerBack={registerBack} />}
+          {step === "permissions" && (
+            <OnboardingPermissions
+              onProgress={onPermissionProgress}
+              registerBack={registerBack}
+            />
+          )}
 
           {/* Error Alert */}
           {error && (
@@ -553,8 +649,6 @@ export default function OnboardingScreen() {
               onPress={advance}
             />
           )}
-
-
         </View>
       </View>
     </Screen>
@@ -646,76 +740,77 @@ const s = StyleSheet.create({
     flex: 1,
     width: "100%",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    gap: 16,
+    justifyContent: "space-evenly",
+    paddingVertical: 10,
   },
   mascotStage: {
     width: "100%",
     alignItems: "center",
     justifyContent: "center",
-    marginVertical: 4,
   },
   stepBody: {
     width: "100%",
-    gap: 18,
+    gap: 16,
     alignItems: "center",
   },
   titleGroup: {
     alignItems: "center",
-    gap: 6,
+    gap: 8,
     width: "100%",
+    paddingHorizontal: 10,
   },
   kickerPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 12,
+    gap: 5.5,
+    paddingVertical: 4.5,
+    paddingHorizontal: 11,
     borderRadius: 999,
     backgroundColor: "rgba(229, 107, 39, 0.12)",
+    marginBottom: 2,
   },
   kickerText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: "800",
     color: C.primary,
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     textTransform: "uppercase",
   },
   title: {
-    fontSize: 28,
-    lineHeight: 36,
+    fontSize: 24,
+    lineHeight: 31,
     fontWeight: "800",
     color: C.ink,
     textAlign: "center",
     letterSpacing: -0.3,
   },
   lead: {
-    fontSize: 17,
-    lineHeight: 25,
-    fontWeight: "700",
-    color: C.primary,
+    fontSize: 14,
+    lineHeight: 20.5,
+    fontWeight: "500",
+    color: C.inkSoft,
     textAlign: "center",
+    paddingHorizontal: 8,
   },
   body: {
-    fontSize: 15,
-    lineHeight: 23,
+    fontSize: 14,
+    lineHeight: 21,
     color: C.inkSoft,
     textAlign: "center",
     fontWeight: "500",
   },
   sacredCardsGroup: {
     width: "100%",
-    gap: 10,
+    gap: 9,
   },
   featureCard: {
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 18,
     backgroundColor: "rgba(255, 252, 248, 0.96)",
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.95)",
@@ -729,9 +824,9 @@ const s = StyleSheet.create({
     elevation: 2,
   },
   featureIconCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -741,20 +836,21 @@ const s = StyleSheet.create({
     gap: 2,
   },
   featureHeading: {
-    fontSize: 15.5,
+    fontSize: 14.5,
     fontWeight: "800",
     color: C.ink,
   },
   featureSub: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12.5,
+    lineHeight: 17,
     color: C.muted,
     fontWeight: "500",
   },
   sacredContainer: {
     width: "100%",
-    padding: 18,
-    borderRadius: R.card,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     backgroundColor: "rgba(255, 252, 248, 0.96)",
     borderWidth: 1.5,
     borderColor: "rgba(255, 255, 255, 0.95)",
@@ -772,12 +868,12 @@ const s = StyleSheet.create({
   pathwayRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 12,
   },
   pathwayIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -786,19 +882,27 @@ const s = StyleSheet.create({
     gap: 2,
   },
   pathwayHeader: {
-    fontSize: 15.5,
+    fontSize: 14.5,
     fontWeight: "800",
     color: C.ink,
   },
   pathwaySub: {
-    fontSize: 13,
+    fontSize: 12.5,
+    lineHeight: 17,
     color: C.muted,
   },
   pathwayConnector: {
     width: 2,
-    height: 12,
+    height: 10,
     backgroundColor: "rgba(140, 64, 16, 0.2)",
-    marginLeft: 19,
+    marginLeft: 17,
+  },
+  rewardsFeatureRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    width: "100%",
+    paddingVertical: 2,
   },
   rewardsHeaderRow: {
     flexDirection: "row",

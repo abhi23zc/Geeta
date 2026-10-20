@@ -1,3 +1,4 @@
+import { JaapProvider } from '@/features/jaap/provider';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -38,7 +39,7 @@ function AppChrome() {
   const { record } = useOnboarding();
   const pathname = usePathname();
   const normalizedPath = pathname ? (pathname.startsWith('/') ? pathname : `/${pathname}`) : '/';
-  const isExcluded = normalizedPath.startsWith('/alarm') || normalizedPath === '/breathe' || normalizedPath === '/gita' || normalizedPath === '/downloads' || normalizedPath === '/saved';
+  const isExcluded = normalizedPath.startsWith('/jaap') || normalizedPath.startsWith('/alarm') || normalizedPath === '/breathe' || normalizedPath === '/gita' || normalizedPath === '/downloads' || normalizedPath === '/saved';
   const introduction = !record || needsIntroduction(record);
   const showTabs = !introduction && !presentation.active && !isExcluded && TAB_ROUTES.has(normalizedPath);
 
@@ -57,6 +58,7 @@ function AppChrome() {
         <Stack.Screen name="onboarding" options={{ gestureEnabled: false }} />
         <Stack.Screen name="gita" />
         <Stack.Screen name="breathe" />
+        <Stack.Screen name="jaap" />
         <Stack.Screen name="today" />
         <Stack.Screen name="library" />
         <Stack.Screen name="playlist/[id]" />
@@ -85,9 +87,9 @@ export default function RootLayout() {
             <RitualProvider>
               <TasksProvider>
                 <GitaProvider>
-                  <ContentProvider><NotificationProvider><MusicPlayerProvider>
+                  <ContentProvider><JaapProvider><NotificationProvider><MusicPlayerProvider>
                     {__DEV__ ? <SubscriptionProvider><AppChrome /></SubscriptionProvider> : <AppChrome />}
-                  </MusicPlayerProvider></NotificationProvider></ContentProvider>
+                  </MusicPlayerProvider></NotificationProvider></JaapProvider></ContentProvider>
                 </GitaProvider>
               </TasksProvider>
             </RitualProvider>

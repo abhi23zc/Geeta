@@ -44,9 +44,9 @@ export function PermissionGuide({ manufacturer, setting, instruction }: {
   const effectiveSetting = setting;
   const key = isVibration ? null : guideExampleForSetting(manufacturer, effectiveSetting);
   const customHighlight = setting === 'permanent' && key === 'xiaomi-miui14-notifications'
-    ? [0.05, 0.67, 0.91, 0.06]
+    ? [0.05, 0.6571, 0.91, 0.0623]
     : isVibration && key === 'xiaomi-miui14-notifications'
-    ? [0.06, 0.59, 0.88, 0.048]
+    ? [0.06, 0.574, 0.88, 0.0499]
     : undefined;
   return <View style={{ gap: 8 }}>
     <TextR>{text(isVibration || setting === 'permanent' ? instruction : (key ? GUIDE_EXAMPLES[key].instruction : instruction))}</TextR>

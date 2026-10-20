@@ -4,6 +4,7 @@ import { AppState } from 'react-native';
 import { acknowledgeRewardReceipts, getPendingRewardReceipts, isRewardAlarmAvailable } from '@/services/alarm';
 import { applyReceipts, createProgressWriter, dayKey, emptyDailyProgress, migrateDailyProgress, parseDailyProgress, prepareTimezone, PROGRESS_KEY, shiftDay, validReceipt } from './model';
 import type { CompletionReceipt, DailyProgress, PointsEntry } from './model';
+import { getJaapReceipts, acknowledgeJaapReceipts } from '@/features/jaap/receipts';
 import { progressTransaction } from './transactions';
 import { createGrowthPresentation, type GrowthEvent } from './tree/model';
 import { parseProgress as parseQuizProgress, QUIZ_STORAGE_KEY } from '../quiz/storage';
@@ -25,21 +26,21 @@ export function ProgressProvider({ children }: React.PropsWithChildren) {
       let p = current.current ?? parseDailyProgress(raw ?? null, now, zone);
       const original = p;
       // Replay source outboxes before closing past days. A source read failure must not cause a penalty.
-      const [quizRaw, nativeRaw] = await Promise.all([AsyncStorage.getItem(QUIZ_STORAGE_KEY), getPendingRewardReceipts()]);
+      const [quizRaw, nativeRaw, pendingJaap] = await Promise.all([AsyncStorage.getItem(QUIZ_STORAGE_KEY), getPendingRewardReceipts(), getJaapReceipts()]);
       const pendingQuiz = parseQuizProgress(quizRaw).pendingRewards ?? [];
       const pendingNative: unknown = JSON.parse(nativeRaw);
       if (!Array.isArray(pendingQuiz) || !pendingQuiz.every(r => validReceipt(r) && r.kind === 'quiz') || !Array.isArray(pendingNative) || !pendingNative.every(r => validReceipt(r) && r.kind === 'ritual')) throw new Error('Completion receipts could not be read. Your data has not been reset.');
-      const receipts: CompletionReceipt[] = [...pendingQuiz, ...pendingNative];
+      const receipts: CompletionReceipt[] = [...pendingQuiz, ...pendingNative, ...pendingJaap];
       // If the first shared save failed, new-feature source receipts still establish the start.
       // Existing quiz histories never enter this inbox, so this does not backfill old activity.
       if (raw === null && receipts.length) {
         const earliest = receipts.reduce((time, r) => Math.min(time, Date.parse(r.completedAt)), now.getTime());
         p = emptyDailyProgress(new Date(earliest), p.timezone);
       }
-      const migrating = p.version !== 3;
-      const prepared = p.version !== 3 ? migrateDailyProgress(p, receipts, now, zone) : prepareTimezone(p, zone, now);
+      const migrating = p.version !== 4;
+      const prepared = p.version !== 4 ? migrateDailyProgress(p, receipts, now, zone) : prepareTimezone(p, zone, now);
       const date = dayKey(now, prepared.timezone);
-      const next = migrating ? prepared : applyReceipts(prepared, receipts, now);
+      const next = applyReceipts(prepared, receipts, now);
       if (!current.current || JSON.stringify(next) !== JSON.stringify(original)) await writer.current.save(next);
       current.current = next;
       const pending = await growth.current.observe(original, next, date, migrating);
@@ -56,6 +57,7 @@ export function ProgressProvider({ children }: React.PropsWithChildren) {
       }
       if (date < prepared.lastObserved || receipts.some(r => Date.parse(r.completedAt) > now.getTime())) return false;
       await acknowledgeRewardReceipts(pendingNative.map(r => r.id));
+      await acknowledgeJaapReceipts(pendingJaap.map(r => r.id));
       return true;
     } catch (e) {
       if (mounted.current) setError(e instanceof Error ? e.message : 'Could not save progress. Please retry.');

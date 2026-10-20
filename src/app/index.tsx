@@ -1,3 +1,4 @@
+import { JaapHomeCard } from '@/features/jaap/home-card';
 import { MusicHomeGateway } from '@/components/music/music-home-gateway';
 import { StorageRecoveryNotice } from '@/components/storage-recovery-notice';
 import { useGrowthFocusTarget } from '@/features/progress/tree/focus-target';
@@ -308,6 +309,7 @@ export default function Home() {
 
       {/* 🪷 Enhanced Daily Goal & Streak Stepper Card */}
       <DailyGoalCard link={true} />
+      <JaapHomeCard />
 
       {/* Devotional Hero Alarm Card */}
       <Pressable

@@ -1,3 +1,6 @@
+import { useJaap } from '@/features/jaap/provider';
+import { todayTarget } from '@/features/jaap/model';
+import { dayKey } from '@/features/progress/model';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
@@ -33,6 +36,9 @@ if (Platform.OS !== 'web') Notifications.setNotificationHandler({ handleNotifica
 
 export function NotificationProvider({ children }: React.PropsWithChildren) {
   const gita = useGitaProgress(), tasks = useTasks(), ritual = useRitual();
+  const jaap = useJaap();
+  const jaapTarget = todayTarget(jaap.state, dayKey(new Date(), jaap.timezone));
+  const jaapCompleted = jaapTarget.count >= jaapTarget.target;
   const content = useContent(), { language } = useLanguage(), onboarding = useOnboarding(), alarm = useAlarmPresentation();
   const [owner, updateOwner] = useState(ownerStatus), [routingTick, setRoutingTick] = useState(0);
   const gate = useRef(true);
@@ -68,16 +74,20 @@ export function NotificationProvider({ children }: React.PropsWithChildren) {
   useEffect(() => {
     if (Platform.OS === 'web') return;
     const sync = async () => {
-      if (!gita.ready || !tasks.ready || !ritual.alarmReady) return;
+      if (!gita.ready || !tasks.ready || !ritual.alarmReady || !jaap.ready) return;
       const quiz = parseProgress(await AsyncStorage.getItem(QUIZ_STORAGE_KEY));
       const today = localDateKey();
-      await syncEngagementNotifications({ practiceCompleted: gita.completedDates.has(today), quizCompleted: quiz.history.some(round => round.date === today), hasSavedTeaching: content.snapshot.saved.length > 0, tasks: tasks.tasks, alarmEnabled: ritual.alarmEnabled, alarmTime: ritual.alarmTime });
+      await syncEngagementNotifications({ practiceCompleted: gita.completedDates.has(today), quizCompleted: quiz.history.some(round => round.date === today), hasSavedTeaching: content.snapshot.saved.length > 0, tasks: tasks.tasks, alarmEnabled: ritual.alarmEnabled, alarmTime: ritual.alarmTime, jaap: { enabled: jaap.state.preferences.reminderEnabled, minutes: jaap.state.preferences.reminderMinutes, completed: jaapCompleted, language } });
     };
     void sync().catch(() => undefined);
     const app = AppState.addEventListener('change', state => { if (state === 'active') void sync().catch(() => undefined); });
     const changed = onNotificationScheduleChanged(() => { void sync().catch(() => undefined); });
     return () => { app.remove(); changed(); };
-  }, [gita.ready, gita.completedDates, tasks.ready, tasks.tasks, ritual.alarmReady, ritual.alarmEnabled, ritual.alarmTime, content.snapshot.saved.length]);
+  }, [gita.ready, gita.completedDates, tasks.ready, tasks.tasks, ritual.alarmReady, ritual.alarmEnabled, ritual.alarmTime, content.snapshot.saved.length, jaap.ready, jaap.state.preferences.reminderEnabled, jaap.state.preferences.reminderMinutes, jaapCompleted, language]);
+  const pendingJaap = useRef(false);
+  useEffect(() => {
+    if (!gate.current && !alarm.active && pendingJaap.current) { pendingJaap.current = false; router.push('/jaap'); }
+  }, [alarm.active, onboarding.record]);
   useEffect(() => {
     if (Platform.OS === 'web') return;
     const open = (response: Notifications.NotificationResponse) => {
@@ -85,6 +95,11 @@ export function NotificationProvider({ children }: React.PropsWithChildren) {
       const payload = parseOwnerPayload(data);
       if (payload) { void handleOwnerOpening(payload).catch(() => undefined); return; }
       const url = data?.url;
+      if (url === '/jaap' && data?.kind === 'jaap-reminder') {
+        if (gate.current || getAlarmPresentationState().active) pendingJaap.current = true;
+        else router.push('/jaap');
+        return;
+      }
       if (!gate.current && typeof url === 'string' && Object.values(DESTINATIONS).includes(url as never)) router.push(url as never);
     };
     const latest = Notifications.getLastNotificationResponse(); if (latest) open(latest);

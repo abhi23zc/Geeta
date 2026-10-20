@@ -72,7 +72,15 @@
         }
       ],
       "./plugins/with-alarm-desugaring",
-      "./plugins/with-alarm-intents"
+      "./plugins/with-alarm-intents",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose a personal background for your jaap practice.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

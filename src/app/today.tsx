@@ -1,3 +1,4 @@
+import { JaapHomeCard } from '@/features/jaap/home-card';
 import { useLanguage } from '@/i18n/provider';
 import { taskDisplayTitle } from '@/i18n/task-copy';
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
@@ -619,6 +620,8 @@ export default function Today() {
         <TextR style={s.source}>
           {verse.referenceLabel ?? `GITA ${verse.chapter}.${verse.verse}`}  {translate("· DAILY TEACHING")} </TextR>
       </View>
+
+      <JaapHomeCard compact />
 
       {store.loadError ? (
         <View style={s.notice}>

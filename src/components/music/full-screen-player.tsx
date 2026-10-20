@@ -583,11 +583,6 @@ function PlayerBody({ tab, setTab }: { tab: PlayerTab; setTab: (tab: PlayerTab) 
             </Pressable>
           </View>
 
-          <View style={[styles.utilitiesRow, { justifyContent: 'space-around' }]}>
-            <Pressable style={styles.utilityAction} accessibilityRole="button" accessibilityLabel={tr('Back 15 seconds', '15 सेकंड पीछे')} onPress={() => run(() => p.skipBackward())}><TextR>↶ 15s</TextR></Pressable>
-            <Pressable style={styles.utilityAction} accessibilityRole="button" accessibilityLabel={tr('Stop playback', 'संगीत बंद करें')} onPress={p.stop}><TextR>{tr('Stop playback', 'संगीत बंद करें')}</TextR></Pressable>
-            <Pressable style={styles.utilityAction} accessibilityRole="button" accessibilityLabel={tr('Forward 15 seconds', '15 सेकंड आगे')} onPress={() => run(() => p.skipForward())}><TextR>15s ↷</TextR></Pressable>
-          </View>
           {!!p.persistenceError && <View style={styles.alertNotice} accessibilityRole="alert"><TextR style={styles.alertNoticeText}>{tr('Listening progress or favorites could not be saved.', 'सुनने की प्रगति या पसंद सहेजी नहीं जा सकी।')}</TextR></View>}
           {/* Secondary Utilities Bar (Speed / Timer / Downloads) */}
           <View style={styles.utilitiesRow}>
@@ -788,7 +783,6 @@ function PlayerBody({ tab, setTab }: { tab: PlayerTab; setTab: (tab: PlayerTab) 
 }
 
 const styles = StyleSheet.create({
-  utilityAction: { minHeight: 44, minWidth: 48, alignItems: 'center', justifyContent: 'center' },
   root: {
     flex: 1,
     backgroundColor: C.canvas,

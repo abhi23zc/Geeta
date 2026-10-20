@@ -1,7 +1,10 @@
+import { translate } from '@/i18n/translations';
+import type { AppLanguage } from '@/i18n/model';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
+export const JAAP_CHANNEL = 'jaap-reminders-v1';
 export const PRACTICE_CHANNEL = 'daily-practice-v1';
 export const QUIZ_CHANNEL = 'daily-quiz-v1';
 // A new ID migrates installations whose original task channel was silent.
@@ -12,7 +15,7 @@ const LAST_OPEN_KEY = 'geeta:last-opened-v1';
 const CLEANUP_KEY = 'geeta:notification-cleanup-v1';
 
 export type ReminderTask = { id: string; title: string; timeMinutes?: number; recurrence: 'daily' | 'once'; done: boolean; reminderEnabled?: boolean };
-export type NotificationSnapshot = { practiceCompleted: boolean; quizCompleted: boolean; hasSavedTeaching: boolean; tasks: ReminderTask[]; alarmEnabled: boolean; alarmTime: string };
+export type NotificationSnapshot = { practiceCompleted: boolean; quizCompleted: boolean; hasSavedTeaching: boolean; tasks: ReminderTask[]; alarmEnabled: boolean; alarmTime: string; jaap?: { enabled: boolean; minutes: number; completed: boolean; language: AppLanguage } };
 
 let listeners = new Set<() => void>();
 let synchronization: Promise<void> = Promise.resolve();
@@ -31,12 +34,14 @@ function inAlarmQuietWindow(date: Date, alarmEnabled: boolean, alarmTime: string
 }
 function notification(title: string, body: string, url: string, channelId: string) {
   const task = channelId === TASK_CHANNEL;
-  return { title, body, data: { url, ...(task ? { kind: 'task-reminder' } : {}) }, ...(task ? { sound: 'default' as const, priority: Notifications.AndroidNotificationPriority.HIGH } : {}), ...(Platform.OS === 'android' ? { channelId } : {}) };
+  const jaap = channelId === JAAP_CHANNEL;
+  return { title, body, data: { url, ...(task ? { kind: 'task-reminder' } : {}), ...(jaap ? { kind: 'jaap-reminder' } : {}) }, ...(task ? { sound: 'default' as const, priority: Notifications.AndroidNotificationPriority.HIGH } : {}), ...(Platform.OS === 'android' ? { channelId } : {}) };
 }
 
 export async function configureEngagementNotifications() {
   if (Platform.OS !== 'android') return;
   await Promise.all([
+    Notifications.setNotificationChannelAsync(JAAP_CHANNEL, { name: 'Jaap practice', importance: Notifications.AndroidImportance.DEFAULT, sound: null }),
     Notifications.setNotificationChannelAsync(PRACTICE_CHANNEL, { name: 'Daily practice', importance: Notifications.AndroidImportance.DEFAULT, sound: null }),
     Notifications.setNotificationChannelAsync(QUIZ_CHANNEL, { name: 'Daily quiz', importance: Notifications.AndroidImportance.DEFAULT, sound: null }),
     // Omitting sound selects Android's default. SDK 57 treats the string
@@ -64,7 +69,9 @@ async function replace(entries: { date: Date; content: Notifications.Notificatio
   await Promise.all(old.map(id => Notifications.cancelScheduledNotificationAsync(id).catch(() => undefined)));
   const now = Date.now();
   const ids: string[] = [];
-  for (const entry of entries) {
+  const upcoming = entries.filter(e => e.date.getTime() > now).sort((a,b) => a.date.getTime() - b.date.getTime());
+  const bounded = Platform.OS === 'ios' ? upcoming.slice(0, 60) : upcoming;
+  for (const entry of bounded) {
     if (entry.date.getTime() <= now) continue;
     const { channelId, ...content } = entry.content;
     ids.push(await Notifications.scheduleNotificationAsync({ content, trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: entry.date, channelId } }));
@@ -88,6 +95,10 @@ async function syncEngagementNotificationsNow(snapshot: NotificationSnapshot) {
   const entries: { date: Date; content: Notifications.NotificationContentInput & { channelId?: string } }[] = [];
   for (let day = 0; day < 31; day++) {
     const today = day === 0;
+    if (snapshot.jaap?.enabled && !(today && snapshot.jaap.completed)) {
+      const at = dateAt(day, snapshot.jaap.minutes);
+      if (!inAlarmQuietWindow(at, snapshot.alarmEnabled, snapshot.alarmTime)) entries.push({ date: at, content: notification(translate('A moment for your jaap', undefined, snapshot.jaap.language), translate('Your mala is ready whenever you are.', undefined, snapshot.jaap.language), '/jaap', JAAP_CHANNEL) });
+    }
     const practiceAt = dateAt(day, 8 * 60);
     const quizAt = dateAt(day, 15 * 60);
     const streakAt = dateAt(day, 20 * 60 + 45);

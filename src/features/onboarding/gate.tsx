@@ -11,7 +11,7 @@ import { confirmAction } from '@/features/quiz/actions';
 import { createRitualRouteRestoration } from '@/navigation/ritual-route-restoration';
 import { getAlarmPresentationState } from '@/services/alarm';
 
-const deferrable = new Set(['today', 'progress', 'quiz', 'saved', 'downloads', 'language']);
+const deferrable = new Set(['today', 'progress', 'quiz', 'saved', 'downloads', 'language', 'jaap']);
 export function OnboardingGate({ children }: PropsWithChildren) {
   const navigation = useNavigation(), route = useRoute();
   const focused = useIsFocused();
@@ -28,7 +28,7 @@ export function OnboardingGate({ children }: PropsWithChildren) {
     // A child effect can run before the root navigator registers its action
     // handler. Wait for a frame and recheck live focus/ownership before dispatch.
     const controller = createRitualRouteRestoration({
-      frame: requestAnimationFrame, cancelFrame: cancelAnimationFrame,
+      frame: callback => requestAnimationFrame(callback), cancelFrame: id => cancelAnimationFrame(id),
       target: () => {
         const latest = getAlarmPresentationState();
         return latest.active || latest.loading ? null : target;

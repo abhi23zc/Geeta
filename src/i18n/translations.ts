@@ -1,3 +1,4 @@
+import { jaapCopy } from './jaap-copy.ts';
 import { interpolate, type AppLanguage } from "./model.ts";
 import { onboardingCopy } from "./onboarding-copy.ts";
 
@@ -78,6 +79,7 @@ export const catalog = {
   ],
 
   ...onboardingCopy,
+  ...jaapCopy,
   "Required access is ready": [
     "आवश्यक अनुमति तैयार है",
     "Zaroori permission taiyaar hai",

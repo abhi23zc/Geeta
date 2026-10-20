@@ -1,16 +1,17 @@
 import { parseDailyProgress as parseLegacyProgress } from './legacy-model.ts';
 import * as v2 from './v2-model.ts';
+import * as v3 from './v3-model.ts';
 import type { DailyProgress as LegacyDailyProgress } from './legacy-model.ts';
 
 // Keep the key: a single atomic replacement upgrades the snapshot without orphaning balances.
 export const PROGRESS_KEY = 'geeta:daily-progress-v1';
-export type CompletionReceipt = { id: string; kind: 'quiz' | 'ritual'; completedAt: string; startedAt?: string; breathingAt?: string };
-export type ProgressDay = { quiz: boolean; ritual: boolean; rewarded: boolean };
-export type PointsEntry = { id: string; kind: 'daily' | 'quiz' | 'ritual' | 'missed' | 'milestone'; from: string; to: string; amount: number; days: number; milestone?: number; cycle?: number; rule?: 'legacy' | 'inactive-only' };
+export type CompletionReceipt = { id: string; kind: 'quiz' | 'ritual' | 'jaap-active' | 'jaap'; completedAt: string; startedAt?: string; breathingAt?: string };
+export type ProgressDay = { quiz: boolean; ritual: boolean; rewarded: boolean; jaap?: boolean; jaapBonus?: boolean };
+export type PointsEntry = { id: string; kind: 'daily' | 'quiz' | 'ritual' | 'jaap' | 'missed' | 'milestone'; from: string; to: string; amount: number; days: number; milestone?: number; cycle?: number; rule?: 'legacy' | 'inactive-only' };
 export type TreeTransition = { revision: number; kind: 'growth' | 'loss' | 'rollover'; from: number; to: number; lost: number; date: string; cycle: number };
 export type TreeState = { cycle: number; level: number; started: string; completed: string | null; bonuses: number[]; completedCount: number; revision: number; transition: TreeTransition | null; policyStarted: string };
 export type DailyProgress = {
-  version: 3; tree: TreeState; policyChangedAt: string; createdAt: string; timezone: string; activated: string | null;
+  version: 4; tree: TreeState; policyChangedAt: string; createdAt: string; timezone: string; activated: string | null;
   settledThrough: string | null; lastObserved: string; balance: number;
   current: number; best: number; total: number; lastCompleted: string | null;
   milestones: number[]; days: Record<string, ProgressDay>; ledger: PointsEntry[];
@@ -30,7 +31,7 @@ export function shiftDay(day: string, delta: number) {
 }
 export function dayDistance(from: string, to: string) { return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000); }
 export function emptyDailyProgress(now: Date, timezone: string): DailyProgress {
-  return { version: 3, tree: initialTree(dayKey(now, timezone)), policyChangedAt: now.toISOString(), createdAt: now.toISOString(), timezone, activated: null, settledThrough: null, lastObserved: dayKey(now, timezone), balance: 0, current: 0, best: 0, total: 0, lastCompleted: null, milestones: [], days: {}, ledger: [], preActivation: [] };
+  return { version: 4, tree: initialTree(dayKey(now, timezone)), policyChangedAt: now.toISOString(), createdAt: now.toISOString(), timezone, activated: null, settledThrough: null, lastObserved: dayKey(now, timezone), balance: 0, current: 0, best: 0, total: 0, lastCompleted: null, milestones: [], days: {}, ledger: [], preActivation: [] };
 }
 function initialTree(date: string): TreeState { return { cycle: 1, level: 0, started: date, completed: null, bonuses: [], completedCount: 0, revision: 0, transition: null, policyStarted: date }; }
 function transition(p: DailyProgress, kind: TreeTransition['kind'], level: number, date: string, lost = 0): DailyProgress {
@@ -56,16 +57,17 @@ const validDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-
 const natural = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) >= 0;
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 export function validReceipt(v: unknown): v is CompletionReceipt {
-  if (!object(v) || typeof v.id !== 'string' || !v.id || !['quiz', 'ritual'].includes(String(v.kind)) || typeof v.completedAt !== 'string' || !Number.isFinite(Date.parse(v.completedAt))) return false;
-  return v.kind === 'quiz' || (typeof v.startedAt === 'string' && typeof v.breathingAt === 'string' && Number.isFinite(Date.parse(v.startedAt)) && Number.isFinite(Date.parse(v.breathingAt)) && Date.parse(v.startedAt) <= Date.parse(v.breathingAt) && Date.parse(v.breathingAt) <= Date.parse(v.completedAt));
+  if (!object(v) || typeof v.id !== 'string' || !v.id || !['quiz', 'ritual', 'jaap-active', 'jaap'].includes(String(v.kind)) || typeof v.completedAt !== 'string' || !Number.isFinite(Date.parse(v.completedAt))) return false;
+  return v.kind !== 'ritual' || (typeof v.startedAt === 'string' && typeof v.breathingAt === 'string' && Number.isFinite(Date.parse(v.startedAt)) && Number.isFinite(Date.parse(v.breathingAt)) && Date.parse(v.startedAt) <= Date.parse(v.breathingAt) && Date.parse(v.breathingAt) <= Date.parse(v.completedAt));
 }
-export function parseDailyProgress(raw: string | null, now: Date, timezone: string): DailyProgress | LegacyDailyProgress | v2.DailyProgress {
+export function parseDailyProgress(raw: string | null, now: Date, timezone: string): DailyProgress | LegacyDailyProgress | v2.DailyProgress | v3.DailyProgress {
   if (raw === null) return emptyDailyProgress(now, timezone);
   const p: unknown = JSON.parse(raw);
   if (object(p) && p.version === 1) return parseLegacyProgress(raw, now, timezone);
   if (object(p) && p.version === 2) return v2.parseDailyProgress(raw, now, timezone);
+  if (object(p) && p.version === 3) return v3.parseDailyProgress(raw, now, timezone);
   const fail = () => { throw new Error('Saved progress could not be read. Your data has not been reset.'); };
-  if (!object(p) || p.version !== 3 || typeof p.createdAt !== 'string' || !Number.isFinite(Date.parse(p.createdAt)) || typeof p.policyChangedAt !== 'string' || !Number.isFinite(Date.parse(p.policyChangedAt)) || Date.parse(p.policyChangedAt) < Date.parse(p.createdAt) || typeof p.timezone !== 'string' || !validDate(p.lastObserved) || ![p.activated, p.settledThrough, p.lastCompleted].every(d => d === null || validDate(d)) || ![p.balance, p.current, p.best, p.total].every(natural) || !object(p.days) || !Array.isArray(p.ledger) || !Array.isArray(p.milestones) || p.milestones.some(m => m !== 7 && m !== 30) || new Set(p.milestones).size !== p.milestones.length) return fail();
+  if (!object(p) || p.version !== 4 || typeof p.createdAt !== 'string' || !Number.isFinite(Date.parse(p.createdAt)) || typeof p.policyChangedAt !== 'string' || !Number.isFinite(Date.parse(p.policyChangedAt)) || Date.parse(p.policyChangedAt) < Date.parse(p.createdAt) || typeof p.timezone !== 'string' || !validDate(p.lastObserved) || ![p.activated, p.settledThrough, p.lastCompleted].every(d => d === null || validDate(d)) || ![p.balance, p.current, p.best, p.total].every(natural) || !object(p.days) || !Array.isArray(p.ledger) || !Array.isArray(p.milestones) || p.milestones.some(m => m !== 7 && m !== 30) || new Set(p.milestones).size !== p.milestones.length) return fail();
   if (p.preActivation === undefined) p.preActivation = [];
   if (!Array.isArray(p.preActivation) || !p.preActivation.every(validReceipt) || (p.activated !== null && p.preActivation.length > 0)) return fail();
   try { dayKey(now, p.timezone); } catch { return fail(); }
@@ -75,9 +77,10 @@ export function parseDailyProgress(raw: string | null, now: Date, timezone: stri
   const days = p.days as Record<string, ProgressDay>;
   const dailyDates = new Set(p.ledger.filter(e => object(e) && e.kind === 'daily').map(e => e.from));
   for (const e of p.ledger) {
-    if (!object(e) || typeof e.id !== 'string' || ids.has(e.id) || !['daily', 'quiz', 'ritual', 'missed', 'milestone'].includes(String(e.kind)) || !validDate(e.from) || !validDate(e.to) || e.to < e.from || e.to > p.lastObserved || !Number.isSafeInteger(e.amount) || !natural(e.days) || e.days < 1) return fail();
+    if (!object(e) || typeof e.id !== 'string' || ids.has(e.id) || !['daily', 'quiz', 'ritual', 'jaap', 'missed', 'milestone'].includes(String(e.kind)) || !validDate(e.from) || !validDate(e.to) || e.to < e.from || e.to > p.lastObserved || !Number.isSafeInteger(e.amount) || !natural(e.days) || e.days < 1) return fail();
     if (e.kind === 'daily' && (e.id !== `daily:${e.from}` || e.from !== e.to || e.amount !== 20 || e.days !== 1 || e.from > policyDate || !days[e.from]?.rewarded)) return fail();
     if ((e.kind === 'quiz' || e.kind === 'ritual') && (e.id !== `${e.kind}:${e.from}` || e.from !== e.to || e.amount !== 10 || e.days !== 1 || e.from < policyDate || !days[e.from]?.[e.kind] || dailyDates.has(e.from))) return fail();
+    if (e.kind === 'jaap' && (e.id !== `jaap:${e.from}` || e.from !== e.to || e.amount !== 10 || e.days !== 1 || !days[e.from]?.jaapBonus || !days[e.from]?.jaap)) return fail();
     if (e.kind === 'missed' && (e.id !== `missed:${e.from}:${e.to}` || e.days !== dayDistance(e.from, e.to) + 1 || e.amount !== -Math.min(balance, 10 * e.days))) return fail();
     if (e.kind === 'missed') {
       const from = e.from, to = e.to;
@@ -85,13 +88,14 @@ export function parseDailyProgress(raw: string | null, now: Date, timezone: stri
       missedThrough = to;
       if (!p.activated || e.from <= p.activated || !p.settledThrough || e.to > p.settledThrough || !['legacy', 'inactive-only'].includes(String(e.rule))) return fail();
       if (e.rule === 'legacy' && (to >= policyDate || Object.keys(days).some(date => date >= from && date <= to && days[date].rewarded))) return fail();
-      if (e.rule === 'inactive-only' && (from < policyDate || Object.keys(days).some(date => date >= from && date <= to && (days[date].quiz || days[date].ritual)))) return fail();
+      if (e.rule === 'inactive-only' && (from < policyDate || Object.keys(days).some(date => date >= from && date <= to && (days[date].quiz || days[date].ritual || days[date].jaap)))) return fail();
     }
     if (e.kind === 'milestone' && (!p.milestones.includes(e.milestone) || (![7, 30].includes(e.milestone as number)) || (e.cycle === undefined ? e.id !== `milestone:${e.milestone}` : !natural(e.cycle) || e.cycle < 1 || e.id !== `milestone:${e.cycle}:${e.milestone}`) || e.amount !== (e.milestone === 7 ? 40 : 100) || e.from !== e.to || e.days !== 1)) return fail();
     balance += e.amount as number; if (balance < 0) return fail(); ids.add(e.id);
   }
   const rewarded = Object.entries(p.days).filter(([, d]) => (d as Record<string, unknown>).rewarded).map(([date]) => date).sort();
   for (const [date, d] of Object.entries(days)) {
+    if ((d.jaap !== undefined && typeof d.jaap !== 'boolean') || (d.jaapBonus !== undefined && typeof d.jaapBonus !== 'boolean') || (d.jaapBonus && !ids.has(`jaap:${date}`))) return fail();
     if (date < policyDate && d.rewarded && !ids.has(`daily:${date}`)) return fail();
     if (date > policyDate && (['quiz', 'ritual'] as const).some(kind => d[kind] && !ids.has(`${kind}:${date}`))) return fail();
   }
@@ -119,13 +123,18 @@ export function parseDailyProgress(raw: string | null, now: Date, timezone: stri
 }
 
 /** Recover old earned rewards and close old days before starting the new policy. No backfill. */
-export function migrateDailyProgress(p: LegacyDailyProgress | v2.DailyProgress, receipts: CompletionReceipt[], now: Date, timezone: string): DailyProgress {
-  const old = p.version === 1 ? v2.migrateDailyProgress(p, receipts, now, timezone) : v2.parseDailyProgress(JSON.stringify(p), now, timezone);
+export function migrateDailyProgress(p: LegacyDailyProgress | v2.DailyProgress | v3.DailyProgress, receipts: CompletionReceipt[], now: Date, timezone: string): DailyProgress {
+  const legacyReceipts = receipts.filter((r): r is v3.CompletionReceipt => r.kind === 'quiz' || r.kind === 'ritual');
+  if (p.version === 3) {
+    if (dayKey(now, p.timezone) < p.lastObserved || now.getTime() < Date.parse(p.createdAt) || receipts.some(r => Date.parse(r.completedAt) > now.getTime())) throw new Error('Correct your clock before upgrading saved progress.');
+    return { ...v3.parseDailyProgress(JSON.stringify(p), now, timezone) as v3.DailyProgress, version: 4 };
+  }
+  const old = p.version === 1 ? v2.migrateDailyProgress(p, legacyReceipts, now, timezone) : v2.parseDailyProgress(JSON.stringify(p), now, timezone);
   if (old.version !== 2) throw new Error('Invalid migration');
   if (dayKey(now, old.timezone) < old.lastObserved || now.getTime() < Date.parse(old.createdAt) || receipts.some(r => Date.parse(r.completedAt) > now.getTime())) throw new Error('Correct your clock before upgrading saved progress.');
-  const recovered = v2.applyReceipts(v2.prepareTimezone(old, timezone, now), receipts, now);
+  const recovered = v2.applyReceipts(v2.prepareTimezone(old, timezone, now), legacyReceipts, now);
   const date = dayKey(now, recovered.timezone), level = Math.min(30, recovered.current);
-  return { ...recovered, version: 3, current: Math.min(30, recovered.current), tree: { ...initialTree(date), level, bonuses: [...recovered.milestones], completed: level === 30 ? date : null, completedCount: level === 30 ? 1 : 0 } };
+  return { ...recovered, version: 4, current: Math.min(30, recovered.current), tree: { ...initialTree(date), level, bonuses: [...recovered.milestones], completed: level === 30 ? date : null, completedCount: level === 30 ? 1 : 0 } };
 }
 
 export function activityPoints(p: DailyProgress, date: string, kind: 'quiz' | 'ritual'): number {
@@ -134,6 +143,7 @@ export function activityPoints(p: DailyProgress, date: string, kind: 'quiz' | 'r
 export function pointsEntryLabel(entry: PointsEntry) {
   if (entry.kind === 'quiz') return 'Quiz reward';
   if (entry.kind === 'ritual') return 'Ritual reward';
+  if (entry.kind === 'jaap') return 'Jaap practice bonus';
   if (entry.kind === 'daily') return 'Daily reward';
   if (entry.kind === 'milestone') return 'Milestone bonus';
   return entry.rule === 'legacy' ? 'Missed-day deduction' : 'Inactive-day deduction';
@@ -146,7 +156,7 @@ export function settle(p: DailyProgress, today: string): DailyProgress {
   const end = shiftDay(today, -1);
   let cursor = shiftDay(p.settledThrough ?? p.activated, 1);
   if (cursor > end) return next;
-  const active = Object.keys(p.days).filter(d => d >= cursor && d <= end && (p.days[d].quiz || p.days[d].ritual)).sort();
+  const active = Object.keys(p.days).filter(d => d >= cursor && d <= end && (p.days[d].quiz || p.days[d].ritual || p.days[d].jaap)).sort();
   const rolledOver = p.tree.completed !== null && today > p.tree.completed;
   let losses = 0;
   const beforeLevel = next.tree.level;
@@ -182,10 +192,11 @@ export function applyReceipts(p: DailyProgress, receipts: CompletionReceipt[], n
     const beforeRevision = next.tree.revision;
     next = settle(next, date);
     if (next.tree.revision > beforeRevision) recoveredLosses += next.tree.transition?.lost ?? 0;
-    const d = { ...(next.days[date] ?? { quiz: false, ritual: false, rewarded: false }), [r.kind]: true };
+    const d: ProgressDay = { ...(next.days[date] ?? { quiz: false, ritual: false, rewarded: false }) };
+    if (r.kind === 'jaap-active' || r.kind === 'jaap') { d.jaap = true; if (r.kind === 'jaap') d.jaapBonus = true; } else d[r.kind] = true;
     const id = `${r.kind}:${date}`;
-    if (Date.parse(r.completedAt) >= Date.parse(next.policyChangedAt) && !next.ledger.some(e => e.id === id || e.id === `daily:${date}`)) {
-      next = { ...next, balance: next.balance + 10, preActivation: [], ledger: [...next.ledger, { id, kind: r.kind, from: date, to: date, amount: 10, days: 1 }] };
+    if (r.kind !== 'jaap-active' && Date.parse(r.completedAt) >= Date.parse(next.policyChangedAt) && !next.ledger.some(e => e.id === id || (r.kind !== 'jaap' && e.id === `daily:${date}`))) {
+      next = { ...next, balance: next.balance + 10, preActivation: [], ledger: [...next.ledger, { id, kind: r.kind as 'quiz' | 'ritual' | 'jaap', from: date, to: date, amount: 10, days: 1 }] };
     }
     if (d.quiz && d.ritual && !d.rewarded) {
       d.rewarded = true;
@@ -206,7 +217,7 @@ export function createProgressWriter(save: (raw: string) => Promise<void>) {
 }
 /** Freeze after the first award, even when the combined streak has not activated. */
 export function prepareTimezone(p: DailyProgress, timezone: string, now: Date): DailyProgress {
-  if (p.activated || p.ledger.some(e => e.amount > 0) || p.timezone === timezone) return p;
+  if (Object.values(p.days).some(d => d.jaap) || p.activated || p.ledger.some(e => e.amount > 0) || p.timezone === timezone) return p;
   const today = dayKey(now, timezone), days: Record<string, ProgressDay> = {};
   for (const r of p.preActivation) {
     const date = dayKey(new Date(r.completedAt), timezone);
