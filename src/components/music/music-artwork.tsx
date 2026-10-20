@@ -18,8 +18,8 @@ import {
   Activity,
   BookOpen,
   Disc,
+  Flower2,
   Music,
-  Sparkles,
   Sun,
   Wind,
 } from 'lucide-react-native';
@@ -50,7 +50,7 @@ const CATEGORY_THEMES: Record<
   },
   mantra: {
     gradient: ['#7A320A', '#B84E12', '#E56B27'],
-    icon: Sparkles,
+    icon: Flower2,
     iconColor: '#FFD670',
     auraColor: 'rgba(255, 214, 112, 0.35)',
   },

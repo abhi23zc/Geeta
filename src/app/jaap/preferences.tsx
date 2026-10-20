@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Platform, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Bell, Clock, Eye, Flame, Flower2, Heart, Image as ImageIcon, Sparkles, Smartphone, Vibrate } from 'lucide-react-native';
+import { Bell, Clock, Eye, Flame, Flower2, Heart, Image as ImageIcon, Smartphone, Sun, Vibrate } from 'lucide-react-native';
 import { TextR } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
 import { useLanguage } from '@/i18n/provider';
@@ -85,7 +85,7 @@ export default function PreferencesScreen() {
       <View style={[j.card, s.optionSection]}>
         <View style={s.optionHeader}>
           <View style={s.iconCircle}>
-            <Sparkles size={18} color={C.saffron} strokeWidth={2} />
+            <Sun size={18} color={C.saffron} strokeWidth={2} />
           </View>
           <TextR style={j.label}>{t('Background')}</TextR>
         </View>
@@ -128,8 +128,12 @@ export default function PreferencesScreen() {
           <View style={s.iconCircle}>
             <Heart size={18} color={C.saffron} strokeWidth={2} />
           </View>
-          <TextR style={j.label}>{t('Daily mala target')}</TextR>
+          <TextR style={[j.label, { flex: 1 }]}>{t('Daily mala target')}</TextR>
         </View>
+
+        <TextR style={j.small}>
+          {t('Choose how many malas you aim to complete each day. One mala is 108 jaap, so 2 malas means 216 jaap. You can keep chanting after reaching your goal.')}
+        </TextR>
 
         <TextInput
           accessibilityLabel={t('Daily mala target')}

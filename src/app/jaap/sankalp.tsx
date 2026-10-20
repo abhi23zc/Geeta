@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, StyleSheet, TextInput, View } from 'react-native';
-import { Calendar, CheckCircle2, PauseCircle, Sparkles, Target } from 'lucide-react-native';
+import { Calendar, CheckCircle2, PauseCircle, PlayCircle, Target } from 'lucide-react-native';
 import { confirmAction } from '@/features/quiz/actions';
 import { TextR } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
@@ -123,7 +123,7 @@ export default function SankalpScreen() {
               label={t(p.status === 'paused' ? 'Resume' : 'Pause')}
               icon={
                 p.status === 'paused' ? (
-                  <Sparkles size={16} color={C.white} />
+                  <PlayCircle size={16} color={C.white} />
                 ) : (
                   <PauseCircle size={16} color={C.white} />
                 )

@@ -12,6 +12,11 @@ export const jaapCopy = {
   "Begin when you feel ready.": ["जब मन हो, आरंभ करें।", "Jab mann ho, aarambh karein."],
   "Begin practice": ["साधना शुरू करें", "Sadhana shuru karein"],
   "Resume practice": ["साधना फिर शुरू करें", "Sadhana phir shuru karein"],
+  "Practice is paused. Tap 'Resume practice' to continue.": [
+    "साधना में विराम है। जप जारी रखने के लिए 'साधना फिर शुरू करें' पर टैप करें।",
+    "Sadhana paused hai. Jaap jaari rakhne ke liye 'Resume practice' par tap karein."
+  ],
+  "Tap to resume": ["शुरू करने के लिए टैप करें", "Tap to resume"],
   "jaap today": ["जप आज", "jaap aaj"],
   "{count} malas today": ["आज {count} मालाएँ", "Aaj {count} malayein"],
 
@@ -312,6 +317,10 @@ export const jaapCopy = {
   "Daily mala target": [
     "दैनिक माला लक्ष्य",
     "Roz ka mala lakshya"
+  ],
+  "Choose how many malas you aim to complete each day. One mala is 108 jaap, so 2 malas means 216 jaap. You can keep chanting after reaching your goal.": [
+    "तय करें कि आप हर दिन कितनी मालाएँ पूरी करना चाहते हैं। एक माला में 108 जप होते हैं, इसलिए 2 मालाएँ यानी 216 जप। लक्ष्य पूरा होने के बाद भी आप जप जारी रख सकते हैं।",
+    "Tay karein ki aap har din kitni malayein poori karna chahte hain. Ek mala mein 108 jaap hote hain, toh 2 malayein yaani 216 jaap. Lakshya poora hone ke baad bhi aap jaap jaari rakh sakte hain."
   ],
   "Save target": [
     "लक्ष्य सहेजें",

@@ -161,7 +161,7 @@ export function AnimatedSplashScreen({
         onPress={dismiss}
       >
         <View style={styles.centerContent}>
-          {/* Aru Mascot Stage with Celebration Sparkles & Sunburst Aura */}
+          {/* Aru Mascot Stage with Sunburst Aura */}
           <View style={[styles.mascotStage, { height: mascotSize + 24 }]}>
             <AruMascot
               clip="streak_celebration"
@@ -192,7 +192,6 @@ export function AnimatedSplashScreen({
             <View style={styles.kickerPill}>
               <Sun size={12} color={C.saffron} />
               <TextR style={styles.kickerText}>{t("Wake with purpose")}</TextR>
-              {/* <Sparkles size={11} color={C.goldDark} /> */}
             </View>
 
             <TextR serif accessibilityRole="header" style={styles.appName}>

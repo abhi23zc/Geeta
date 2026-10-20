@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Check, Plus, Sparkles } from 'lucide-react-native';
+import { Check, Plus } from 'lucide-react-native';
 import { confirmAction } from '@/features/quiz/actions';
 import { TextR } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';

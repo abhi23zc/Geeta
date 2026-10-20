@@ -6,6 +6,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { Check, ChevronDown, Flame, Flower2, History, Maximize2, Pause, Play, Settings2, Target, Undo2 } from 'lucide-react-native';
 import { TextR } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
@@ -31,10 +32,24 @@ export default function JaapCounterScreen() {
   const [summary, setSummary] = useState<{ count: number; activeMs: number } | null>(null);
   const [failedPhoto, setFailedPhoto] = useState<string | null>(null);
   const goalShown = useRef(new Set<string>()), pauseRef = useRef(jaap.pause);
+  const navigatingToPracticeRef = useRef(false);
+  const resumePulse = useSharedValue(0);
+
   useEffect(() => { pauseRef.current = jaap.pause; }, [jaap.pause]);
   const today = dayKey(new Date(), jaap.timezone), target = todayTarget(jaap.state, today);
   const program = currentProgram(jaap.state), todayCount = jaap.state.days[today]?.total ?? 0;
-  useFocusEffect(useCallback(() => () => { void pauseRef.current(); }, []));
+
+  useFocusEffect(
+    useCallback(() => {
+      navigatingToPracticeRef.current = false;
+      return () => {
+        if (!navigatingToPracticeRef.current) {
+          void pauseRef.current();
+        }
+      };
+    }, [])
+  );
+
   useEffect(() => { if (jaap.ready && !p.setupComplete) router.replace('/jaap/mala'); }, [jaap.ready, p.setupComplete, router]);
   useEffect(() => { if (alarm.active) void pauseRef.current(); }, [alarm.active]);
   useEffect(() => { const sub = AppState.addEventListener('change', state => setForeground(state === 'active')); return () => sub.remove(); }, []);
@@ -42,6 +57,23 @@ export default function JaapCounterScreen() {
   const threshold = () => {
     if (p.haptics !== 'off') void Haptics.selectionAsync().catch(() => undefined);
   };
+
+  const handlePausedAttempt = useCallback(() => {
+    if (p.haptics !== 'off') {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
+    }
+    setMessage(t("Practice is paused. Tap 'Resume practice' to continue."));
+    resumePulse.value = withSequence(
+      withTiming(1, { duration: 160 }),
+      withTiming(0, { duration: 180 }),
+      withTiming(1, { duration: 160 }),
+      withTiming(0, { duration: 220 })
+    );
+  }, [p.haptics, resumePulse, t]);
+
+  const animatedResumeStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + resumePulse.value * 0.04 }],
+  }));
   const count = async () => {
     const value = await jaap.count();
     if (!value) return false;
@@ -112,7 +144,10 @@ export default function JaapCounterScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('Full screen mala')}
-          onPress={() => router.push('/jaap/practice')}
+          onPress={() => {
+            navigatingToPracticeRef.current = true;
+            router.push('/jaap/practice');
+          }}
           style={({ pressed }) => [
             u.fullScreenPill,
             night && u.fullScreenPillNight,
@@ -126,19 +161,51 @@ export default function JaapCounterScreen() {
         </Pressable>
 
         {/* Mala Bead Visual & Counter (Structure 100% Preserved) */}
-        <MalaCounter material={p.material} total={session?.total ?? 0} disabled={disabled}
-          onCount={count} onThreshold={threshold} size={strandSize} night={night} />
+        <MalaCounter
+          material={p.material}
+          total={session?.total ?? 0}
+          disabled={disabled}
+          paused={paused}
+          onPausedAttempt={handlePausedAttempt}
+          onCount={count}
+          onThreshold={threshold}
+          size={strandSize}
+          night={night}
+        />
 
         {/* Practice State Indicator */}
-        <View style={u.practiceState}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t(paused ? (session ? 'Practice paused' : 'Your quiet moment') : 'In your own rhythm')}
+          disabled={!paused}
+          onPress={() => {
+            if (paused) {
+              navigatingToPracticeRef.current = true;
+              void jaap.begin().then(value => {
+                if (value) {
+                  threshold();
+                  router.push('/jaap/practice?start=1');
+                }
+              });
+            }
+          }}
+          style={u.practiceState}
+        >
+          <View style={[u.stateBadge, paused && u.stateBadgePaused]}>
             {paused ? <Pause size={12} color={night ? '#D6BA83' : C.primary} /> : <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#3E9E54' }} />}
-            <TextR style={{ color: muted, fontSize: 13, fontWeight: '600' }}>{t(paused ? session ? 'Practice paused' : 'Your quiet moment' : 'In your own rhythm')}</TextR>
+            <TextR style={{ color: paused ? (night ? '#FADCA0' : C.saffron) : muted, fontSize: 13, fontWeight: paused ? '700' : '600' }}>
+              {t(paused ? (session ? 'Practice paused' : 'Your quiet moment') : 'In your own rhythm')}
+            </TextR>
+            {paused && (
+              <View style={[u.resumeHintPill, night && u.resumeHintPillNight]}>
+                <TextR style={[u.resumeHintText, night && u.resumeHintTextNight]}>{t('Tap to resume')}</TextR>
+              </View>
+            )}
           </View>
           <TextR style={{ color: muted, fontSize: 12, textAlign: 'center', lineHeight: 18 }}>
-            {t(paused ? session ? 'Your progress is saved. Take your time.' : 'Begin when you feel ready.' : 'Pull down or tap the beads')}
+            {t(paused ? (session ? 'Your progress is saved. Take your time.' : 'Begin when you feel ready.') : 'Pull down or tap the beads')}
           </TextR>
-        </View>
+        </Pressable>
       </View>
 
       {/* 3D Tactile Controls Row */}
@@ -162,44 +229,66 @@ export default function JaapCounterScreen() {
           <TextR style={[u.undoText, { color: ink }]}>{t('Undo')}</TextR>
         </Pressable>
 
+        <Animated.View style={[{ flex: 1 }, animatedResumeStyle]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t(!session ? 'Begin practice' : paused ? 'Resume practice' : 'Pause')}
+            disabled={jaap.busy || !!jaap.error || alarm.active}
+            accessibilityState={{ disabled: jaap.busy || !!jaap.error || alarm.active }}
+            onPress={() => {
+              if (!paused) {
+                void jaap.pause();
+              } else {
+                navigatingToPracticeRef.current = true;
+                void jaap.begin().then(value => {
+                  if (value) {
+                    threshold();
+                    router.push('/jaap/practice?start=1');
+                  }
+                });
+              }
+            }}
+            style={({ pressed }) => [
+              u.primary,
+              night && u.primaryNight,
+              {
+                opacity: jaap.busy ? 0.65 : 1,
+                transform: [{ scale: pressed ? 0.97 : 1 }],
+              }
+            ]}
+          >
+            {paused ? (
+              <Play size={20} color={night ? '#15271F' : C.white} fill={night ? '#15271F' : C.white} />
+            ) : (
+              <Pause size={20} color={night ? '#15271F' : C.white} fill={night ? '#15271F' : C.white} />
+            )}
+            <TextR style={[u.primaryText, { color: night ? '#15271F' : C.white }]}>
+              {t(!session ? 'Begin practice' : paused ? 'Resume practice' : 'Pause')}
+            </TextR>
+          </Pressable>
+        </Animated.View>
+      </View>
+
+      {!!message && (
         <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t(!session ? 'Begin practice' : paused ? 'Resume practice' : 'Pause')}
-          disabled={jaap.busy || !!jaap.error || alarm.active}
-          accessibilityState={{ disabled: jaap.busy || !!jaap.error || alarm.active }}
           onPress={() => {
-            if (!paused) {
-              void jaap.pause();
-            } else {
+            if (paused) {
+              navigatingToPracticeRef.current = true;
               void jaap.begin().then(value => {
                 if (value) {
                   threshold();
-                  router.push('/jaap/practice');
+                  router.push('/jaap/practice?start=1');
                 }
               });
             }
           }}
-          style={({ pressed }) => [
-            u.primary,
-            night && u.primaryNight,
-            {
-              opacity: jaap.busy ? 0.65 : 1,
-              transform: [{ scale: pressed ? 0.97 : 1 }],
-            }
-          ]}
+          style={[u.feedbackBanner, night && u.feedbackBannerNight]}
         >
-          {paused ? (
-            <Play size={20} color={night ? '#15271F' : C.white} fill={night ? '#15271F' : C.white} />
-          ) : (
-            <Pause size={20} color={night ? '#15271F' : C.white} fill={night ? '#15271F' : C.white} />
-          )}
-          <TextR style={[u.primaryText, { color: night ? '#15271F' : C.white }]}>
-            {t(!session ? 'Begin practice' : paused ? 'Resume practice' : 'Pause')}
+          <TextR accessibilityLiveRegion="polite" style={[u.feedback, { color: night ? '#FFE2B0' : '#8A4200' }]}>
+            {message}
           </TextR>
         </Pressable>
-      </View>
-
-      {!!message && <TextR accessibilityLiveRegion="polite" style={[u.feedback, { color: muted }]}>{message}</TextR>}
+      )}
 
       {/* 3D Tactile Daily Goal Card */}
       <View style={[u.daily, night && u.dailyNight]}>
@@ -442,6 +531,35 @@ const u = StyleSheet.create({
     gap: 4,
     paddingTop: 8,
   },
+  stateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  stateBadgePaused: {
+    backgroundColor: 'rgba(235, 106, 56, 0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
+  },
+  resumeHintPill: {
+    backgroundColor: 'rgba(235, 106, 56, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginLeft: 4,
+  },
+  resumeHintPillNight: {
+    backgroundColor: 'rgba(229, 192, 123, 0.2)',
+  },
+  resumeHintText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: C.saffron,
+  },
+  resumeHintTextNight: {
+    color: '#FFE2B0',
+  },
   controls: {
     flexDirection: 'row',
     gap: 12,
@@ -512,6 +630,22 @@ const u = StyleSheet.create({
     textAlign: 'center',
     fontSize: 13,
     lineHeight: 20,
+  },
+  feedbackBanner: {
+    marginTop: 6,
+    marginHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: 'rgba(235, 106, 56, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(235, 106, 56, 0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  feedbackBannerNight: {
+    backgroundColor: 'rgba(229, 192, 123, 0.12)',
+    borderColor: 'rgba(229, 192, 123, 0.32)',
   },
   daily: {
     backgroundColor: 'rgba(255, 248, 242, 0.94)',

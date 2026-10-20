@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ChevronRight, Sparkles } from 'lucide-react-native';
+import { ChevronRight, Flame } from 'lucide-react-native';
 import { TextR } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
 import { useLanguage } from '@/i18n/provider';
@@ -46,7 +46,7 @@ export function JaapHomeCard({ compact = false }: { compact?: boolean }) {
           <TextR style={s.eyebrow}>{t('MY JAAP')}</TextR>
           {todayCount > 0 && (
             <View style={s.streakPill}>
-              <Sparkles size={10} color={C.saffron} />
+              <Flame size={10} color={C.saffron} />
               <TextR style={s.streakText}>
                 {formatNumber(todayCount)} {t('jaap today')}
               </TextR>

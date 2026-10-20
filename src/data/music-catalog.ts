@@ -19,7 +19,7 @@ export const SACRED_CATEGORIES: {
     title: 'Vedic Mantras',
     hindiTitle: 'वैदिक मंत्र',
     subtitle: 'Gayatri, Maha Mrityunjaya & Divine Chants',
-    iconName: 'Sparkles',
+    iconName: 'Flower2',
   },
   {
     id: 'raga',

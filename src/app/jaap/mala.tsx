@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Check, Sparkles } from 'lucide-react-native';
+import { Check, Flower2 } from 'lucide-react-native';
 import { TextR } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
 import { useLanguage } from '@/i18n/provider';
@@ -93,7 +93,7 @@ export default function MalaScreen() {
       <View style={[j.card, s.showcaseCard]}>
         <View style={s.showcaseHeader}>
           <View style={s.sparkleBox}>
-            <Sparkles size={18} color={C.saffron} strokeWidth={2} />
+            <Flower2 size={18} color={C.saffron} strokeWidth={2} />
           </View>
           <View style={{ flex: 1, gap: 2 }}>
             <TextR style={s.showcaseEyebrow}>{t('SELECTED MALA')}</TextR>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { ChevronLeft, ChevronRight, Flame, Sparkles, Trophy } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Flame, Trophy } from 'lucide-react-native';
 import { TextR } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
 import { useLanguage } from '@/i18n/provider';

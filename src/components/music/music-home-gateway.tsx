@@ -1,5 +1,5 @@
 import React from 'react';
-import { Music, Sparkles, Wind, Activity, Sun } from 'lucide-react-native';
+import { Music, Flower2, Wind, Activity, Sun } from 'lucide-react-native';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useMusicCatalog } from '@/state/music-player-store';
 import { useLanguage } from '@/i18n/provider';
@@ -16,7 +16,7 @@ export function MusicHomeGateway() {
   if (!home.visible) return null;
   const target = home.target;
   const unavailable = target.type === 'track' ? !enabled || tracks.find(track => track.id === target.id)?.availability !== 'available' : target.type === 'playlist' && target.play ? !enabled || !playlists.find(p => p.id === target.id)?.trackIds.some(id => tracks.find(track => track.id === id)?.availability === 'available') : false;
-  const Icon = { gita: Music, mantra: Sparkles, raga: Music, flute: Wind, pranayama: Activity, soundscape: Sun }[home.theme];
+  const Icon = { gita: Music, mantra: Flower2, raga: Music, flute: Wind, pranayama: Activity, soundscape: Sun }[home.theme];
   const image = page.media.find(m => m.id === home.imageId);
   return <Pressable disabled={unavailable} accessibilityState={{ disabled: unavailable }} accessibilityRole="button" accessibilityLabel={`${localized(home.title, language)}. ${localized(home.button, language)}`} onPress={() => { void go(home.target).catch(() => undefined); }} style={({ pressed }) => [styles.card, unavailable && { opacity: .6 }, pressed && { opacity: .8 }]}>
     <View style={styles.iconCircle}>{image ? <MusicArtwork uri={image.thumbnail} category={home.theme} style={styles.art} alt={localized(image.alt, language)} /> : <Icon size={24} color={C.saffron} />}</View>
