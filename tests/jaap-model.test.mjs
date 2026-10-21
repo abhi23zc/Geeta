@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { emptyJaap, reduceJaap, parseJaap, activeSession, beadPosition, currentProgram, todayTarget } from '../src/features/jaap/model.ts';
+import { emptyJaap, reduceJaap, parseJaap, activeSession, beadPosition, todayTarget } from '../src/features/jaap/model.ts';
 import { validPull } from '../src/features/jaap/gesture.ts';
 import { createJaapRepository } from '../src/features/jaap/repository-core.ts';
 import { emptyDailyProgress, applyReceipts, parseDailyProgress, migrateDailyProgress, settle } from '../src/features/progress/model.ts';
@@ -10,6 +10,22 @@ const start=()=>reduceJaap(emptyJaap(),{type:'start',id:'session',at,timezone});
 const count=(s,id,when=at)=>reduceJaap(s,{type:'count',id,at:when,timezone});
 const counts=(s,n,prefix='c')=>{for(let i=0;i<n;i++)s=count(s,`${prefix}${i}`);return s;};
 const roundtrip=s=>assert.deepEqual(parseJaap(JSON.stringify(s)),s);
+test('reset returns the session count to zero, corrects the day total, and is idempotent per id',()=>{
+ let s=counts(start(),30);
+ assert.equal(activeSession(s).total,30);assert.equal(s.days['2026-10-20'].total,30);
+ s=reduceJaap(s,{type:'reset',id:'reset1',at,timezone});
+ assert.equal(activeSession(s).total,0);assert.equal(s.days['2026-10-20'].total,0);
+ assert.deepEqual(reduceJaap(s,{type:'reset',id:'reset1',at,timezone}),s);
+ assert.deepEqual(reduceJaap(s,{type:'reset',id:'reset2',at,timezone}),s);
+ s=count(s,'after-reset');assert.equal(activeSession(s).total,1);roundtrip(s);
+});
+test('reset keeps an earned daily bonus but can be re-earned, and respects earlier undos',()=>{
+ let s=counts(start(),108);assert.equal(s.days['2026-10-20'].bonus,true);
+ s=reduceJaap(s,{type:'undo',id:'u',at,timezone});assert.equal(activeSession(s).total,107);
+ s=reduceJaap(s,{type:'reset',id:'r',at,timezone});
+ assert.equal(activeSession(s).total,0);assert.equal(s.days['2026-10-20'].total,0);
+ assert.equal(s.pendingRewards.filter(x=>x.kind==='jaap').length,1);roundtrip(s);
+});
 test('all 108 beads wrap without counting the guru, and material changes preserve progress',()=>{
  let s=counts(start(),107);assert.equal(beadPosition(activeSession(s).total),107);
  s=count(s,'108');assert.equal(beadPosition(activeSession(s).total),108);
@@ -38,18 +54,13 @@ test('daily bonus aggregates across sessions and mantras exactly once',()=>{
  let s=counts(start(),54);s=reduceJaap(s,{type:'finish',at});s=reduceJaap(s,{type:'preferences',patch:{mantraId:'radha'}});s=reduceJaap(s,{type:'start',id:'session2',at,timezone});s=counts(s,54,'other');
  assert.equal(s.pendingRewards.filter(r=>r.kind==='jaap').length,1);assert.equal(s.days['2026-10-20'].mantras.radha,54);roundtrip(s);
 });
-test('flexible sankalp counts only new eligible practice and never resets missed days',()=>{
+test('flexible daily target tracks the day total and never resets missed days',()=>{
  let s=counts(start(),108,'before');
- s=reduceJaap(s,{type:'sankalp',program:{id:'p',mantraId:'shiva',intention:'',duration:2,dailyMalas:1,startedAt:at,status:'active',days:[],counts:{}}});
- assert.equal(currentProgram(s).days.length,0);assert.equal(todayTarget(s,'2026-10-20').count,0);
- s=counts(s,108,'eligible');assert.equal(currentProgram(s).days.length,1);
- s=reduceJaap(s,{type:'program-status',id:'p',status:'paused'});s=count(s,'paused-count','2026-10-21T10:00:00Z');assert.equal(currentProgram(s).counts['2026-10-21'],undefined);
- s=reduceJaap(s,{type:'program-status',id:'p',status:'active'});s=reduceJaap(s,{type:'pause',at:'2026-10-21T10:01:00Z'});s=reduceJaap(s,{type:'resume',at:'2026-10-23T10:00:00Z'});
- for(let i=0;i<108;i++)s=count(s,`new-day-${i}`,'2026-10-23T10:00:00Z');
- assert.equal(s.sankalps[0].status,'complete');assert.deepEqual(s.sankalps[0].days,['2026-10-20','2026-10-23']);roundtrip(s);
-});
-test('sankalp undo cannot remove an earned day or duplicate it',()=>{
- let s=reduceJaap(start(),{type:'sankalp',program:{id:'p',mantraId:'shiva',intention:'',duration:21,dailyMalas:1,startedAt:at,status:'active',days:[],counts:{}}});s=counts(s,108);s=reduceJaap(s,{type:'undo',id:'u',at,timezone});s=count(s,'next');assert.equal(currentProgram(s).days.length,1);roundtrip(s);
+ assert.equal(todayTarget(s,'2026-10-20').count,108);
+ assert.equal(todayTarget(s,'2026-10-20').target,108);
+ s=reduceJaap(s,{type:'finish',at});
+ s=reduceJaap(s,{type:'preferences',patch:{dailyMalas:2}});
+ assert.equal(todayTarget(s,'2026-10-20').target,216);roundtrip(s);
 });
 test('pull threshold rejects reversals, sideways motion, cancellations, and multitouch',()=>{
  assert.equal(validPull(0,40,40,1),true);assert.equal(validPull(10,65,65,1),true);

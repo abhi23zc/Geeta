@@ -5,7 +5,7 @@ import { progressTransaction } from '@/features/progress/transactions';
 import { notificationScheduleChanged } from '@/services/engagement-notifications';
 import { getAlarmPresentationState } from '@/services/alarm';
 import { jaapRepository } from './database';
-import { activeSession, emptyJaap, selectedMantra, type JaapAction, type JaapPreferences, type JaapState, type Mantra, type Sankalp } from './model';
+import { activeSession, emptyJaap, selectedMantra, type JaapAction, type JaapPreferences, type JaapState, type Mantra } from './model';
 let sequence=0;
 export const jaapId=()=>`jaap-${Date.now()}-${++sequence}-${Math.random().toString(36).slice(2,10)}`;
 function useJaapController(){
@@ -45,12 +45,11 @@ function useJaapController(){
     async begin(){const session=activeSession(current.current);if(!progress.ready||getAlarmPresentationState().active)return undefined;stopped.current=false;const value=await send(session?{type:'resume',at:new Date().toISOString()}:{type:'start',id:jaapId(),at:new Date().toISOString(),timezone:timezone});if(!value)stopped.current=true;return value;},
     async count(){if(stopped.current||error||getAlarmPresentationState().active||!progress.ready)return undefined;return send({type:'count',id:jaapId(),at:new Date().toISOString(),timezone:timezone},true);},
     undo:()=>send({type:'undo',id:jaapId(),at:new Date().toISOString(),timezone:timezone},true),pause,
+    reset:()=>send({type:'reset',id:jaapId(),at:new Date().toISOString(),timezone:timezone},true),
     async finish(){stopped.current=true;return send({type:'finish',at:new Date().toISOString()},true);},
     preferences:(patch:Partial<JaapPreferences>)=>send({type:'preferences',patch}),
     async selectMantra(id:string){if(activeSession(current.current)&&selectedMantra(current.current).id!==id){const finished=await send({type:'finish',at:new Date().toISOString()},true);if(!finished)return undefined;stopped.current=true;}return send({type:'preferences',patch:{mantraId:id,setupComplete:true}});},
     addMantra:(mantra:Mantra)=>send({type:'mantra',mantra}),
-    createSankalp:(program:Omit<Sankalp,'id'|'days'|'counts'|'status'|'startedAt'>)=>send({type:'sankalp',program:{...program,id:jaapId(),startedAt:new Date().toISOString(),status:'active',days:[],counts:{}}}),
-    programStatus:(id:string,status:Sankalp['status'])=>send({type:'program-status',id,status}),
   }),[state,ready,error,pending,load,send,pause,progress.ready,timezone]);
 }
 type JaapController=ReturnType<typeof useJaapController>;

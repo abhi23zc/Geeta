@@ -736,6 +736,7 @@ export const catalog = {
   Home: ["होम", "Home"],
   Today: ["आज", "Aaj"],
   Quiz: ["क्विज़", "Quiz"],
+  Jaap: ["जप", "Jaap"],
   "Daily Goal": ["दैनिक लक्ष्य", "Daily Goal"],
   "Morning Ritual": ["प्रातः साधना", "Morning Sadhana"],
   Cancel: ["रद्द करें", "Cancel karein"],

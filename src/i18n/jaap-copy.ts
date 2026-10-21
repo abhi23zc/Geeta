@@ -154,6 +154,22 @@ export const jaapCopy = {
     "पिछला जप वापस किया गया।",
     "Pichhla jaap wapas kiya gaya."
   ],
+  "Reset": [
+    "रीसेट",
+    "Reset"
+  ],
+  "Reset this mala?": [
+    "यह माला रीसेट करें?",
+    "Yeh mala reset karein?"
+  ],
+  "Your current count will return to zero. Earned points stay yours.": [
+    "आपकी वर्तमान गिनती शून्य हो जाएगी। अर्जित अंक आपके ही रहेंगे।",
+    "Aapki current ginti zero ho jayegi. Mile hue points aapke hi rahenge."
+  ],
+  "Count reset to zero.": [
+    "गिनती शून्य पर रीसेट हो गई।",
+    "Ginti zero par reset ho gayi."
+  ],
   "Today’s jaap bonus earned": [
     "आज का जप बोनस मिल गया",
     "Aaj ka jaap bonus mil gaya"
@@ -170,25 +186,13 @@ export const jaapCopy = {
     "जप साधना बोनस",
     "Jaap sadhana bonus"
   ],
-  "My sankalp": [
-    "मेरा संकल्प",
-    "Mera sankalp"
-  ],
-  "Sankalp": [
-    "संकल्प",
-    "Sankalp"
-  ],
   "History": [
     "इतिहास",
     "Itihaas"
   ],
-  "Preferences": [
-    "पसंद",
-    "Pasand"
-  ],
-  "{done} of {total} practice days": [
-    "{total} में से {done} साधना दिवस",
-    "{total} mein se {done} sadhana din"
+  "Settings": [
+    "सेटिंग्स",
+    "Settings"
   ],
   "A moment well spent": [
     "अपने लिए बिताया एक सुंदर पल",
@@ -254,66 +258,6 @@ export const jaapCopy = {
     "इस स्थान को अपना बनाएँ।",
     "Is jagah ko apna banayein."
   ],
-  "Dim focus view": [
-    "शांत गहरा दृश्य",
-    "Shaant gehra view"
-  ],
-  "Mala completion bell": [
-    "माला पूरी होने पर घंटी",
-    "Mala poori hone par ghanti"
-  ],
-  "Keep screen awake": [
-    "स्क्रीन चालू रखें",
-    "Screen chaalu rakhein"
-  ],
-  "The bell stays quiet while app music is playing.": [
-    "ऐप में संगीत बजने पर घंटी शांत रहती है।",
-    "App mein music bajne par ghanti shaant rehti hai."
-  ],
-  "Touch feedback": [
-    "स्पर्श कंपन",
-    "Sparsh vibration"
-  ],
-  "Off": [
-    "बंद",
-    "Band"
-  ],
-  "Light": [
-    "हल्का",
-    "Halka"
-  ],
-  "Medium": [
-    "मध्यम",
-    "Madhyam"
-  ],
-  "Strong": [
-    "तेज़",
-    "Tez"
-  ],
-  "Background": [
-    "पृष्ठभूमि",
-    "Background"
-  ],
-  "Plain": [
-    "सादा",
-    "Saada"
-  ],
-  "Lotus": [
-    "कमल",
-    "Kamal"
-  ],
-  "Diya": [
-    "दीया",
-    "Diya"
-  ],
-  "Choose a personal photo": [
-    "अपनी तस्वीर चुनें",
-    "Apni tasveer chunein"
-  ],
-  "Your photo could not be opened. Your previous background is unchanged.": [
-    "तस्वीर नहीं खुल सकी। पिछली पृष्ठभूमि बनी हुई है।",
-    "Tasveer nahi khul saki. Pichhla background bana hua hai."
-  ],
   "Daily mala target": [
     "दैनिक माला लक्ष्य",
     "Roz ka mala lakshya"
@@ -354,77 +298,9 @@ export const jaapCopy = {
     "सहेजा गया",
     "Save ho gaya"
   ],
-  "Every return is a new beginning.": [
-    "हर वापसी एक नया आरंभ है।",
-    "Har wapsi ek naya aarambh hai."
-  ],
-  "Make time for daily devotion": [
-    "रोज़ भक्ति के लिए समय बनाएँ",
-    "Roz bhakti ke liye samay banayein"
-  ],
-  "Today: {done} / {total} jaap": [
-    "आज: {done} / {total} जप",
-    "Aaj: {done} / {total} jaap"
-  ],
-  "Paused. Take your time.": [
-    "विराम है। अपना समय लें।",
-    "Viraam hai. Apna samay lein."
-  ],
-  "Estimated finish: {date}": [
-    "अनुमानित समापन: {date}",
-    "Anumaanit samaapan: {date}"
-  ],
-  "Missed days keep your progress and extend your journey.": [
-    "छूटे दिन आपकी प्रगति बनाए रखते हैं और यात्रा बढ़ाते हैं।",
-    "Chhoote din aapki pragati banaye rakhte hain aur yatra badhate hain."
-  ],
   "Archive": [
     "संग्रह में रखें",
     "Sangrah mein rakhein"
-  ],
-  "Archive sankalp?": [
-    "संकल्प संग्रह में रखें?",
-    "Sankalp sangrah mein rakhein?"
-  ],
-  "Your completed practice days will be kept.": [
-    "आपके पूरे हुए साधना दिवस सहेजे रहेंगे।",
-    "Aapke poore hue sadhana din save rahenge."
-  ],
-  "Start a new sankalp": [
-    "नया संकल्प शुरू करें",
-    "Naya sankalp shuru karein"
-  ],
-  "Practice days (1–365)": [
-    "साधना दिवस (1–365)",
-    "Sadhana din (1–365)"
-  ],
-  "Daily malas (1–108)": [
-    "दैनिक मालाएँ (1–108)",
-    "Roz ki malayein (1–108)"
-  ],
-  "Personal intention (optional)": [
-    "निजी संकल्प (वैकल्पिक)",
-    "Niji sankalp (vaikalpik)"
-  ],
-  "Begin sankalp": [
-    "संकल्प शुरू करें",
-    "Sankalp shuru karein"
-  ],
-  "Start a new sankalp?": [
-    "नया संकल्प शुरू करें?",
-    "Naya sankalp shuru karein?"
-  ],
-  "Your current program will be archived. Earlier practice will be kept.": [
-    "वर्तमान संकल्प संग्रह में रहेगा। पिछली साधना सहेजी रहेगी।",
-    "Yeh sankalp sangrah mein rahega. Pichhli sadhana save rahegi."
-  ],
-  "Sankalp complete": [
-    "संकल्प पूरा हुआ",
-    "Sankalp poora hua"
-  ],
-  "Archived sankalp": [
-    "संग्रहीत संकल्प",
-    "Sangrahit sankalp"
   ],
   "My practice history": [
     "मेरी साधना का इतिहास",

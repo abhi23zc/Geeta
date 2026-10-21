@@ -309,7 +309,6 @@ export default function Home() {
 
       {/* 🪷 Enhanced Daily Goal & Streak Stepper Card */}
       <DailyGoalCard link={true} />
-      <JaapHomeCard />
 
       {/* Devotional Hero Alarm Card */}
       <Pressable
@@ -417,6 +416,8 @@ export default function Home() {
         {alarmRequested && (snapshot?.scheduleStatus === 'failed' || snapshot?.scheduleStatus === 'unknown') ? <TextR style={s.alarmErrorText}>{translate('Alarm scheduling could not be confirmed. Open alarm setup and retry.')}</TextR> : null}
         {displayedAlarmError && <TextR style={s.alarmErrorText}>{translateText(displayedAlarmError)}</TextR>}
       </Pressable>
+
+      <JaapHomeCard />
 
       <MusicHomeGateway />
 

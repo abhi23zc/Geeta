@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { Platform, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Bell, Clock, Eye, Flame, Flower2, Heart, Image as ImageIcon, Smartphone, Sun, Vibrate } from 'lucide-react-native';
+import { Clock, Heart } from 'lucide-react-native';
 import { TextR } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
 import { useLanguage } from '@/i18n/provider';
 import { requestEngagementNotificationPermission } from '@/services/engagement-notifications';
 import { useJaap } from '@/features/jaap/provider';
-import { pickJaapPhoto } from '@/features/jaap/photo';
 import { JaapButton, JaapPage, JaapRow, j } from '@/features/jaap/ui';
 
 export default function PreferencesScreen() {
@@ -23,104 +22,13 @@ export default function PreferencesScreen() {
   const [notice, setNotice] = useState('');
   const [working, setWorking] = useState(false);
 
-  const toggle = (label: string, key: 'focus' | 'bell' | 'keepAwake', Icon: any) => (
-    <View style={[j.card, s.toggleCard]}>
-      <View style={s.toggleLeft}>
-        <View style={s.iconCircle}>
-          <Icon size={18} color={C.saffron} strokeWidth={2} />
-        </View>
-        <TextR style={s.toggleLabel}>{label}</TextR>
-      </View>
-      <Switch
-        accessibilityLabel={label}
-        value={p[key]}
-        onValueChange={value => {
-          void jaap.preferences({ [key]: value });
-        }}
-        trackColor={{ false: '#E2D5C5', true: C.saffron }}
-        thumbColor={Platform.OS === 'android' ? (p[key] ? '#FFFFFF' : '#F6EEE5') : undefined}
-      />
-    </View>
-  );
-
   return (
-    <JaapPage title={t('Preferences')} subtitle={t('Make this space your own.')}>
+    <JaapPage title={t('Settings')} subtitle={t('Make this space your own.')}>
       {/* Quick Mala Chooser Row */}
       <JaapRow label={t('Choose your mala')} onPress={() => router.push('/jaap/mala')} />
 
-      {/* Practice Experience Toggles */}
-      <View style={s.section}>
-        <TextR style={s.sectionHeader}>{t('Preferences')}</TextR>
-        {toggle(t('Dim focus view'), 'focus', Eye)}
-        {toggle(t('Mala completion bell'), 'bell', Bell)}
-        {toggle(t('Keep screen awake'), 'keepAwake', Smartphone)}
-        <TextR style={[j.small, { paddingHorizontal: 6 }]}>
-          {t('The bell stays quiet while app music is playing.')}
-        </TextR>
-      </View>
-
-      {/* Haptic Touch Feedback Segmented Grid */}
-      <View style={[j.card, s.optionSection]}>
-        <View style={s.optionHeader}>
-          <View style={s.iconCircle}>
-            <Vibrate size={18} color={C.saffron} strokeWidth={2} />
-          </View>
-          <TextR style={j.label}>{t('Touch feedback')}</TextR>
-        </View>
-
-        <View style={j.actions}>
-          {(['off', 'light', 'medium', 'strong'] as const).map(value => (
-            <JaapButton
-              key={value}
-              label={t(({ off: 'Off', light: 'Light', medium: 'Medium', strong: 'Strong' } as const)[value])}
-              secondary={p.haptics !== value}
-              onPress={() => void jaap.preferences({ haptics: value })}
-              style={{ flex: 1, minWidth: 70 }}
-            />
-          ))}
-        </View>
-      </View>
-
-      {/* Sacred Background Selector */}
-      <View style={[j.card, s.optionSection]}>
-        <View style={s.optionHeader}>
-          <View style={s.iconCircle}>
-            <Sun size={18} color={C.saffron} strokeWidth={2} />
-          </View>
-          <TextR style={j.label}>{t('Background')}</TextR>
-        </View>
-
-        <View style={j.actions}>
-          {(['plain', 'lotus', 'diya'] as const).map(value => (
-            <JaapButton
-              key={value}
-              label={t(({ plain: 'Plain', lotus: 'Lotus', diya: 'Diya' } as const)[value])}
-              secondary={p.background !== value}
-              onPress={() => void jaap.preferences({ background: value })}
-              style={{ flex: 1, minWidth: 80 }}
-            />
-          ))}
-        </View>
-
-        {Platform.OS !== 'web' && (
-          <JaapButton
-            secondary={p.background !== 'photo'}
-            disabled={working}
-            icon={<ImageIcon size={16} color={p.background === 'photo' ? C.white : C.primary} />}
-            label={t('Choose a personal photo')}
-            onPress={() => {
-              setWorking(true);
-              void pickJaapPhoto()
-                .then(uri => (uri ? jaap.preferences({ background: 'photo', photoUri: uri }) : null))
-                .catch(() =>
-                  setNotice(t('Your photo could not be opened. Your previous background is unchanged.'))
-                )
-                .finally(() => setWorking(false));
-            }}
-            style={{ marginTop: 4 }}
-          />
-        )}
-      </View>
+      {/* Practice History */}
+      <JaapRow label={t('History')} onPress={() => router.push('/jaap/history')} />
 
       {/* Daily Mala Target */}
       <View style={[j.card, s.optionSection]}>
@@ -223,25 +131,6 @@ export default function PreferencesScreen() {
 }
 
 const s = StyleSheet.create({
-  section: {
-    gap: 10,
-    marginTop: 4,
-  },
-  sectionHeader: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.8,
-    color: C.saffron,
-    paddingHorizontal: 4,
-    textTransform: 'uppercase',
-  },
-  toggleCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
   toggleLeft: {
     flexDirection: 'row',
     alignItems: 'center',

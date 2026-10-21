@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronRight, Flame } from 'lucide-react-native';
 import { TextR } from '@/components/ritual-ui';
@@ -11,7 +11,13 @@ import { activeSession, selectedMantra } from './model';
 import { MalaPreview } from './mala';
 import { j } from './ui';
 
-export function JaapHomeCard({ compact = false }: { compact?: boolean }) {
+export function JaapHomeCard({
+  compact = false,
+  style,
+}: {
+  compact?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
   const jaap = useJaap();
   const router = useRouter();
   const { t, formatNumber } = useLanguage();
@@ -26,8 +32,8 @@ export function JaapHomeCard({ compact = false }: { compact?: boolean }) {
       onPress={() => router.push('/jaap')}
       style={({ pressed }) => [
         s.card,
+        style,
         {
-          marginHorizontal: compact ? 0 : 20,
           transform: [{ scale: pressed ? 0.98 : 1 }],
         },
       ]}
@@ -78,7 +84,7 @@ const s = StyleSheet.create({
   card: {
     backgroundColor: 'rgba(255, 248, 242, 0.95)',
     borderRadius: 24,
-    marginVertical: 14,
+    marginBottom: 16,
     paddingVertical: 16,
     paddingHorizontal: 16,
     flexDirection: 'row',

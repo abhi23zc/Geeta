@@ -1,6 +1,6 @@
 # My Jaap
 
-Implemented for Expo SDK 57. The feature is offline and free. It has four mala materials, 108 counted beads and an uncounted guru bead, pull/tap counting, undo, paused recovery, custom mantras, history, flexible sankalp, personal backgrounds, reminders, and optional daily rewards.
+Implemented for Expo SDK 57. The feature is offline and free. It has four mala materials, 108 counted beads and an uncounted guru bead, pull/tap counting, undo, paused recovery, custom mantras, history, personal backgrounds, reminders, and optional daily rewards.
 
 ## Product rules
 
@@ -10,7 +10,6 @@ Implemented for Expo SDK 57. The feature is offline and free. It has four mala m
 - Background, route blur, and alarms pause practice. Relaunch never resumes automatically. Recovery credits time only through the latest saved interaction, avoiding credit for time after a crash.
 - A committed first count marks its date active. 108 counts accumulated across mantras/sessions unlock 10 points once per date. Undo corrects counts without retracting an earned milestone.
 - Jaap prevents inactive-day point deductions. Tree growth still requires ritual and quiz, and incomplete days retain existing tree loss rules.
-- A sankalp counts only new practice for its chosen mantra while active. Completed days remain complete after corrections. Missed days extend the journey. One program may be active or paused; replacing it archives it.
 - Reminder defaults to 19:00 but is off initially. Permission is requested only on enable. Ordinary reminder scheduling respects alarm quiet windows and caps iOS to the nearest 60 requests.
 
 ## Storage and integration
@@ -33,7 +32,7 @@ Final image prompt:
 
 ## Validation
 
-- `npm run test:jaap`: model, gestures, real SQL rollback/atomicity using Node SQLite, rewards, sankalp, and notification behavior.
+- `npm run test:jaap`: model, gestures, real SQL rollback/atomicity using Node SQLite, rewards, and notification behavior.
 - Existing progress, tree, language, notification, and alarm-navigation suites.
 - TypeScript, targeted ESLint, and Expo web static export.
 - Browser review at phone width: onboarding handoff, mala/mantra selection, counting, undo, paused recovery after reload, valid pulling, rejected short/sideways pulls, and history.

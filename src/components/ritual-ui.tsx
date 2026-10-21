@@ -1,5 +1,5 @@
-import { useDecorativeMotion } from '@/hooks/use-motion-environment';
 import { C, R } from "@/constants/ritual-theme";
+import { useDecorativeMotion } from "@/hooks/use-motion-environment";
 import { useLanguage } from "@/i18n/provider";
 import { Link, usePathname, useRouter } from "expo-router";
 import {
@@ -7,10 +7,10 @@ import {
   BookOpen,
   ChevronLeft,
   Flame,
+  HelpingHand,
   Music,
   Sun,
-  Target,
-  User
+  User,
 } from "lucide-react-native";
 import React, { ReactNode } from "react";
 import {
@@ -205,8 +205,14 @@ export function DiyaGraphic({
     if (showAura) {
       glowScale.value = withRepeat(
         withSequence(
-          withTiming(1.25, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0.95, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1.25, {
+            duration: 1800,
+            easing: Easing.inOut(Easing.ease),
+          }),
+          withTiming(0.95, {
+            duration: 1800,
+            easing: Easing.inOut(Easing.ease),
+          }),
         ),
         -1,
         true,
@@ -214,17 +220,26 @@ export function DiyaGraphic({
 
       glowOpacity.value = withRepeat(
         withSequence(
-          withTiming(0.65, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0.35, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0.65, {
+            duration: 1800,
+            easing: Easing.inOut(Easing.ease),
+          }),
+          withTiming(0.35, {
+            duration: 1800,
+            easing: Easing.inOut(Easing.ease),
+          }),
         ),
         -1,
         true,
       );
     }
     return () => {
-      cancelAnimation(flameScaleY); cancelAnimation(flameTranslateY);
-      cancelAnimation(flameRotate); cancelAnimation(flameOpacity);
-      cancelAnimation(glowScale); cancelAnimation(glowOpacity);
+      cancelAnimation(flameScaleY);
+      cancelAnimation(flameTranslateY);
+      cancelAnimation(flameRotate);
+      cancelAnimation(flameOpacity);
+      cancelAnimation(glowScale);
+      cancelAnimation(glowOpacity);
     };
   }, [
     motion,
@@ -467,7 +482,7 @@ export function Screen({
       style={[
         styles.content,
         night && { backgroundColor: nightBg },
-        fullScreenBackground && { backgroundColor: 'transparent' },
+        fullScreenBackground && { backgroundColor: "transparent" },
         !scroll && { flex: 1, paddingBottom: insets.bottom + 12 },
         contentStyle,
       ]}
@@ -600,14 +615,14 @@ export function Header({
   );
 }
 
-type TabHref = "/" | "/today" | "/library" | "/quiz" | "/progress";
+type TabHref = "/" | "/today" | "/library" | "/quiz" | "/jaap";
 
 const tabs: { href: TabHref; label: string; IconComponent: typeof Flame }[] = [
   { href: "/", label: "Home", IconComponent: Flame },
   { href: "/today", label: "Today", IconComponent: Sun },
   { href: "/library", label: "Library", IconComponent: Music },
   { href: "/quiz", label: "Quiz", IconComponent: BookOpen },
-  { href: "/progress", label: "Daily Goal", IconComponent: Target },
+  { href: "/jaap", label: "Jaap", IconComponent: HelpingHand },
 ];
 
 function AnimatedTabItem({
@@ -724,7 +739,10 @@ export function TabBar({ night }: { night?: boolean }) {
         ]}
       >
         {tabs.map((t) => {
-          const active = path === t.href;
+          const active =
+            t.href === "/"
+              ? path === "/" || path === "/index"
+              : path === t.href || path.startsWith(t.href + "/");
           return (
             <AnimatedTabItem
               key={t.href}

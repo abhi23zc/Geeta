@@ -36,10 +36,7 @@ export default function MalaScreen() {
 
   const handleConfirm = () => {
     void jaap.preferences({ material: selected }).then(value => {
-      if (value) {
-        if (!value.preferences.setupComplete) router.replace('/jaap/mantras');
-        else router.back();
-      }
+      if (value) router.replace('/jaap/mantras');
     });
   };
 

@@ -32,14 +32,20 @@ import { FullScreenPlayer } from '@/components/music/full-screen-player';
 const alarmScreenLayout: NonNullable<React.ComponentProps<typeof Stack>['screenLayout']> =
   ({ children }) => <AlarmNavigationGuard><OnboardingGate>{children}</OnboardingGate></AlarmNavigationGuard>;
 
-const TAB_ROUTES = new Set(['/', '/index', '/today', '/library', '/quiz', '/quiz/index', '/progress']);
+const TAB_ROUTES = new Set(['/', '/index', '/today', '/library', '/quiz', '/quiz/index', '/jaap', '/jaap/index']);
 
 function AppChrome() {
   const presentation = useAlarmPresentation();
   const { record } = useOnboarding();
   const pathname = usePathname();
   const normalizedPath = pathname ? (pathname.startsWith('/') ? pathname : `/${pathname}`) : '/';
-  const isExcluded = normalizedPath.startsWith('/jaap') || normalizedPath.startsWith('/alarm') || normalizedPath === '/breathe' || normalizedPath === '/gita' || normalizedPath === '/downloads' || normalizedPath === '/saved';
+  const isExcluded =
+    normalizedPath.startsWith('/jaap/practice') ||
+    normalizedPath.startsWith('/alarm') ||
+    normalizedPath === '/breathe' ||
+    normalizedPath === '/gita' ||
+    normalizedPath === '/downloads' ||
+    normalizedPath === '/saved';
   const introduction = !record || needsIntroduction(record);
   const showTabs = !introduction && !presentation.active && !isExcluded && TAB_ROUTES.has(normalizedPath);
 

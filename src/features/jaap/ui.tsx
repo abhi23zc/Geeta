@@ -1,9 +1,9 @@
 import React, { type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { ArrowLeft, ChevronRight } from 'lucide-react-native';
-import { TextR } from '@/components/ritual-ui';
+import { TextR, useDockHeight } from '@/components/ritual-ui';
 import { C } from '@/constants/ritual-theme';
 import { useLanguage } from '@/i18n/provider';
 import { useJaap } from './provider';
@@ -65,10 +65,13 @@ export function JaapPage({
   const router = useRouter(),
     { t } = useLanguage(),
     jaap = useJaap();
+  const dockHeight = useDockHeight();
+  const insets = useSafeAreaInsets();
+  const bottomClearance = Math.max(dockHeight + insets.bottom + 20, 110);
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={{ flex: 1, backgroundColor: night ? '#15271F' : C.canvas }}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[j.page, compact && { gap: 12 }]}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: night ? '#15271F' : C.canvas }}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[j.page, compact && { gap: 12 }, { paddingBottom: bottomClearance }]}>
         <View style={j.header}>
           <Pressable
             accessibilityRole="button"

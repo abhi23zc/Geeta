@@ -8,7 +8,6 @@ export default function JaapLayout() {
       <Stack.Screen name="mala" />
       <Stack.Screen name="mantras" />
       <Stack.Screen name="preferences" />
-      <Stack.Screen name="sankalp" />
       <Stack.Screen name="history" />
     </Stack>
   );

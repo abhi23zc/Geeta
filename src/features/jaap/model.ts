@@ -1,4 +1,4 @@
-import { dayKey, shiftDay } from '../progress/model.ts';
+import { dayKey } from '../progress/model.ts';
 
 export const MALA_SIZE = 108;
 export const MATERIALS = ['rudraksha', 'tulsi', 'sandalwood', 'crystal'] as const;
@@ -14,33 +14,28 @@ export const MANTRAS: Mantra[] = [
 ];
 export type JaapPreferences = { material: MalaMaterial; mantraId: string; setupComplete: boolean; focus: boolean; background: 'plain' | 'lotus' | 'diya' | 'photo'; photoUri?: string; haptics: 'off' | 'light' | 'medium' | 'strong'; bell: boolean; keepAwake: boolean; dailyMalas: number; reminderEnabled: boolean; reminderMinutes: number };
 export type JaapSession = { id: string; mantra: Mantra; startedAt: string; finishedAt: string | null; total: number; activeMs: number; runningSince: string | null; paused: boolean; size: 108; dayCounts: Record<string, number> };
-export type CountEvent = { id: string; sessionId: string; type: 'count' | 'undo'; at: string; date: string; mantraId: string; undoes?: string; sankalpId?: string };
+export type CountEvent = { id: string; sessionId: string; type: 'count' | 'undo'; at: string; date: string; mantraId: string; undoes?: string };
 export type JaapReceipt = { id: string; kind: 'jaap-active' | 'jaap'; completedAt: string };
 export type JaapDay = { total: number; mantras: Record<string, number>; active: boolean; bonus: boolean };
-export type Sankalp = { id: string; mantraId: string; intention: string; duration: number; dailyMalas: number; startedAt: string; status: 'active' | 'paused' | 'archived' | 'complete'; days: string[]; counts: Record<string, number> };
-export type JaapState = { version: 1; preferences: JaapPreferences; customMantras: Mantra[]; sessions: JaapSession[]; activeId: string | null; events: CountEvent[]; days: Record<string, JaapDay>; sankalps: Sankalp[]; pendingRewards: JaapReceipt[]; operations: string[]; timezone: string | null };
+export type JaapState = { version: 1; preferences: JaapPreferences; customMantras: Mantra[]; sessions: JaapSession[]; activeId: string | null; events: CountEvent[]; days: Record<string, JaapDay>; pendingRewards: JaapReceipt[]; operations: string[]; timezone: string | null };
 export type JaapAction =
   | { type: 'start'; id: string; at: string; timezone: string }
   | { type: 'count' | 'undo'; id: string; at: string; timezone: string }
+  | { type: 'reset'; id: string; at: string; timezone: string }
   | { type: 'pause' | 'resume' | 'finish'; at: string }
   | { type: 'preferences'; patch: Partial<JaapPreferences> }
   | { type: 'mantra'; mantra: Mantra }
-  | { type: 'sankalp'; program: Sankalp }
-  | { type: 'program-status'; id: string; status: Sankalp['status'] }
   | { type: 'ack'; ids: string[] };
 export function emptyJaap(): JaapState {
-  return { version: 1, preferences: { material: 'rudraksha', mantraId: 'shiva', setupComplete: false, focus: false, background: 'plain', haptics: 'light', bell: false, keepAwake: true, dailyMalas: 1, reminderEnabled: false, reminderMinutes: 19 * 60 }, customMantras: [], sessions: [], activeId: null, events: [], days: {}, sankalps: [], pendingRewards: [], operations: [], timezone: null };
+  return { version: 1, preferences: { material: 'rudraksha', mantraId: 'shiva', setupComplete: false, focus: false, background: 'lotus', haptics: 'strong', bell: true, keepAwake: true, dailyMalas: 1, reminderEnabled: false, reminderMinutes: 19 * 60 }, customMantras: [], sessions: [], activeId: null, events: [], days: {}, pendingRewards: [], operations: [], timezone: null };
 }
 export function allMantras(s: JaapState) { return [...MANTRAS, ...s.customMantras]; }
 export function activeSession(s: JaapState) { return s.sessions.find(x => x.id === s.activeId) ?? null; }
 export function selectedMantra(s: JaapState) { return allMantras(s).find(m => m.id === s.preferences.mantraId) ?? MANTRAS[0]; }
 export function beadPosition(total: number) { return total === 0 ? 0 : (total - 1) % MALA_SIZE + 1; }
-export function currentProgram(s: JaapState) { return s.sankalps.find(p => p.status === 'active' || p.status === 'paused') ?? null; }
 export function todayTarget(s: JaapState, date: string) {
-  const p = currentProgram(s);
-  return p?.status === 'active' ? { count: p.counts[date] ?? 0, target: p.dailyMalas * MALA_SIZE } : { count: s.days[date]?.total ?? 0, target: s.preferences.dailyMalas * MALA_SIZE };
+  return { count: s.days[date]?.total ?? 0, target: s.preferences.dailyMalas * MALA_SIZE };
 }
-export function estimatedFinish(p: Sankalp, today: string) { return shiftDay(today, Math.max(0, p.duration - p.days.length - 1)); }
 const integer = (n: unknown, min = 0, max = Number.MAX_SAFE_INTEGER): n is number => Number.isSafeInteger(n) && (n as number) >= min && (n as number) <= max;
 function checkPreferences(p: JaapPreferences) {
   if (!MATERIALS.includes(p.material) || !['plain','lotus','diya','photo'].includes(p.background) || !['off','light','medium','strong'].includes(p.haptics) || !integer(p.dailyMalas,1,108) || !integer(p.reminderMinutes,0,1439) || !['setupComplete','focus','bell','keepAwake','reminderEnabled'].every(k => typeof p[k as keyof JaapPreferences] === 'boolean') || typeof p.mantraId !== 'string' || (p.photoUri !== undefined && typeof p.photoUri !== 'string')) throw new Error('Invalid jaap preferences.');
@@ -52,8 +47,10 @@ export function parseJaap(raw: string | null): JaapState {
   if (raw === null) return emptyJaap();
   try {
     const s: JaapState = JSON.parse(raw);
-    if (!s || s.version !== 1 || !s.preferences || !['customMantras','sessions','events','sankalps','pendingRewards','operations'].every(k => Array.isArray(s[k as keyof JaapState])) || !s.days || typeof s.days !== 'object' || Array.isArray(s.days)) throw Error();
+    if (!s || s.version !== 1 || !s.preferences || !['customMantras','sessions','events','pendingRewards','operations'].every(k => Array.isArray(s[k as keyof JaapState])) || !s.days || typeof s.days !== 'object' || Array.isArray(s.days)) throw Error();
     checkPreferences(s.preferences); s.customMantras.forEach(checkMantra);
+    Object.assign(s.preferences, { focus: false, bell: true, keepAwake: true, haptics: 'strong' });
+    if (s.preferences.background === 'photo' && !s.preferences.photoUri) s.preferences.background = 'lotus';
     if (!allMantras(s).some(m => m.id === s.preferences.mantraId) || (s.timezone !== null && (typeof s.timezone !== 'string' || !dayKey(new Date(),s.timezone)))) throw Error();
     const ids = new Set<string>();
     for (const session of s.sessions) {
@@ -68,7 +65,8 @@ export function parseJaap(raw: string | null): JaapState {
     for (const d of Object.values(s.days)) if (!integer(d.total) || typeof d.active !== 'boolean' || typeof d.bonus !== 'boolean' || !d.mantras || !Object.values(d.mantras).every(v => integer(v)) || Object.values(d.mantras).reduce((a,b)=>a+b,0)!==d.total) throw Error();
     if(s.operations.some(id=>typeof id!=='string')||new Set(s.operations).size!==s.operations.length)throw Error();
     for (const r of s.pendingRewards) if (!r || !['jaap','jaap-active'].includes(r.kind) || typeof r.id !== 'string' || !r.id.startsWith(`${r.kind}:`) || !s.days[r.id.slice(r.kind.length+1)]?.active || (r.kind==='jaap'&&!s.days[r.id.slice(r.kind.length+1)]?.bonus) || !Number.isFinite(Date.parse(r.completedAt))) throw Error();
-    for (const p of s.sankalps) if (!integer(p.duration,1,365) || !integer(p.dailyMalas,1,108) || !Array.isArray(p.days) || new Set(p.days).size !== p.days.length || p.days.length > p.duration || !p.counts || !Object.values(p.counts).every(n=>integer(n)) || !['active','paused','archived','complete'].includes(p.status) || !Number.isFinite(Date.parse(p.startedAt))) throw Error();
+    delete (s as Record<string, unknown>).sankalps;
+    for (const e of s.events) delete (e as Record<string, unknown>).sankalpId;
     return s;
   } catch { throw new Error('Jaap data could not be read. Your practice has not been reset.'); }
 }
@@ -78,20 +76,12 @@ function paused(session: JaapSession, at: string): JaapSession {
 }
 export function reduceJaap(previous: JaapState, a: JaapAction): JaapState {
   if ('at' in a && !Number.isFinite(Date.parse(a.at))) throw new Error('Correct your clock before continuing.');
-  if ((a.type === 'count' || a.type === 'undo' || a.type === 'start') && previous.operations.includes(a.id)) return previous;
+  if ((a.type === 'count' || a.type === 'undo' || a.type === 'start' || a.type === 'reset') && previous.operations.includes(a.id)) return previous;
   const s: JaapState = JSON.parse(JSON.stringify(previous));
   const session = activeSession(s);
   if (a.type === 'preferences') { const p = { ...s.preferences,...a.patch }; checkPreferences(p); if (!allMantras(s).some(m=>m.id===p.mantraId)) throw Error('Choose an available mantra.'); if(session && p.mantraId!==session.mantra.id) throw Error('Finish your session before changing mantra.'); s.preferences=p; return s; }
   if (a.type === 'mantra') { checkMantra(a.mantra); if (allMantras(s).some(m=>m.id===a.mantra.id)) throw Error('This mantra already exists.'); s.customMantras.push({...a.mantra,custom:true}); return s; }
   if (a.type === 'ack') { s.pendingRewards=s.pendingRewards.filter(r=>!a.ids.includes(r.id)); return s; }
-  if (a.type === 'sankalp') {
-    const p=a.program;
-    if(!integer(p.duration,1,365)||!integer(p.dailyMalas,1,108)||!allMantras(s).some(m=>m.id===p.mantraId)||typeof p.intention!=='string'||p.intention.length>500) throw Error('Check the sankalp duration and target.');
-    if(!Number.isFinite(Date.parse(p.startedAt)) || s.sankalps.some(x=>x.id===p.id)) throw Error('Invalid sankalp.');
-    s.sankalps=s.sankalps.map(x=>['active','paused'].includes(x.status)?{...x,status:'archived'}:x);
-    s.sankalps.push({...p,status:'active',days:[],counts:{}});return s;
-  }
-  if (a.type === 'program-status') { const p=s.sankalps.find(x=>x.id===a.id); if(!p||!['active','paused'].includes(p.status)||!['active','paused','archived'].includes(a.status)) throw Error('This sankalp is no longer active.');p.status=a.status;return s; }
   if (a.type === 'start') {
     if(session) return s;
     s.timezone=s.timezone??a.timezone;
@@ -100,6 +90,22 @@ export function reduceJaap(previous: JaapState, a: JaapAction): JaapState {
   }
   if (!session) { if(a.type==='pause'||a.type==='finish') return previous; throw Error('Begin a session first.'); }
   const index=s.sessions.findIndex(x=>x.id===session.id);
+  if(a.type==='reset'){
+    if(Date.parse(a.at)<Date.parse(session.startedAt))throw Error('Correct your clock before continuing.');
+    const undone=new Set(s.events.filter(e=>e.type==='undo').map(e=>e.undoes));
+    const targets=s.events.filter(e=>e.sessionId===session.id&&e.type==='count'&&!undone.has(e.id));
+    if(!targets.length)return previous;
+    let seq=0;
+    for(const target of targets){
+      const date=target.date;
+      const d=s.days[date]??{total:0,mantras:{},active:false,bonus:false};
+      d.total-=1;d.mantras[session.mantra.id]=(d.mantras[session.mantra.id]??0)-1;
+      s.days[date]=d;
+      s.events.push({id:`${a.id}-${seq++}`,sessionId:session.id,type:'undo',at:a.at,date,mantraId:session.mantra.id,undoes:target.id});
+      s.sessions[index]={...s.sessions[index],total:s.sessions[index].total-1,dayCounts:{...s.sessions[index].dayCounts,[date]:(s.sessions[index].dayCounts[date]??0)-1}};
+    }
+    s.operations.push(a.id);s.timezone=a.timezone;return s;
+  }
   if(a.type==='pause'||a.type==='finish'){s.sessions[index]=paused(session,a.at);if(a.type==='finish'){s.sessions[index].finishedAt=a.at;s.activeId=null;}return s;}
   if(a.type==='resume'){if(Date.parse(a.at)<Date.parse(session.startedAt))throw Error('Correct your clock before continuing.');if(session.paused)s.sessions[index]={...session,paused:false,runningSince:a.at};return s;}
   if(a.type!=='count'&&a.type!=='undo')return s;
@@ -117,11 +123,6 @@ export function reduceJaap(previous: JaapState, a: JaapAction): JaapState {
   if(!d.active&&delta>0){d.active=true;s.pendingRewards.push({id:`jaap-active:${date}`,kind:'jaap-active',completedAt:a.at});}
   if(!d.bonus&&d.total>=108){d.bonus=true;s.pendingRewards.push({id:`jaap:${date}`,kind:'jaap',completedAt:a.at});}
   s.days[date]=d;
-  const p=currentProgram(s);
-  const qualifying=p?.status==='active'&&p.mantraId===session.mantra.id&&Date.parse(a.at)>=Date.parse(p.startedAt);
-  const linked=undoTarget?.sankalpId?s.sankalps.find(x=>x.id===undoTarget!.sankalpId):undefined;
-  const program=delta<0?linked:qualifying?p:undefined;
-  if(program){program.counts[date]=Math.max(0,(program.counts[date]??0)+delta);if(program.status==='active'&&!program.days.includes(date)&&program.counts[date]>=program.dailyMalas*108){program.days.push(date);if(program.days.length>=program.duration)program.status='complete';}}
-  s.events.push({id:a.id,sessionId:session.id,type:a.type,at:a.at,date,mantraId:session.mantra.id,...(undoTarget?{undoes:undoTarget.id}:{}),...(program?{sankalpId:program.id}:{})});
+  s.events.push({id:a.id,sessionId:session.id,type:a.type,at:a.at,date,mantraId:session.mantra.id,...(undoTarget?{undoes:undoTarget.id}:{})});
   s.operations.push(a.id);s.sessions[index]={...session,total:session.total+delta,dayCounts:{...session.dayCounts,[date]:(session.dayCounts[date]??0)+delta}};s.timezone=a.timezone;return s;
 }
